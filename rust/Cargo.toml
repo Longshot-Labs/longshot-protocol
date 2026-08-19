@@ -1,0 +1,22 @@
+[package]
+name = "longshot-protocol"
+version = "0.2.0"
+edition = "2021"
+publish = false
+
+[features]
+default = []
+openapi = ["dep:utoipa", "utoipa/uuid"]
+
+[dependencies]
+alloy-primitives = { version = "1", features = ["k256", "serde"] }
+alloy-signer = { version = "1", default-features = false }
+alloy-signer-local = { version = "1", default-features = false }
+base64 = "0.22"
+hex = "0.4"
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
+smallvec = "1.13"
+static_assertions = "1.1"
+utoipa = { version = "4", optional = true }
+uuid = { version = "1.23", features = ["v4", "serde"] }

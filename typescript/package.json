@@ -1,0 +1,55 @@
+{
+  "name": "longshot-protocol",
+  "version": "0.2.0",
+  "description": "Transport-neutral TypeScript contracts and wire helpers for Longshot",
+  "private": true,
+  "license": "Proprietary",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./api": {
+      "types": "./dist/src/api.d.ts",
+      "import": "./dist/src/api.js"
+    },
+    "./mm": {
+      "types": "./dist/src/mm.d.ts",
+      "import": "./dist/src/mm.js"
+    },
+    "./rfq": {
+      "types": "./dist/src/rfq.d.ts",
+      "import": "./dist/src/rfq.js"
+    },
+    "./taker": {
+      "types": "./dist/src/taker.d.ts",
+      "import": "./dist/src/taker.js"
+    },
+    "./types": {
+      "types": "./dist/src/types.d.ts",
+      "import": "./dist/src/types.js"
+    },
+    "./ws": {
+      "types": "./dist/src/ws.d.ts",
+      "import": "./dist/src/ws.js"
+    }
+  },
+  "files": [
+    "dist/src"
+  ],
+  "scripts": {
+    "build": "node scripts/generate-serde.mjs && tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "npm run build && node --test dist/tests/*.test.js"
+  },
+  "dependencies": {
+    "viem": "2.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.4",
+    "typescript": "5.9.3"
+  }
+}

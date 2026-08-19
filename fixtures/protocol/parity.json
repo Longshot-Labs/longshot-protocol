@@ -1,0 +1,143 @@
+{
+  "auth_message": {
+    "challenge_id": "550e8400-e29b-41d4-a716-446655440000",
+    "message": "Longshot Market Maker WebSocket Authentication\n\nVersion: 1\nDomain: longshot.xyz\nAuth Address: 0x1a642f0E3c3aF545E7AcBD38b07251B3990914F1\nChallenge ID: 550e8400-e29b-41d4-a716-446655440000\nTimestamp: 1735430000000",
+    "message_hex": "4c6f6e6773686f74204d61726b6574204d616b657220576562536f636b65742041757468656e7469636174696f6e0a0a56657273696f6e3a20310a446f6d61696e3a206c6f6e6773686f742e78797a0a4175746820416464726573733a203078316136343266304533633361463534354537416342443338623037323531423339393039313446310a4368616c6c656e67652049443a2035353065383430302d653239622d343164342d613731362d3434363635353434303030300a54696d657374616d703a2031373335343330303030303030",
+    "timestamp_ms": 1735430000000
+  },
+  "mm_signing": {
+    "auth_signature_hex": "c963e1b3e9871704e7938e8c72feb7f7b41f163a92e012067aa6b74e37bc6bbd53bb3ef6836b8a2682e4fa25c81b616f894087cbd475841bf7afe8ed22c3ccd91c",
+    "private_key": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "signed_quote_base64": "ABEiM0RVZneImaq7zN3u/6hhAAAVzVsHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIPyfu2Q/ceHvB+S5KKyltpIL9a0REZGvbVWwfbWExYVs42gLRrTyUCySx4nr08r65TEdgMpLATHH9b6KZaNh9xw",
+    "signed_quote_bytes_hex": "00112233445566778899aabbccddeeffa861000015cd5b0700000000000000000000000000000000000000000000000020fc9fbb643f71e1ef07e4b928aca5b6920bf5ad111191af6d55b07db584c5856ce3680b46b4f2502c92c789ebd3cafae5311d80ca4b0131c7f5be8a65a361f71c",
+    "quote_signature_hex": "20fc9fbb643f71e1ef07e4b928aca5b6920bf5ad111191af6d55b07db584c5856ce3680b46b4f2502c92c789ebd3cafae5311d80ca4b0131c7f5be8a65a361f71c",
+    "wallet_address": "0x1a642f0E3c3aF545E7AcBD38b07251B3990914F1"
+  },
+  "broadcast_rfq": {
+    "base64": "ABEiM0RVZneImaq7zN3u/0BCDwAAAAAA9Gnlz4sBAAABAgAAIiIiIiIiIiIiIiIiIiIiIiIiIiIBCQIAAAAAACoAAAAAAAAAAGjlz4sBAAAAAAAALAEAACsAAAAAAAAA6Gvlz4sBAAAAAAEALAEAACwAAAAAAAAA0G/lz4sBAAAAAAIALAEAAC0AAAAAAAAAuHPlz4sBAAAAAAMALAEAAC4AAAAAAAAAoHflz4sBAAAAAAQALAEAAC8AAAAAAAAAiHvlz4sBAAAAAAUALAEAADAAAAAAAAAAcH/lz4sBAAAAAAYALAEAADEAAAAAAAAAWIPlz4sBAAAAAAcALAEAAGMAAAAAAAAAEAzmz4sBAAACAQgAAAAAAA",
+    "bytes_hex": "00112233445566778899aabbccddeeff40420f0000000000f469e5cf8b01000001020000222222222222222222222222222222222222222201090200000000002a000000000000000068e5cf8b010000000000002c0100002b00000000000000e86be5cf8b010000000001002c0100002c00000000000000d06fe5cf8b010000000002002c0100002d00000000000000b873e5cf8b010000000003002c0100002e00000000000000a077e5cf8b010000000004002c0100002f00000000000000887be5cf8b010000000005002c0100003000000000000000707fe5cf8b010000000006002c01000031000000000000005883e5cf8b010000000007002c0100006300000000000000100ce6cf8b0100000201080000000000",
+    "expires_at_ms": 1700000000500,
+    "legs": [
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 0,
+        "market_id": 42,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000000000,
+        "type_tag": 0
+      },
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 1,
+        "market_id": 43,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000001000,
+        "type_tag": 0
+      },
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 2,
+        "market_id": 44,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000002000,
+        "type_tag": 0
+      },
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 3,
+        "market_id": 45,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000003000,
+        "type_tag": 0
+      },
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 4,
+        "market_id": 46,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000004000,
+        "type_tag": 0
+      },
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 5,
+        "market_id": 47,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000005000,
+        "type_tag": 0
+      },
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 6,
+        "market_id": 48,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000006000,
+        "type_tag": 0
+      },
+      {
+        "asset": 0,
+        "direction": 0,
+        "leg_index": 7,
+        "market_id": 49,
+        "price_window_secs": 300,
+        "start_at_ms": 1700000007000,
+        "type_tag": 0
+      },
+      {
+        "direction": 1,
+        "leg_index": 8,
+        "market_id": 99,
+        "price_window_secs": 0,
+        "start_at_ms": 1700000042000,
+        "type_tag": 2
+      }
+    ],
+    "min_odds": 25000,
+    "order_type": 1,
+    "protocol_version": 2,
+    "request_id": "00112233-4455-6677-8899-aabbccddeeff",
+    "taker_id": "ffeeddcc-bbaa-9988-7766-554433221100",
+    "taker_metadata": {
+      "address": "0x2222222222222222222222222222222222222222",
+      "tier": 2
+    },
+    "wager_micros": 1000000
+  },
+  "quote_response": {
+    "base64": "ABEiM0RVZneImaq7zN3u/6hhAAAVzVsHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "bytes_hex": "00112233445566778899aabbccddeeffa861000015cd5b070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "max_fill_micros": 123456789,
+    "odds": 25000,
+    "request_id": "00112233-4455-6677-8899-aabbccddeeff",
+    "signed_data_hex": "00112233445566778899aabbccddeeffa861000015cd5b07000000000000000000000000000000000000000000000000"
+  },
+  "taker_signed_order": {
+    "expires_at_ms": 1735430300000,
+    "legs": [
+      {
+        "direction": 1,
+        "market_id": 42
+      },
+      {
+        "direction": 0,
+        "market_id": 99
+      }
+    ],
+    "min_odds_bps": 25000,
+    "nonce": 1234567890,
+    "order_type": 2,
+    "replay_bytes_hex": "111111111111111111111111111111111111111100e1f50500000000a8610000d20296490000000060e1b40f940100000200022a0000000000000001630000000000000000",
+    "shield_on": false,
+    "signing_bytes_hex": "111111111111111111111111111111111111111100e1f50500000000a8610000d20296490000000060e1b40f94010000020001022a0000000000000001630000000000000000",
+    "use_app_tokens": true,
+    "user": "0x1111111111111111111111111111111111111111",
+    "wager_micros": 100000000
+  }
+}
