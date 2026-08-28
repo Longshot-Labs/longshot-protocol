@@ -12,7 +12,7 @@ from ._serde_metadata import (
     TAGGED_UNION_FIELDS,
 )
 from .model import LongshotModel, RustStringEnum, RustTaggedUnion, _install_serde_metadata
-from .types import Asset, MarketId, MarketType
+from .types import Asset, MarketId, MarketType, RequestId
 
 
 class QuoteResultStatus(RustStringEnum):
@@ -20,6 +20,10 @@ class QuoteResultStatus(RustStringEnum):
     NotFilled = "not_filled"
     Rejected = "rejected"
     SelectedFailed = "selected_failed"
+
+
+class QuoteDeclineReason(RustStringEnum):
+    SportsCombinationUnsupported = "sports_combination_unsupported"
 
 
 class RfqSubscription(RustTaggedUnion):
@@ -50,6 +54,7 @@ class ClientMessage(RustTaggedUnion):
         "Auth": "auth",
         "AuthResponse": "auth_response",
         "Quote": "quote",
+        "QuoteDecline": "quote_decline",
         "Pong": "pong",
         "Subscribe": "subscribe",
     }
@@ -67,6 +72,14 @@ class ClientMessage(RustTaggedUnion):
         return cls("Quote", data=data)
 
     @classmethod
+    def quote_decline(
+        cls,
+        request_id: RequestId,
+        reason: Union[QuoteDeclineReason, str],
+    ) -> ClientMessage:
+        return cls("QuoteDecline", request_id=request_id, reason=reason)
+
+    @classmethod
     def pong(cls) -> ClientMessage:
         return cls("Pong")
 
@@ -81,6 +94,20 @@ class ClientMessage(RustTaggedUnion):
         )
 
 
+class MarketFairValueDecayType(RustStringEnum):
+    Linear = "linear"
+    Curved = "curved"
+
+
+@dataclass
+class MarketFairValueDecay(LongshotModel):
+    start_ms: int
+    start_odds_bps: int
+    end_ms: int
+    end_odds_bps: int
+    decay_type: MarketFairValueDecayType
+
+
 @dataclass
 class MarketFairValue(LongshotModel):
     market_id: MarketId
@@ -90,6 +117,7 @@ class MarketFairValue(LongshotModel):
     resolution_time_ms: int
     revision: int
     updated_at_ms: int
+    decay: Optional[MarketFairValueDecay] = None
 
 
 class ServerMessage(RustTaggedUnion):

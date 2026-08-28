@@ -43,7 +43,6 @@ export interface WalletAuthExampleInput {
   signingKey: `0x${string}`;
   domain: string;
   signedAtMs: IntegerInput;
-  inviteCode?: string;
   referralCode?: string;
 }
 
@@ -82,7 +81,6 @@ export async function buildWalletAuthBody(input: WalletAuthExampleInput): Promis
     address: account.address,
     signature: encodeWalletSignature(signature),
     signed_at_ms: input.signedAtMs,
-    invite_code: input.inviteCode,
     referral_code: input.referralCode,
   };
   return stringifySerde(request);

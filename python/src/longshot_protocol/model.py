@@ -499,6 +499,13 @@ def _coerce_serde_spec(
             _coerce_serde_spec(owner, item, core[2:], from_wire)
             for item in value
         ]
+    if core.startswith("{}"):
+        if not isinstance(value, dict) or any(type(key) is not str for key in value):
+            raise _serde_type_error(value, dict)
+        return {
+            key: _coerce_serde_spec(owner, item, core[2:], from_wire)
+            for key, item in value.items()
+        }
     if core in _INTEGER_BOUNDS:
         value = _coerce_wire_int(value, core) if wire_int and from_wire else value
         return _coerce_sized_integer(value, core)
@@ -531,6 +538,8 @@ def _default_serde_spec(owner: Type[RustTaggedUnion], spec: str) -> Any:
         core = core[1:]
     if core.startswith("[]"):
         return []
+    if core.startswith("{}"):
+        return {}
     defaults = {"str": "", "bool": False, "float": 0.0}
     if core in defaults:
         return defaults[core]

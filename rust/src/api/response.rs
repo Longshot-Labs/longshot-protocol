@@ -40,9 +40,7 @@ impl AccessResponse {
     "deposit_chain_id": 84532,
     "user_id": "8d3f6b4a-a79a-4b4d-8e38-64c2d8f7b9a1",
     "expires_at": 1735516400,
-    "account_created": true,
-    "signup_access_code": "swift-falcon-42",
-    "signup_access_code_type": "invite_code"
+    "account_created": true
 })))]
 pub struct SessionResponse {
     /// Bearer token for authenticated API requests.
@@ -97,23 +95,10 @@ pub struct SessionResponse {
     #[serde(default)]
     #[cfg_attr(feature = "openapi", schema(required, default = false))]
     pub onboarding_completed: bool,
-
-    /// Normalized invite or referral code authoritatively applied to this
-    /// account's signup, when available.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "openapi", schema(example = "swift-falcon-42"))]
-    pub signup_access_code: Option<String>,
-
-    /// Attribution discriminator for `signup_access_code`; currently
-    /// `invite_code` or `referral_code`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "openapi", schema(example = "invite_code"))]
-    pub signup_access_code_type: Option<String>,
 }
 
 impl fmt::Debug for SessionResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let signup_access_code = self.signup_access_code.as_ref().map(|_| "<redacted>");
         f.debug_struct("SessionResponse")
             .field("session_token", &"<redacted>")
             .field("address", &self.address)
@@ -124,8 +109,6 @@ impl fmt::Debug for SessionResponse {
             .field("expires_at", &self.expires_at)
             .field("account_created", &self.account_created)
             .field("onboarding_completed", &self.onboarding_completed)
-            .field("signup_access_code", &signup_access_code)
-            .field("signup_access_code_type", &self.signup_access_code_type)
             .finish()
     }
 }
@@ -519,36 +502,6 @@ pub enum DepositOperationResponse {
 #[serde(untagged)]
 pub enum WithdrawOperationResponse {
     Completed(UserWithdrawResponse),
-    OperationStatus(BalanceOperationStatusResponse),
-}
-
-/// Response after minting app tokens to a user and recording the grant.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserGrantAppTokenResponse {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub user_id: String,
-    #[cfg_attr(feature = "openapi", schema(value_type = String, example = "0x4c45f2849ba5a6610528e429b7035498c796c39e8ad8fdac44d6a57191c543cd"))]
-    pub token_id: String,
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64", example = "1500000"))]
-    pub amount_micros: u64,
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub operation_id: Uuid,
-    #[cfg_attr(feature = "openapi", schema(example = "0xabc123"))]
-    pub tx_hash: String,
-}
-
-/// Response for app-token grant endpoints.
-///
-/// Freshly completed grants return a `UserGrantAppTokenResponse` with a tx
-/// hash. Idempotency replays and asynchronous recovery paths return a durable
-/// operation status response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(untagged)]
-pub enum GrantAppTokenOperationResponse {
-    Completed(UserGrantAppTokenResponse),
     OperationStatus(BalanceOperationStatusResponse),
 }
 
@@ -1042,97 +995,88 @@ pub struct ReservedBalanceResponse {
     pub reserved_micros: u64,
 }
 
-/// Response containing the user's immediately available app token balance.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "available_app_token_micros": "1000000"
-})))]
-pub struct AvailableAppTokenBalanceResponse {
-    /// Immediately available app token balance in micros.
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64", example = "1000000"))]
-    pub available_app_token_micros: u64,
-}
-
-/// Response containing the user's reserved app token balance.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "reserved_app_token_micros": "250000"
-})))]
-pub struct ReservedAppTokenBalanceResponse {
-    /// Currently reserved app token balance in micros.
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64", example = "250000"))]
-    pub reserved_app_token_micros: u64,
-}
-
+/// User-facing transaction category.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(as = AppTokenGrantCategory))]
 #[serde(rename_all = "snake_case")]
-pub enum AppTokenGrantCategoryResponse {
-    Any,
-    PriceStrike,
-    BinaryEvent,
+pub enum UserTransactionCategory {
+    Deposit,
+    Withdrawal,
+    Credits,
+    Market,
     Contest,
-    Markets,
 }
 
-/// Single app-token grant visible to the authenticated user.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// User-facing transaction status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserAppTokenGrantResponse {
-    pub grant_id: Uuid,
-    pub app_token_id: Option<String>,
-    pub expires_at_ms: i64,
-    pub category: AppTokenGrantCategoryResponse,
-    pub min_legs: i16,
-    pub max_legs: i16,
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub max_amount_per_bet_micros: u64,
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub unclaimed_micros: u64,
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub available_micros: u64,
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub reserved_micros: u64,
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub consumed_micros: u64,
-    pub expired: bool,
+#[serde(rename_all = "snake_case")]
+pub enum UserTransactionStatus {
+    Completed,
+    Pending,
+    Failed,
+    Expired,
+    Entered,
+    Won,
 }
 
-/// Detailed app-token grant list for the authenticated user.
+/// Unit used by a transaction amount.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum UserTransactionUnit {
+    Usdc,
+    Credits,
+}
+
+/// Funding sources combined into a transaction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum UserTransactionFunding {
+    Cash,
+    Credits,
+    CashAndCredits,
+}
+
+/// One user-facing transaction-history row.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "grants": [{
-        "grant_id": "550e8400-e29b-41d4-a716-446655440000",
-        "app_token_id": "0x0bcdbacb8d0957f398899902c6257f44166ef254398a865b51e66e2a6d0afb2e",
-        "expires_at_ms": 4102444800000i64,
-        "category": "price",
-        "min_legs": 1,
-        "max_legs": 3,
-        "max_amount_per_bet_micros": "500000",
-        "unclaimed_micros": "400000",
-        "available_micros": "250000",
-        "reserved_micros": "100000",
-        "consumed_micros": "150000",
-        "expired": false
-    }],
-    "has_more": true,
-    "next_cursor": "NDEwMjQ0NDgwMDAwMDo1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDA"
-})))]
-pub struct UserAppTokenGrantsResponse {
-    pub grants: Vec<UserAppTokenGrantResponse>,
-    pub has_more: bool,
+pub struct UserTransactionResponse {
+    pub id: String,
+    pub category: UserTransactionCategory,
+    pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    pub status: UserTransactionStatus,
+    pub occurred_at_ms: i64,
+    #[serde(with = "crate::api::wire_int::i64_string")]
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
+    pub amount_micros: i64,
+    pub unit: UserTransactionUnit,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub funding: Option<UserTransactionFunding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wallet_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tx_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reference: Option<String>,
+}
+
+/// Paginated user transaction-history response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct UserTransactionsResponse {
+    pub items: Vec<UserTransactionResponse>,
     pub next_cursor: Option<String>,
 }
 
@@ -1200,49 +1144,6 @@ pub struct FeeScheduleResponse {
 
     /// Full fee schedule across all tiers (for display).
     pub tiers: Vec<TierFeeRate>,
-}
-
-/// Admin response for reading or updating global withdrawal policy.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct WithdrawalPolicyResponse {
-    pub withdrawals_enabled: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-    pub disabled_by_tripwire: bool,
-    pub updated_at_ms: Option<i64>,
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub updated_by: Option<String>,
-}
-
-/// Admin response for reading or updating global betting policy.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct BettingPolicyResponse {
-    pub betting_enabled: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-    pub updated_at_ms: Option<i64>,
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub updated_by: Option<String>,
-}
-
-/// Admin response for reading or updating signup policy (invite phase).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct SignupPolicyResponse {
-    pub invite_required: bool,
-    pub updated_at_ms: Option<i64>,
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub updated_by: Option<String>,
-}
-
-/// Public response for invite code verification. Non-consuming.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct InviteCodeVerifyResponse {
-    /// Whether the code exists and has not been used.
-    pub valid: bool,
 }
 
 /// User response after placing a contest bet.
@@ -1441,6 +1342,10 @@ pub struct PublicContestSummaryResponse {
 pub struct ContestCallerSummaryResponse {
     /// True when the authenticated caller has entered this contest.
     pub joined: bool,
+    /// Number of entries owned by the authenticated caller.
+    #[serde(default)]
+    #[cfg_attr(feature = "openapi", schema(required))]
+    pub entry_count: u32,
 }
 
 /// Single row in the session-aware contest lobby list.
@@ -1454,13 +1359,20 @@ pub struct CallerContestSummaryResponse {
     pub caller: Option<ContestCallerSummaryResponse>,
 }
 
-/// Contest-lobby row with the server-owned prize-currency extension.
+/// Contest-lobby row with list-only presentation and entry metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ContestLobbySummaryResponse {
     #[serde(flatten)]
     #[cfg_attr(feature = "openapi", schema(inline))]
     pub summary: CallerContestSummaryResponse,
+    /// Marker-free public display copy for lobby cards, capped at 160 characters.
+    #[cfg_attr(feature = "openapi", schema(required))]
+    pub description: Option<String>,
+    /// Maximum entries one caller can submit to this contest.
+    #[serde(default = "default_contest_entry_count")]
+    #[cfg_attr(feature = "openapi", schema(required, minimum = 1, maximum = 5))]
+    pub max_entries_per_player: u32,
     pub protocol_prize_pool_pays_app_tokens: bool,
 }
 
@@ -2110,38 +2022,6 @@ pub struct UserReferralsListResponse {
     pub total_count: i64,
 }
 
-/// Liveness probe response.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "status": "healthy",
-    "git_sha": "e04503dd574fd009d6c30443a191d68e5094b583"
-})))]
-pub struct HealthResponse {
-    /// Liveness status.
-    #[cfg_attr(feature = "openapi", schema(example = "healthy"))]
-    pub status: String,
-
-    /// Git commit SHA embedded at build time.
-    #[cfg_attr(
-        feature = "openapi",
-        schema(example = "e04503dd574fd009d6c30443a191d68e5094b583")
-    )]
-    pub git_sha: String,
-}
-
-/// Readiness probe response.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "status": "ready"
-})))]
-pub struct ReadyzResponse {
-    /// Readiness status: "ready" or "unavailable".
-    #[cfg_attr(feature = "openapi", schema(example = "ready"))]
-    pub status: String,
-}
-
 /// Error response.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -2205,51 +2085,6 @@ pub struct UserFeaturesResponse {
     pub markets_access: bool,
 }
 
-/// Provenance of a deposit-match opportunity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum DepositMatchSourceResponse {
-    AdminGrant,
-    Referral,
-    Internal,
-}
-
-/// One active deposit-match opportunity for the calling user.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserDepositMatchOpportunityResponse {
-    pub opportunity_id: String,
-    #[serde(with = "crate::api::wire_int::i64_string")]
-    #[cfg_attr(
-        feature = "openapi",
-        schema(value_type = String, format = "int64", example = "10000000")
-    )]
-    pub match_limit_micros: i64,
-    #[serde(with = "crate::api::wire_int::i64_string")]
-    #[cfg_attr(
-        feature = "openapi",
-        schema(value_type = String, format = "int64", example = "0")
-    )]
-    pub matched_micros: i64,
-    pub source: DepositMatchSourceResponse,
-    pub created_at_ms: i64,
-    pub expires_at_ms: i64,
-}
-
-/// Active deposit-match opportunities for the calling user.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserDepositMatchOpportunitiesResponse {
-    pub opportunities: Vec<UserDepositMatchOpportunityResponse>,
-    #[serde(with = "crate::api::wire_int::i64_string")]
-    #[cfg_attr(
-        feature = "openapi",
-        schema(value_type = String, format = "int64", example = "10000000")
-    )]
-    pub total_available_micros: i64,
-}
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -2282,34 +2117,10 @@ mod tests {
         .expect("deserialize compatible session response");
         assert!(!compatible.account_created);
         assert!(!compatible.onboarding_completed);
-        assert_eq!(compatible.signup_access_code, None);
-        assert_eq!(compatible.signup_access_code_type, None);
 
-        let attributed: SessionResponse = serde_json::from_value(json!({
-            "session_token": "live-token",
-            "address": "0x0000000000000000000000000000000000000000",
-            "auth_wallet_address": "0x1111111111111111111111111111111111111111",
-            "user_id": "user-1",
-            "expires_at": 123,
-            "account_created": true,
-            "signup_access_code": "swift-falcon-42",
-            "signup_access_code_type": "invite_code"
-        }))
-        .expect("deserialize attributed session response");
-        assert_eq!(
-            attributed.signup_access_code.as_deref(),
-            Some("swift-falcon-42")
-        );
-        assert_eq!(
-            attributed.signup_access_code_type.as_deref(),
-            Some("invite_code")
-        );
-
-        let debug = format!("{attributed:?}");
-        assert!(!debug.contains("live-token"));
-        assert!(!debug.contains("swift-falcon-42"));
+        let debug = format!("{compatible:?}");
+        assert!(!debug.contains("compatible-token"));
         assert!(debug.contains("<redacted>"));
-        assert!(debug.contains("invite_code"));
     }
 
     #[test]
@@ -2339,6 +2150,23 @@ mod tests {
             detail.summary.game_type,
             Some(ContestGameTypeResponse::Lineups)
         ));
+    }
+
+    #[test]
+    fn contest_lobby_defaults_legacy_entry_progress() {
+        let json = r#"{
+            "contest_id":"","title":"","category":"sports","status":"open",
+            "bet_amount_micros":0,"protocol_prize_pool_micros":0,"total_pot_micros":0,
+            "entries_filled":1,"entry_cap":5,"entry_opens_at_ms":null,
+            "betting_closes_ms":0,"live_ends_at_ms":null,"resolved_at_ms":null,
+            "created_at_ms":0,"caller":{"joined":true},
+            "protocol_prize_pool_pays_app_tokens":false
+        }"#;
+        let summary: super::ContestLobbySummaryResponse =
+            serde_json::from_str(json).expect("deserialize legacy contest lobby summary");
+
+        assert_eq!(summary.max_entries_per_player, 1);
+        assert_eq!(summary.summary.caller.expect("caller").entry_count, 0);
     }
 
     #[test]

@@ -1,0 +1,8 @@
+include LICENSE.txt
+include README.md
+include pyproject.toml
+recursive-include src/longshot_protocol *.py *.pyi py.typed
+prune examples
+prune tests
+prune tools
+global-exclude __pycache__ *.py[cod]

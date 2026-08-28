@@ -8,8 +8,8 @@ use longshot_protocol::api::{
     StreakHistoryResponse, StreakLeaderboardResponse, StreakLeaderboardRowResponse,
     StreakMarketResponse, StreakPickHistoryItemResponse, StreakPicksResponse,
     StreakPopularMarketResponse, StreakPopularTodayResponse, StreakRunResponse,
-    StreakRunTierPayoutResponse, UserAppTokenGrantResponse, UserAvailableBalanceResponse,
-    UserDepositMatchOpportunitiesResponse, UserDepositMatchOpportunityResponse,
+    StreakRunTierPayoutResponse, UserAvailableBalanceResponse, UserTransactionCategory,
+    UserTransactionResponse, UserTransactionStatus, UserTransactionUnit, UserTransactionsResponse,
 };
 use serde_json::Value;
 use utoipa::ToSchema;
@@ -106,13 +106,41 @@ fn wire_integer_openapi_fields_are_decimal_strings() {
     assert_string_properties::<QueuedWithdrawalResponse>(&["amount_micros"]);
     assert_string_properties::<PublicReferralDepositMatchOffer>(&["match_limit_micros"]);
     assert_string_properties::<ClaimReferralPromptResponse>(&["amount_micros"]);
-    assert_string_properties::<UserDepositMatchOpportunityResponse>(&[
-        "match_limit_micros",
-        "matched_micros",
-    ]);
-    assert_string_properties::<UserDepositMatchOpportunitiesResponse>(&["total_available_micros"]);
     assert_string_properties::<StreakRunTierPayoutResponse>(&["payout_micros"]);
     assert_string_properties::<StreakRunResponse>(&["cash_payout_micros"]);
+    assert_string_properties::<UserTransactionResponse>(&["amount_micros"]);
+}
+
+#[test]
+fn user_transactions_preserve_wire_amounts_and_omit_optional_details() {
+    let wire = serde_json::to_value(UserTransactionsResponse {
+        items: vec![UserTransactionResponse {
+            id: "ledger-event".to_owned(),
+            category: UserTransactionCategory::Withdrawal,
+            title: "Withdrawal".to_owned(),
+            detail: None,
+            status: UserTransactionStatus::Completed,
+            occurred_at_ms: 1_700_000_000_000,
+            amount_micros: -9_007_199_254_740_993,
+            unit: UserTransactionUnit::Usdc,
+            funding: None,
+            network: None,
+            wallet_address: None,
+            tx_hash: Some("0xabc".to_owned()),
+            source: None,
+            expires_at_ms: None,
+            reason: None,
+            reference: None,
+        }],
+        next_cursor: None,
+    })
+    .expect("transaction response should serialize");
+
+    assert_eq!(wire["items"][0]["amount_micros"], "-9007199254740993");
+    assert_eq!(wire["items"][0]["category"], "withdrawal");
+    assert_eq!(wire["items"][0]["status"], "completed");
+    assert!(wire["items"][0].get("detail").is_none());
+    assert_eq!(wire["next_cursor"], Value::Null);
 }
 
 #[test]
@@ -120,7 +148,6 @@ fn uuid_openapi_fields_are_inline_string_formats() {
     assert_uuid_property::<AcknowledgeReferralPromptRequest>("claim_token");
     assert_uuid_property::<RfqEstimateResponse>("request_id");
     assert_uuid_property::<QueuedWithdrawalResponse>("operation_id");
-    assert_uuid_property::<UserAppTokenGrantResponse>("grant_id");
     assert_uuid_property::<ClaimReferralPromptResponse>("claim_token");
 
     let schema = serde_json::to_value(ShareImageRef::schema().1).expect("schema should serialize");

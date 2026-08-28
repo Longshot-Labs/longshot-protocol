@@ -281,14 +281,14 @@ function typeDescriptor(raw, attrs) {
     if (args[0]?.trim() !== "String") throw new Error(`unsupported Rust map key type: ${args[0]}`);
     descriptor = ["d", typeDescriptor(args[1], [])];
   }
-  else if (generic?.[1].trim() === "Arc") descriptor = typeDescriptor(args[0], []);
+  else if (["Arc", "Box"].includes(generic?.[1].trim())) descriptor = typeDescriptor(args[0], []);
   else if (type === "String" || type === "str") descriptor = "s";
   else if (type === "bool") descriptor = "b";
   else if (type === "f32" || type === "f64") descriptor = "f";
   else if (type === "()") descriptor = "z";
   else if (type === "Value" || type === "serde_json::Value") descriptor = "j";
   else if (/^[ui](?:8|16|32|64|128)$|^[ui]size$/u.test(type)) descriptor = type;
-  else if (type === "Uuid") descriptor = "uuid";
+  else if (type === "Uuid" || type === "RequestId") descriptor = "uuid";
   else if (type === "MarketId") descriptor = "mid";
   else if (type === "PositionId") descriptor = "pid";
   else if (type === "Address") descriptor = "addr";
@@ -348,6 +348,25 @@ function rename(name, rule) {
 function validateCurrentOpenApi(document, protocolNames) {
   const components = document.components?.schemas ?? {};
   const roots = new Set(["CreateSessionRequest", "SessionResponse"]);
+  const serverOnlyPaths = new Set([
+    "/health",
+    "/readyz",
+    "/v1/auth/invite_code/verify",
+    "/v1/mm/max_payouts",
+    "/v1/mm/profit_caps",
+    "/v1/mm/taker_pnl",
+    "/v1/user/app_token_grants",
+    "/v1/user/available_app_token_balance",
+    "/v1/user/deposit_app_token",
+    "/v1/user/deposit_match_opportunities",
+    "/v1/user/grant_app_token",
+    "/v1/user/reserved_app_token_balance",
+  ]);
+  const serverOnlyFields = new Map([
+    ["CreateSessionRequest", new Set(["invite_code"])],
+    ["SessionResponse", new Set(["signup_access_code", "signup_access_code_type"])],
+    ["WalletAuthRequest", new Set(["invite_code"])],
+  ]);
   // These Rust DTOs deliberately retain the protocol's `Response` suffix;
   // the server publishes the same wire shapes under shorter `schema(as = ...)` names.
   const schemaAliases = {
@@ -360,7 +379,7 @@ function validateCurrentOpenApi(document, protocolNames) {
   // operations. Keep this route-derived so a new public JSON contract cannot be
   // added to the server fixture without also being added to the shared protocol.
   for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
-    if (path.split("/").includes("admin")) continue;
+    if (path.split("/").includes("admin") || serverOnlyPaths.has(path)) continue;
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!/^(?:delete|get|patch|post|put)$/u.test(method)) continue;
       collectJsonSchemaRoots(operation.requestBody, roots);
@@ -397,6 +416,7 @@ function validateCurrentOpenApi(document, protocolNames) {
     const protocolName = schemaAliases[name] ?? name;
     const rustFields = rustObjectFieldNames(protocolName);
     const openApiFields = openApiObjectFieldNames(components[name], components);
+    for (const field of serverOnlyFields.get(name) ?? []) openApiFields?.delete(field);
     if (rustFields && openApiFields && !sameSet(rustFields, openApiFields)) {
       schemaDrifts.push(
         `${name} field drift between Rust protocol and current OpenAPI: `
@@ -423,6 +443,8 @@ function validateCurrentOpenApi(document, protocolNames) {
     ["ContestDetailQuery", "/v1/contests/{id}", "get"],
     ["ContestLeaderboardQuery", "/v1/contests/{id}/leaderboard", "get"],
     ["FeedRawQuery", "/v1/feed", "get"],
+    ["CommunityPicksRawQuery", "/v1/community-picks", "get"],
+    ["RecentWinnersRawQuery", "/v1/recent-winners", "get"],
     ["LeaderboardRawQuery", "/v1/leaderboard", "get"],
     ["MarketCandlesQuery", "/v1/market-data/candles", "get"],
     ["ReferencePriceQuery", "/v1/market-data/reference-price", "get"],
@@ -433,7 +455,6 @@ function validateCurrentOpenApi(document, protocolNames) {
     ["WindowResultsQuery", "/v1/market-data/window-results", "get"],
     ["PublicMarketsRawQuery", "/v1/markets", "get"],
     ["RecentResolutionsQuery", "/v1/mm/recent_resolutions", "get"],
-    ["TakerPnlQuery", "/v1/mm/taker_pnl", "get"],
     ["FantasyEntriesQuery", "/v1/portfolio/fantasy", "get"],
     ["PnlHistoryScopedQuery", "/v1/portfolio/pnl", "get"],
     ["PositionsByMarketsQuery", "/v1/portfolio/positions", "get"],
@@ -447,11 +468,13 @@ function validateCurrentOpenApi(document, protocolNames) {
     ["ContestDetailQuery", "/v1/u/{handle}/contests/{id}", "get"],
     ["FantasyEntriesQuery", "/v1/u/{handle}/fantasy", "get"],
     ["PnlHistoryScopedQuery", "/v1/u/{handle}/pnl", "get"],
+    ["FollowingRawQuery", "/v1/u/{handle}/following", "get"],
+    ["FollowingRawQuery", "/v1/u/{handle}/followers", "get"],
     ["PositionsQuery", "/v1/u/{handle}/positions", "get"],
     ["StreakHistoryRawQuery", "/v1/u/{handle}/streak/history", "get"],
     ["StreakPicksRawQuery", "/v1/u/{handle}/streak/picks", "get"],
     ["PortfolioSummaryRawQuery", "/v1/u/{handle}/summary", "get"],
-    ["AppTokenGrantsRawQuery", "/v1/user/app_token_grants", "get"],
+    ["UserTransactionsRawQuery", "/v1/user/transactions", "get"],
     ["ConfirmPositionQuery", "/v1/user/confirm_position", "post"],
     ["NotificationsRawQuery", "/v1/user/notifications", "get"],
     ["NotificationStreamRawQuery", "/v1/user/notifications/stream", "get"],
@@ -511,7 +534,7 @@ function validateCurrentOpenApi(document, protocolNames) {
 
   const publicQueryOperations = new Set();
   for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
-    if (path.split("/").includes("admin")) continue;
+    if (path.split("/").includes("admin") || serverOnlyPaths.has(path)) continue;
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!/^(?:delete|get|patch|post|put)$/u.test(method)) continue;
       if (queryParameters(pathItem, operation, document).length)

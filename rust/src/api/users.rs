@@ -2,11 +2,14 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Query params for `GET /v1/user/app_token_grants`.
+/// Query params for `GET /v1/user/transactions`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(deny_unknown_fields)]
-pub struct AppTokenGrantsRawQuery {
+pub struct UserTransactionsRawQuery {
+    pub category: Option<String>,
+    pub from_ms: Option<String>,
+    pub to_ms: Option<String>,
     pub limit: Option<u32>,
     pub cursor: Option<String>,
 }

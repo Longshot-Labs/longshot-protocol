@@ -81,6 +81,14 @@ def _field_spec(rust_type: str, attrs: List[str]) -> str:
         spec = "?" + _field_spec(inner, [])
     elif inner := _unwrap(value, "Vec"):
         spec = "[]" + _field_spec(inner, [])
+    elif any(
+        (inner := _unwrap(value, wrapper)) is not None
+        for wrapper in ("BTreeMap", "HashMap")
+    ):
+        parts = _split_top_level(inner)
+        if len(parts) != 2 or parts[0].replace(" ", "") != "String":
+            raise ValueError(f"unsupported Rust serde map type: {rust_type}")
+        spec = "{}" + _field_spec(parts[1], [])
     elif any((inner := _unwrap(value, wrapper)) is not None for wrapper in ("Box", "Arc")):
         spec = _field_spec(inner, [])
     elif value in INTEGER_TYPES:

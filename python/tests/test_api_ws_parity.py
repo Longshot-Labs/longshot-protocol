@@ -31,6 +31,7 @@ from longshot_protocol import (
     OrderType,
     Odds,
     PriceShareCard,
+    QuoteDeclineReason,
     QuoteResultStatus,
     RequestId,
     RfqSubscription,
@@ -160,7 +161,7 @@ def _rust_type_to_python_core(value: str) -> str:
     value = re.sub(r"\s+", " ", value.strip().rstrip(","))
     option_inner = _unwrap_rust_generic(value, "Option")
     if option_inner is not None:
-        return _rust_type_to_python_core(option_inner)
+        return f"Optional[{_rust_type_to_python_core(option_inner)}]"
     vec_inner = _unwrap_rust_generic(value, "Vec")
     if vec_inner is not None:
         return f"List[{_rust_type_to_python_core(vec_inner)}]"
@@ -182,7 +183,9 @@ def _rust_type_to_python_core(value: str) -> str:
 def _rust_type_to_python_annotation(value: str) -> str:
     # Generated API dataclasses currently preserve historical `= None`
     # construction, so fields are Optional even when Rust requires them.
-    return f"Optional[{_rust_type_to_python_core(value)}]"
+    value = re.sub(r"\s+", " ", value.strip().rstrip(","))
+    option_inner = _unwrap_rust_generic(value, "Option")
+    return f"Optional[{_rust_type_to_python_core(option_inner or value)}]"
 
 
 def rust_api_struct_field_annotations() -> dict[str, dict[str, str]]:
@@ -883,16 +886,19 @@ class ApiParityTests(unittest.TestCase):
     def test_public_market_statuses_round_trip_as_one_csv_query_value(self) -> None:
         query = api.PublicMarketsRawQuery(
             market_type=MarketType.Sports,
+            include_featured=True,
+            featured_only=True,
             statuses=[MarketStatus.Pending, MarketStatus.Open],
         )
 
         encoded = query.to_dict()
 
         self.assertEqual(encoded["statuses"], "PENDING,OPEN")
-        self.assertEqual(
-            api.PublicMarketsRawQuery.from_dict(encoded).statuses,
-            [MarketStatus.Pending, MarketStatus.Open],
-        )
+        self.assertIs(encoded["include_featured"], True)
+        self.assertIs(encoded["featured_only"], True)
+        decoded = api.PublicMarketsRawQuery.from_dict(encoded)
+        self.assertEqual(decoded.statuses, [MarketStatus.Pending, MarketStatus.Open])
+        self.assertIs(decoded.featured_only, True)
         self.assertEqual(
             api.PublicMarketsRawQuery.from_dict(
                 {"statuses": " PENDING, , OPEN "}
@@ -1123,6 +1129,43 @@ class ApiParityTests(unittest.TestCase):
         )
         self.assertEqual(decoded_value.biggest_win_micros, 1_250_000)
         self.assertEqual(decoded_value.to_dict()["biggest_win_micros"], "1250000")
+
+    def test_user_transactions_preserve_wire_amounts_and_query_strictness(self) -> None:
+        payload = {
+            "items": [
+                {
+                    "id": "ledger-event",
+                    "category": "withdrawal",
+                    "title": "Withdrawal",
+                    "status": "completed",
+                    "occurred_at_ms": 1_700_000_000_000,
+                    "amount_micros": "-9007199254740993",
+                    "unit": "usdc",
+                    "tx_hash": "0xabc",
+                }
+            ],
+            "next_cursor": None,
+        }
+        response = api.UserTransactionsResponse.from_dict(payload)
+        self.assertEqual(response.items[0].amount_micros, -9_007_199_254_740_993)
+        self.assertEqual(response.items[0].category, api.UserTransactionCategory.Withdrawal)
+        self.assertEqual(response.to_dict(), payload)
+
+        query = api.UserTransactionsRawQuery.from_dict(
+            {"category": "withdrawal", "from_ms": "1", "limit": 25}
+        )
+        self.assertEqual(
+            query.to_dict(),
+            {
+                "category": "withdrawal",
+                "from_ms": "1",
+                "to_ms": None,
+                "limit": 25,
+                "cursor": None,
+            },
+        )
+        with self.assertRaises(ValueError):
+            api.UserTransactionsRawQuery.from_dict({"unexpected": True})
 
     def test_generated_api_stub_matches_rust_required_fields(self) -> None:
         render = API_STUB_GENERATOR["render_api_stub"]
@@ -2007,7 +2050,6 @@ class ApiParityTests(unittest.TestCase):
                 {"asset": "BTC", "duration_secs": 300, "window_start_ms": 1},
             ),
             (api.MarketCurrentQuery, {"asset": "BTC", "duration_secs": 300}),
-            (api.TakerPnlQuery, {"wallet": "wallet"}),
             (api.PositionsByMarketsQuery, {"market_ids": "1,2"}),
             (
                 api.ConfirmPositionQuery,
@@ -2099,6 +2141,99 @@ class ApiParityTests(unittest.TestCase):
         self.assertEqual(encoded["payout_micros"], "250000000")
         self.assertEqual(api.RfqResponse.from_dict(encoded).payout_micros, 250_000_000)
 
+    def test_community_picks_market_images_default_and_null_round_trip(self) -> None:
+        legacy_wire = {"picks": [], "copy_fee_bps": 250}
+        decoded_legacy = api.CommunityPicksResponse.from_dict(legacy_wire)
+
+        self.assertEqual(decoded_legacy.market_images, {})
+        self.assertEqual(decoded_legacy.market_contexts, {})
+        self.assertEqual(
+            decoded_legacy.to_dict(),
+            {**legacy_wire, "market_images": {}, "market_contexts": {}},
+        )
+
+        current_wire = {
+            **legacy_wire,
+            "market_images": {"42": "https://images.example/42.png", "43": None},
+            "market_contexts": {
+                "42": {
+                    "source": "kalshi",
+                    "source_event_id": "KXTEST",
+                    "price": {
+                        "asset": "BTC",
+                        "window_start_ms": 1700000000000,
+                        "duration_secs": 300,
+                        "settled_change_bps": 125,
+                    },
+                }
+            },
+        }
+        self.assertEqual(
+            api.CommunityPicksResponse.from_dict(current_wire).to_dict(),
+            current_wire,
+        )
+
+        with self.assertRaisesRegex(ValueError, "market_images"):
+            api.CommunityPicksResponse.from_dict(
+                {**legacy_wire, "market_images": None}
+            )
+        with self.assertRaisesRegex(ValueError, "market_contexts"):
+            api.CommunityPicksResponse.from_dict(
+                {**legacy_wire, "market_contexts": None}
+            )
+
+    def test_recent_market_winner_tagged_union_round_trips_typed_context_map(self) -> None:
+        wire = {
+            "type": "market",
+            "winner_id": "market:00112233-4455-6677-8899-aabbccddeeff",
+            "settled_at_ms": 1700000000000,
+            "profile": {
+                "handle": "winner",
+                "display_name": "Winner",
+                "avatar_seed": 7,
+            },
+            "entry_type": "single",
+            "multiplier_bps": 190000,
+            "position": {
+                "id": "00112233-4455-6677-8899-aabbccddeeff",
+                "wager_micros": "1000000",
+                "app_token_wager_micros": "0",
+                "refunded_app_token_micros": None,
+                "payout_micros": "20000000",
+                "net_payout_micros": "19000000",
+                "legs_count": 1,
+                "legs_summary": "BTC up",
+                "status": "won",
+                "pnl_micros": "18000000",
+                "created_at_ms": 1699999000000,
+                "resolved_at_ms": 1700000000000,
+                "legs": [],
+            },
+            "detail_ref": {
+                "handle": "winner",
+                "position_id": "00112233-4455-6677-8899-aabbccddeeff",
+            },
+            "market_contexts": {
+                "42": {
+                    "price": {
+                        "asset": "BTC",
+                        "window_start_ms": 1699999700000,
+                        "duration_secs": 300,
+                        "settled_change_bps": 125,
+                    }
+                }
+            },
+        }
+
+        decoded = api.RecentWinnerResponse.from_dict(wire)
+
+        self.assertEqual(decoded.variant, "Market")
+        self.assertIsInstance(
+            decoded.payload["market_contexts"]["42"],
+            api.MarketDisplayContextResponse,
+        )
+        self.assertEqual(decoded.to_dict(), wire)
+
     def test_defaulted_api_fields_match_rust_deserialization(self) -> None:
         signed = api.SignedOrderJson.from_dict(
             {
@@ -2151,6 +2286,7 @@ class ApiParityTests(unittest.TestCase):
             "name": "Culture event",
             "status": "OPEN",
             "tradeable": True,
+            "featured_slot": 2,
             "category_tags": ["culture"],
             "betting_closes_at_ms": 1_000,
             "resolution_time_ms": 2_000,
@@ -2159,7 +2295,13 @@ class ApiParityTests(unittest.TestCase):
         }
         event_market = api.EventMarket.from_dict(event_market_wire)
         self.assertEqual(event_market.resolution_rules, "")
+        self.assertEqual(event_market.featured_slot, 2)
         self.assertEqual(event_market.to_dict()["resolution_rules"], "")
+        self.assertEqual(event_market.to_dict()["featured_slot"], 2)
+        event_market_without_featured = api.EventMarket.from_dict(
+            {key: value for key, value in event_market_wire.items() if key != "featured_slot"}
+        )
+        self.assertNotIn("featured_slot", event_market_without_featured.to_dict())
         with self.assertRaisesRegex(ValueError, "resolution_rules"):
             api.EventMarket.from_dict(
                 {**event_market_wire, "resolution_rules": None}
@@ -2207,12 +2349,12 @@ class ApiParityTests(unittest.TestCase):
             ),
             (
                 {
-                    "type": "culture",
+                    "type": "event_position",
                     "position_id": "00000000-0000-0000-0000-000000000003",
                     "footer": {"handle": "alice"},
                 },
                 {
-                    "type": "culture",
+                    "type": "event_position",
                     "position_id": "00000000-0000-0000-0000-000000000003",
                     "state": "active",
                     "title": "",
@@ -2527,6 +2669,17 @@ class ApiParityTests(unittest.TestCase):
         self.assertNotIn("contest", encoded)
         self.assertEqual(api.CallerContestSummaryResponse.from_dict(encoded).to_dict(), encoded)
 
+        legacy_lobby = api.ContestLobbySummaryResponse.from_dict(
+            {
+                **encoded,
+                "caller": {"joined": True},
+                "protocol_prize_pool_pays_app_tokens": False,
+            }
+        )
+        self.assertIsNone(legacy_lobby.description)
+        self.assertEqual(legacy_lobby.max_entries_per_player, 1)
+        self.assertEqual(legacy_lobby.summary.caller.entry_count, 0)
+
     def test_pool_image_raw_bytes_matches_rust_binary_wrapper(self) -> None:
         raw = api.PoolImageRawBytes(bytearray(b"image-bytes"))
 
@@ -2541,6 +2694,17 @@ class WsParityTests(unittest.TestCase):
         self.assertEqual(
             ClientMessage.auth_response("0xabc", "sig").to_dict(),
             {"type": "auth_response", "wallet_address": "0xabc", "signature": "sig"},
+        )
+        self.assertEqual(
+            ClientMessage.quote_decline(
+                RequestId(UUID("00112233-4455-6677-8899-aabbccddeeff")),
+                QuoteDeclineReason.SportsCombinationUnsupported,
+            ).to_dict(),
+            {
+                "type": "quote_decline",
+                "request_id": "00112233-4455-6677-8899-aabbccddeeff",
+                "reason": "sports_combination_unsupported",
+            },
         )
         self.assertEqual(ClientMessage.pong().to_dict(), {"type": "pong"})
 
@@ -2631,6 +2795,21 @@ class WsParityTests(unittest.TestCase):
             }
         )
         self.assertIs(subscription.payload["subscriptions"][0].payload, Asset.BTC)
+        decline = ClientMessage.from_dict(
+            {
+                "type": "quote_decline",
+                "request_id": "00112233-4455-6677-8899-aabbccddeeff",
+                "reason": "sports_combination_unsupported",
+            }
+        )
+        self.assertEqual(
+            decline.payload["request_id"],
+            RequestId(UUID("00112233-4455-6677-8899-aabbccddeeff")),
+        )
+        self.assertIs(
+            decline.payload["reason"],
+            QuoteDeclineReason.SportsCombinationUnsupported,
+        )
 
 
 if __name__ == "__main__":

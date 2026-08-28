@@ -2,8 +2,8 @@
   "name": "longshot-protocol",
   "version": "0.2.0",
   "description": "Transport-neutral TypeScript contracts and wire helpers for Longshot",
-  "private": true,
-  "license": "Proprietary",
+  "private": false,
+  "license": "SEE LICENSE IN LICENSE.txt",
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -40,6 +40,10 @@
   "files": [
     "dist/src"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "node scripts/generate-serde.mjs && tsc -p tsconfig.json",
     "prepack": "npm run build",

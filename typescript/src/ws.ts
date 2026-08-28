@@ -1,4 +1,4 @@
-import { Asset } from "./types.js";
+import { Asset, RequestId } from "./types.js";
 import type { MarketType, WideInteger } from "./types.js";
 
 export const QuoteResultStatus = {
@@ -8,6 +8,12 @@ export const QuoteResultStatus = {
   SelectedFailed: "selected_failed",
 } as const;
 export type QuoteResultStatus = (typeof QuoteResultStatus)[keyof typeof QuoteResultStatus];
+
+export const QuoteDeclineReason = {
+  SportsCombinationUnsupported: "sports_combination_unsupported",
+} as const;
+export type QuoteDeclineReason =
+  (typeof QuoteDeclineReason)[keyof typeof QuoteDeclineReason];
 
 export type RfqSubscription =
   | { type: "all" }
@@ -39,6 +45,7 @@ export type ClientMessage =
   | { type: "auth" }
   | { type: "auth_response"; wallet_address: string; signature: string }
   | { type: "quote"; data: string }
+  | { type: "quote_decline"; request_id: string; reason: QuoteDeclineReason }
   | { type: "pong" }
   | { type: "subscribe"; protocol_version: number; subscriptions: RfqSubscription[] };
 
@@ -52,6 +59,9 @@ export const ClientMessage = {
   quote(data: string): ClientMessage {
     return { type: "quote", data };
   },
+  quoteDecline(requestId: RequestId, reason: QuoteDeclineReason): ClientMessage {
+    return { type: "quote_decline", request_id: requestId.serdeValue(), reason };
+  },
   pong(): ClientMessage {
     return { type: "pong" };
   },
@@ -59,6 +69,21 @@ export const ClientMessage = {
     return { type: "subscribe", protocol_version: protocolVersion, subscriptions };
   },
 };
+
+export const MarketFairValueDecayType = {
+  Linear: "linear",
+  Curved: "curved",
+} as const;
+export type MarketFairValueDecayType =
+  (typeof MarketFairValueDecayType)[keyof typeof MarketFairValueDecayType];
+
+export interface MarketFairValueDecay {
+  start_ms: WideInteger;
+  start_odds_bps: number;
+  end_ms: WideInteger;
+  end_odds_bps: number;
+  decay_type: MarketFairValueDecayType;
+}
 
 export interface MarketFairValue {
   market_id: WideInteger;
@@ -68,6 +93,7 @@ export interface MarketFairValue {
   resolution_time_ms: WideInteger;
   revision: WideInteger;
   updated_at_ms: WideInteger;
+  decay?: MarketFairValueDecay | null;
 }
 
 export type ServerMessage =

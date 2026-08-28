@@ -2,7 +2,14 @@
 name = "longshot-protocol"
 version = "0.2.0"
 edition = "2021"
+description = "Transport-neutral Rust contracts and wire helpers for Longshot"
+readme = "README.md"
+license-file = "LICENSE.txt"
+homepage = "https://longshot.xyz"
+# Direct publication can embed private repository metadata. The release script
+# enables crates.io only in its temporary Git-free source copy.
 publish = false
+include = ["src/**", "Cargo.toml", "README.md", "LICENSE.txt"]
 
 [features]
 default = []

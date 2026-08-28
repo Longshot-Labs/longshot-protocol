@@ -3433,6 +3433,156 @@
         ]
       }
     },
+    "/v1/admin/deposit_match/signup_policy": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read the automatic deposit-match policy for newly created accounts.",
+        "operationId": "admin_get_signup_deposit_match_policy",
+        "responses": {
+          "200": {
+            "description": "Signup deposit-match policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupDepositMatchPolicyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Replace the automatic deposit-match policy for newly created accounts.",
+        "operationId": "admin_set_signup_deposit_match_policy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSetSignupDepositMatchPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signup deposit-match policy updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupDepositMatchPolicyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/v1/admin/deposit_vault": {
       "post": {
         "tags": [
@@ -5189,6 +5339,92 @@
         ]
       }
     },
+    "/v1/admin/markets/featured": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Replace up to three explicit home-page featured market-event slots (admin only).",
+        "operationId": "admin_set_featured_markets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeaturedMarketsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Featured market-event slots replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetFeaturedMarketsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or ineligible market event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Market event not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/v1/admin/markets/overview": {
       "get": {
         "tags": [
@@ -5350,7 +5586,7 @@
           "admin"
         ],
         "summary": "Persist an admin-confirmed YES fair value and full bid-to-ask spread for a market.",
-        "description": "The values are stored and audited only; this operation does not publish them to\nmarket makers or change live quotes.",
+        "description": "The write is audited, then published to the configured Protocol vault, so it\nchanges live quotes. A `decay` schedule keeps changing them until it ends.",
         "operationId": "admin_set_market_fair_value",
         "parameters": [
           {
@@ -5411,6 +5647,16 @@
           },
           "404": {
             "description": "Market not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Market rejects durable fair values",
             "content": {
               "application/json": {
                 "schema": {
@@ -5526,7 +5772,7 @@
           {
             "name": "id",
             "in": "path",
-            "description": "Any child market id in the manual event",
+            "description": "Any child market id in the manual or Manifold event",
             "required": true,
             "schema": {
               "type": "integer",
@@ -5547,7 +5793,7 @@
         },
         "responses": {
           "200": {
-            "description": "Manual event children updated atomically",
+            "description": "Event children updated atomically",
             "content": {
               "application/json": {
                 "schema": {
@@ -5816,6 +6062,115 @@
           },
           "404": {
             "description": "Manual fantasy market not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/markets/{id}/resolution-proposals": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Submit a Tank01-backed NFL resolution suggestion and freeze the market for review.",
+        "operationId": "admin_submit_nfl_resolution_proposal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "NFL fantasy market id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNflResolutionProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Proposal created, refreshed, suppressed after rejection, or superseded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitNflResolutionProposalResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or internally inconsistent proposal evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Enabled admin required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Market not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Market is ineligible for NFL resolution review",
             "content": {
               "application/json": {
                 "schema": {
@@ -6193,6 +6548,367 @@
           },
           "503": {
             "description": "Lifecycle gateway unavailable or retryable failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/nfl/resolution-proposals": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List durable NFL resolution proposals for admin review.",
+        "operationId": "admin_list_nfl_resolution_proposals",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "PENDING (default), APPROVED, OVERRIDDEN, REJECTED, SUPERSEDED, or ALL",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "NFL season",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "description": "NFL week",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "game_id",
+            "in": "query",
+            "description": "Engine game id",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor bound to the active filters",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size (default 100, maximum 500)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "maximum": 500,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "NFL resolution proposal page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NflResolutionProposalListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Enabled admin required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/nfl/resolution-proposals/batch-review": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Accept, override, or reject NFL resolution proposals for one game.",
+        "operationId": "admin_review_nfl_resolution_proposals",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewNflResolutionProposalsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Per-proposal applied or conflict results; valid rows commit independently",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewNflResolutionProposalsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed, duplicate, or cross-game batch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Enabled admin required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/nfl_hub_config": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read the curated NFL hub config with update metadata (admin only).",
+        "operationId": "admin_get_nfl_hub_config",
+        "responses": {
+          "200": {
+            "description": "Current NFL hub config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNflHubConfigResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Replace the curated NFL hub config (admin only).",
+        "operationId": "admin_set_nfl_hub_config",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNflHubConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "NFL hub config replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNflHubConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8777,92 +9493,6 @@
         ]
       }
     },
-    "/v1/admin/set_max_payout": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Set protocol max payout limits (admin only).",
-        "operationId": "admin_set_max_payout",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdminSetMaxPayoutRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Max payout config updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaxPayoutConfigResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Not authorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limited",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Database error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
     "/v1/admin/set_mm_whitelist_policy": {
       "post": {
         "tags": [
@@ -8973,6 +9603,92 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ObserverAccessPolicyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/set_profit_cap": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Set protocol profit cap limits (admin only).",
+        "operationId": "admin_set_profit_cap",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSetProfitCapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Profit cap config updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfitCapConfigResponse"
                 }
               }
             }
@@ -12417,6 +13133,133 @@
         ]
       }
     },
+    "/v1/community-picks": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List active entries that can be copied.",
+        "description": "Entries from followed creators rank before entries from other creators.\nAuthenticated viewers do not receive their own entries.",
+        "operationId": "get_community_picks",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum picks (1..=20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "maximum": 20,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked copyable entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityPicksResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/community-picks/{position_id}/reactions/{emoji}": {
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Toggle one emoji reaction on a public open Community Pick.",
+        "operationId": "toggle_community_pick_reaction",
+        "parameters": [
+          {
+            "name": "position_id",
+            "in": "path",
+            "description": "Source position ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "emoji",
+            "in": "path",
+            "description": "Supported reaction emoji",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Reaction toggled"
+          },
+          "400": {
+            "description": "Invalid position or emoji",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/v1/contests": {
       "get": {
         "tags": [
@@ -12758,6 +13601,14 @@
         "responses": {
           "200": {
             "description": "Activity feed events",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Public feed responses are fresh for 3 seconds"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -13589,6 +14440,26 @@
             }
           },
           {
+            "name": "include_featured",
+            "in": "query",
+            "description": "Exact opt-in (`true`) for home-page featured_slot metadata; omitted by default for legacy clients",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          },
+          {
+            "name": "featured_only",
+            "in": "query",
+            "description": "Exact opt-in (`true`) that returns all sibling rows in featured event groups; requires include_featured=true",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          },
+          {
             "name": "trading_channel",
             "in": "query",
             "description": "Optional required trading capability",
@@ -13701,6 +14572,14 @@
         "responses": {
           "200": {
             "description": "Typed public market detail",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Public detail is fresh for 3 seconds and may be served stale for 30 more while revalidating"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -13747,16 +14626,49 @@
         "tags": [
           "mm-intel"
         ],
-        "summary": "Public read of the engine's per-market-kind max-payout caps.",
-        "description": "MMs poll this so they can clamp `max_fill` ahead of the engine's\n`PayoutExceedsMaximum` rejection. Returns the neutral max-payout config\nshape shared deliberately with the admin setter response.",
+        "summary": "Deprecated compatibility read for frozen market-maker deployments.",
+        "description": "Values preserve the legacy two-field gross-payout wire shape but are\nconservatively derived from the current net-profit policy. New clients\nmust use `GET /v1/mm/profit_caps`.",
         "operationId": "mm_max_payouts",
         "responses": {
           "200": {
-            "description": "Current max-payout caps",
+            "description": "Deprecated legacy max-payout compatibility caps",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MaxPayoutConfigResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/v1/mm/profit_caps": {
+      "get": {
+        "tags": [
+          "mm-intel"
+        ],
+        "summary": "Public read of the engine's per-category profit caps.",
+        "description": "Caps bound taker profit (and therefore maker liability): payout net of the\ntaker's returned stake.\nMMs poll this so they can clamp `max_fill` ahead of the engine's\n`ProfitExceedsMaximum` rejection. Returns the neutral profit-cap config\nshape shared deliberately with the admin setter response.",
+        "operationId": "mm_profit_caps",
+        "responses": {
+          "200": {
+            "description": "Current profit caps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfitCapConfigResponse"
                 }
               }
             }
@@ -14013,6 +14925,47 @@
             "bearer_auth": []
           }
         ]
+      }
+    },
+    "/v1/nfl_hub_config": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Read the curated NFL hub config.",
+        "operationId": "get_nfl_hub_config",
+        "responses": {
+          "200": {
+            "description": "NFL hub config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NflHubConfigResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/observer_access_policy": {
@@ -15183,6 +16136,63 @@
         }
       }
     },
+    "/v1/recent-winners": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List up to three public market wins settled in the trailing seven days,",
+        "description": "ranked by net payout (then settlement time and stable ID).",
+        "operationId": "get_recent_winners",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Requested Home card count; defaults to 3 and values above 3 are clamped",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "maximum": 3,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payout-ranked public market winner cards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecentWinnersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/referrals/{code}": {
       "get": {
         "tags": [
@@ -15318,7 +16328,7 @@
           "rfq"
         ],
         "summary": "Estimate the odds a prospective order would receive from the live maker",
-        "description": "pipeline, without reserving funds or opening a position.\n\nOptionally authenticated: signed-in callers receive taker-personalized\nquotes, anonymous callers are priced without taker identity (identical to\na shielded order). Quotes are size-aware; send the real prospective wager.",
+        "description": "pipeline, without reserving funds or opening a position.\n\nOptionally authenticated: signed-in callers receive taker-personalized\nquotes, anonymous callers are priced as the well-known anonymous sentinel\n(neutral base-edge pricing; the sentinel can never authenticate or\nexecute). Quotes are size-aware; send the real prospective wager.",
         "operationId": "estimate_rfq",
         "requestBody": {
           "content": {
@@ -16549,6 +17559,178 @@
         }
       }
     },
+    "/v1/u/{handle}/followers": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List the public profiles following a user.",
+        "description": "With a bearer session, each row includes `viewer_follows` for the caller.",
+        "operationId": "get_public_profile_followers",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "description": "User handle (case-insensitive)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size (1..=50)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "maximum": 50,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque pagination cursor",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profiles following this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfileFollowingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/u/{handle}/following": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List the public profiles followed by a user.",
+        "description": "With a bearer session, each row includes `viewer_follows` for the caller.",
+        "operationId": "get_public_profile_following",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "description": "User handle (case-insensitive)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size (1..=50)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "maximum": 50,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque pagination cursor",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profiles followed by this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfileFollowingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/u/{handle}/pnl": {
       "get": {
         "tags": [
@@ -17731,6 +18913,243 @@
         ]
       }
     },
+    "/v1/user/following/{handle}": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Get whether the authenticated user follows a profile.",
+        "operationId": "get_following_status",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "description": "User handle (case-insensitive)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current follow state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Follow a profile. Repeated requests are safe.",
+        "operationId": "follow_user",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "description": "User handle (case-insensitive)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile is followed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot follow this profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User account disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Stop following a profile. Repeated requests are safe.",
+        "operationId": "unfollow_user",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "description": "User handle (case-insensitive)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile is not followed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot change this profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User account disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/v1/user/grant_app_token": {
       "post": {
         "tags": [
@@ -18036,7 +19455,7 @@
         "tags": [
           "notifications"
         ],
-        "summary": "Stream newly created notifications for the authenticated user over SSE.",
+        "summary": "Stream notification and terminal RFQ events for the authenticated user over SSE.",
         "operationId": "stream_notifications",
         "parameters": [
           {
@@ -18052,7 +19471,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Server-sent event stream of NotificationResponse events (`text/event-stream`)"
+            "description": "Server-sent event stream (`text/event-stream`). Emits `notification` events with NotificationResponse payloads and durable cursor IDs, and `rfq_result` events with RfqResponse payloads that are memory-only and cursorless."
           },
           "400": {
             "description": "Invalid query parameter",
@@ -19727,6 +21146,118 @@
           },
           "422": {
             "description": "Vault user rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/user/transactions": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "List the user's unified transaction history.",
+        "description": "Projects the money ledger into user-safe rows: deposits, withdrawals,\ncredits activity, market entries/winnings, and contest entries/winnings.\nClients must treat `next_cursor` as the only \"more pages\" signal — a\ncategory-filtered page can legitimately hold fewer than `limit` items\nwhile more pages remain.",
+        "operationId": "list_user_transactions",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter: deposit | withdrawal | credits | market | contest",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "from_ms",
+            "in": "query",
+            "description": "Inclusive lower bound on occurred_at_ms",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "to_ms",
+            "in": "query",
+            "description": "Inclusive upper bound on occurred_at_ms",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max transactions (1..=100, default 50)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "maximum": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from a prior response",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transactions returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserTransactionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
             "content": {
               "application/json": {
                 "schema": {
@@ -22805,6 +24336,7 @@
           "source_type",
           "source_event_id",
           "external_status",
+          "featured_slot",
           "market_count",
           "markets",
           "source_markets"
@@ -22813,6 +24345,14 @@
           "external_status": {
             "type": "string",
             "nullable": true
+          },
+          "featured_slot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Explicit home-page placement: 1 is left, 3 is right.",
+            "nullable": true,
+            "maximum": 3,
+            "minimum": 1
           },
           "key": {
             "type": "string"
@@ -23250,6 +24790,28 @@
         },
         "additionalProperties": false
       },
+      "AdminNflHubConfigResponse": {
+        "type": "object",
+        "description": "Admin response for reading (GET) or updating (PUT) the NFL hub config.",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/NflHubConfigBody"
+          },
+          "updated_at_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "updated_by": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
       "AdminPoolImageAssignRequest": {
         "type": "object",
         "description": "JSON body for `PUT /v1/admin/pool-images/:id/assignment`.",
@@ -23337,6 +24899,30 @@
             "type": "string",
             "nullable": true
           }
+        }
+      },
+      "AdminProfitCapOverrideRequest": {
+        "type": "object",
+        "description": "Category-specific profit-cap override in an admin policy update.",
+        "required": [
+          "market_type",
+          "max_profit_micros"
+        ],
+        "properties": {
+          "market_type": {
+            "$ref": "#/components/schemas/MarketType"
+          },
+          "max_profit_micros": {
+            "type": "integer",
+            "format": "int64",
+            "example": 250000000,
+            "minimum": 50
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "market_type": "crypto",
+          "max_profit_micros": 250000000
         }
       },
       "AdminRegisterReferralRequest": {
@@ -23666,33 +25252,6 @@
           "enabled": true
         }
       },
-      "AdminSetMaxPayoutRequest": {
-        "type": "object",
-        "description": "Request to update protocol RFQ max payout limits.",
-        "required": [
-          "max_binary_event_payout",
-          "max_price_strike_payout"
-        ],
-        "properties": {
-          "max_binary_event_payout": {
-            "type": "integer",
-            "format": "int64",
-            "example": 25000000000,
-            "minimum": 500050
-          },
-          "max_price_strike_payout": {
-            "type": "integer",
-            "format": "int64",
-            "example": 1000000000,
-            "minimum": 500050
-          }
-        },
-        "additionalProperties": false,
-        "example": {
-          "max_binary_event_payout": 25000000000,
-          "max_price_strike_payout": 1000000000
-        }
-      },
       "AdminSetMmWhitelistPolicyRequest": {
         "type": "object",
         "description": "Request to update market-maker whitelist policy.",
@@ -23725,6 +25284,29 @@
         "example": {
           "enabled": true
         }
+      },
+      "AdminSetProfitCapRequest": {
+        "type": "object",
+        "description": "Canonical request to replace the protocol RFQ profit-cap policy.",
+        "required": [
+          "default_max_profit_micros",
+          "overrides"
+        ],
+        "properties": {
+          "default_max_profit_micros": {
+            "type": "integer",
+            "format": "int64",
+            "example": 75000000,
+            "minimum": 50
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminProfitCapOverrideRequest"
+            }
+          }
+        },
+        "additionalProperties": false
       },
       "AdminSetReferralKickbackRequest": {
         "type": "object",
@@ -23802,6 +25384,39 @@
           "summary": {
             "$ref": "#/components/schemas/AdminUserReferralSummary"
           }
+        }
+      },
+      "AdminSetSignupDepositMatchPolicyRequest": {
+        "type": "object",
+        "description": "Admin request replacing the automatic signup deposit-match policy.",
+        "required": [
+          "enabled",
+          "match_limit_micros",
+          "duration_secs"
+        ],
+        "properties": {
+          "duration_secs": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Opportunity lifetime from account creation, in whole seconds.",
+            "maximum": 31536000,
+            "minimum": 1
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "match_limit_micros": {
+            "type": "string",
+            "format": "int64",
+            "description": "Maximum 1:1 match in USD micros, encoded as a decimal string.",
+            "example": "10000000"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "duration_secs": 604800,
+          "enabled": false,
+          "match_limit_micros": "10000000"
         }
       },
       "AdminSetSignupPolicyRequest": {
@@ -25161,6 +26776,15 @@
             "type": "string",
             "nullable": true
           },
+          "market_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            },
+            "description": "Component market ids of the winning position, so surfaces that key off\na product catalog (e.g. the NFL portfolio/notification identity) can\nresolve titles and images. Empty on legacy rows."
+          },
           "market_title": {
             "type": "string"
           },
@@ -25993,6 +27617,147 @@
           }
         }
       },
+      "CommunityPickMode": {
+        "type": "string",
+        "description": "How a community position is copied.",
+        "enum": [
+          "tail",
+          "fade"
+        ]
+      },
+      "CommunityPickReactionResponse": {
+        "type": "object",
+        "required": [
+          "emoji",
+          "count",
+          "viewer_reacted"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "emoji": {
+            "type": "string"
+          },
+          "viewer_reacted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CommunityPickRequest": {
+        "type": "object",
+        "description": "Optional community-position attribution for an RFQ.",
+        "required": [
+          "source_position_id",
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/CommunityPickMode"
+          },
+          "source_position_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CommunityPickResponse": {
+        "type": "object",
+        "required": [
+          "creator",
+          "viewer_follows",
+          "position",
+          "reactions"
+        ],
+        "properties": {
+          "creator": {
+            "$ref": "#/components/schemas/CommunityProfileResponse"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PublicProfilePositionDetailResponse"
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunityPickReactionResponse"
+            }
+          },
+          "viewer_follows": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CommunityPicksResponse": {
+        "type": "object",
+        "required": [
+          "picks",
+          "copy_fee_bps"
+        ],
+        "properties": {
+          "copy_fee_bps": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Basis points credited to the creator from positive post-protocol copy profit.",
+            "minimum": 0
+          },
+          "market_contexts": {
+            "type": "object",
+            "description": "Render metadata keyed by Longshot market ID. This is additive to\n`market_images`, which remains available during the client rollout.",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MarketDisplayContextResponse"
+            }
+          },
+          "market_images": {
+            "type": "object",
+            "description": "Resolved pool-image URL by Longshot market ID. A null value means the\nmarket has no configured image and clients should use their fallback.",
+            "additionalProperties": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "picks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunityPickResponse"
+            }
+          }
+        }
+      },
+      "CommunityProfileResponse": {
+        "type": "object",
+        "required": [
+          "handle",
+          "display_name",
+          "avatar_seed"
+        ],
+        "properties": {
+          "avatar_seed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "viewer_follows": {
+            "type": "boolean",
+            "description": "Whether the authenticated viewer follows this profile. Present on\nfollower/following list rows when a session is provided; absent\nelsewhere.",
+            "nullable": true
+          },
+          "x_avatar_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "x_handle": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "ContestBetTypeResponse": {
         "oneOf": [
           {
@@ -26080,9 +27845,16 @@
         "type": "object",
         "description": "Caller-scoped contest summary fields for optional-session reads.",
         "required": [
-          "joined"
+          "joined",
+          "entry_count"
         ],
         "properties": {
+          "entry_count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of entries owned by the authenticated caller.",
+            "minimum": 0
+          },
           "joined": {
             "type": "boolean",
             "description": "True when the authenticated caller has entered this contest."
@@ -26267,9 +28039,23 @@
           {
             "type": "object",
             "required": [
+              "description",
+              "max_entries_per_player",
               "protocol_prize_pool_pays_app_tokens"
             ],
             "properties": {
+              "description": {
+                "type": "string",
+                "description": "Marker-free public display copy for lobby cards, capped at 160 characters.",
+                "nullable": true
+              },
+              "max_entries_per_player": {
+                "type": "integer",
+                "format": "int32",
+                "description": "Maximum entries one caller can submit to this contest.",
+                "maximum": 5,
+                "minimum": 1
+              },
               "protocol_prize_pool_pays_app_tokens": {
                 "type": "boolean",
                 "description": "True when the protocol prize pool pays app tokens instead of cash."
@@ -26277,7 +28063,7 @@
             }
           }
         ],
-        "description": "Single row in the contest lobby list.\n\nThis server-owned wrapper extends the protocol's compatible summary with a\nlist-only prize-currency flag."
+        "description": "Single row in the contest lobby list with server-owned presentation and\nentry metadata."
       },
       "ContestMarketResponse": {
         "type": "object",
@@ -26888,6 +28674,29 @@
               "source": {
                 "type": "string",
                 "enum": [
+                  "manifold"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "market_type",
+              "source",
+              "payload"
+            ],
+            "properties": {
+              "market_type": {
+                "type": "string"
+              },
+              "payload": {
+                "$ref": "#/components/schemas/CreateManualFantasyMarketsRequest"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
                   "manual"
                 ]
               }
@@ -26940,6 +28749,29 @@
                 "type": "string",
                 "enum": [
                   "kalshi"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "market_type",
+              "source",
+              "result"
+            ],
+            "properties": {
+              "market_type": {
+                "type": "string"
+              },
+              "result": {
+                "$ref": "#/components/schemas/CreateManualFantasyMarketsResponse"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "manifold"
                 ]
               }
             },
@@ -27772,7 +29604,7 @@
           "live_ends_at_ms": {
             "type": "integer",
             "format": "int64",
-            "description": "Admin-supplied UX timestamp for when the frontend should stop\nrendering the racetrack LIVE treatment. Superficial: does not\naffect RFQ, resolution, or settlement. Must be\n`>= betting_closes_at_ms` (validated by the handler)."
+            "description": "Admin-supplied UX timestamp for when the frontend should stop\nrendering the racetrack LIVE treatment. Superficial: does not\naffect RFQ, resolution, or settlement. Must be\n`>= betting_closes_at_ms`."
           },
           "mention_type": {
             "type": "string"
@@ -27791,37 +29623,6 @@
         },
         "additionalProperties": false
       },
-      "CreateKalshiMentionEventMarketsFromEventResponse": {
-        "type": "object",
-        "required": [
-          "source_event_id",
-          "event_ticker",
-          "created_market_ids",
-          "markets"
-        ],
-        "properties": {
-          "created_market_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 0
-            }
-          },
-          "event_ticker": {
-            "type": "string"
-          },
-          "markets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MarketResponse"
-            }
-          },
-          "source_event_id": {
-            "type": "string"
-          }
-        }
-      },
       "CreateManualFantasyChildRequest": {
         "type": "object",
         "description": "Inline child-market spec for `CreateManualFantasyMarketsRequest`.",
@@ -27837,7 +29638,7 @@
           },
           "child_question": {
             "type": "string",
-            "description": "Question text shown to bettors (e.g. \"Will Powell say 'inflation'?\").",
+            "description": "Question text shown to bettors (e.g. \"Will Powell say 'inflation'?\").\nFor `source=manifold` the backend re-derives it from the selected\nprovider child and this value is ignored.",
             "maxLength": 300
           },
           "manual_probability_bps": {
@@ -27845,13 +29646,24 @@
             "format": "int32",
             "description": "Optional admin-provided yes probability for live manual contests.\nBasis points, so 6250 means 62.50%.",
             "nullable": true
+          },
+          "source_market_id": {
+            "type": "string",
+            "description": "External child id for source-backed inline event markets.",
+            "nullable": true
+          },
+          "title_override": {
+            "type": "string",
+            "description": "Optional Longshot market title (defaults to `child_question`).",
+            "nullable": true,
+            "maxLength": 300
           }
         },
         "additionalProperties": false
       },
       "CreateManualFantasyMarketsRequest": {
         "type": "object",
-        "description": "Admin create request for manually sourced event markets.\n\nThe admin supplies event metadata and each child inline. Every child uses\nthe category from the outer create envelope and source `manual`; the\nresulting market ids may then be associated with a contest.",
+        "description": "Admin create request for event markets whose metadata is supplied inline.\n\nThe admin supplies event metadata and each child inline. Every child uses\nthe category and source from the outer create envelope; the\nresulting market ids may then be associated with a contest.",
         "required": [
           "event_slug",
           "event_title",
@@ -27859,6 +29671,7 @@
           "resolution_rules",
           "attributes",
           "resolution_time_ms",
+          "image_pool_id",
           "children"
         ],
         "properties": {
@@ -27890,8 +29703,13 @@
           },
           "event_title": {
             "type": "string",
-            "description": "Human-readable event title shown on the contest card.",
+            "description": "Human-readable event title shown on the contest card. For\n`source=manifold` the backend re-derives it from the provider contract\nand this value is ignored.",
             "maxLength": 300
+          },
+          "image_pool_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required Image Pool row for the event listing."
           },
           "live_ends_at_ms": {
             "type": "integer",
@@ -27919,13 +29737,13 @@
           "resolution_time_ms": {
             "type": "integer",
             "format": "int64",
-            "description": "When the contest resolves (ms since epoch). Must be after the live end\nwhen one exists, otherwise after `betting_closes_at_ms`.",
+            "description": "When the contest resolves (ms since epoch). Must be after the live end\nwhen one exists, otherwise after `betting_closes_at_ms`. For\n`source=manifold` the backend derives it from the provider close time\nand this value is ignored.",
             "minimum": 0
           },
           "scheduled_lock_at_ms": {
             "type": "integer",
             "format": "int64",
-            "description": "Optional scheduled cutoff for accepting new bets (ms since epoch).\nCulture markets may omit it and remain open until an admin explicitly\nlocks betting or resolves/voids the market.",
+            "description": "Optional scheduled cutoff for accepting new bets (ms since epoch).\nCulture markets may omit it and remain open until an admin explicitly\nlocks betting or resolves/voids the market. `source=manifold` rejects\nthis field: import fixes the maximum deadline and provider updates may\nonly shorten it.",
             "nullable": true,
             "minimum": 0
           }
@@ -27947,6 +29765,7 @@
           "description": "A short description shown on the Culture market card.",
           "event_slug": "demo-manual-event",
           "event_title": "Demo manual event",
+          "image_pool_id": "018f47a2-4a55-7d01-93e0-d2458a6b8a44",
           "live_ends_at_ms": 1747203600000,
           "live_starts_at_ms": 1747200000000,
           "open_immediately": true,
@@ -28108,6 +29927,14 @@
           "rfq_params"
         ],
         "properties": {
+          "community_pick": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommunityPickRequest"
+              }
+            ],
+            "nullable": true
+          },
           "privy_token": {
             "type": "string",
             "description": "Fresh Privy identity token for the authenticated user."
@@ -28164,113 +29991,6 @@
             "type": "string"
           }
         }
-      },
-      "CultureShareCard": {
-        "type": "object",
-        "description": "Culture Event-position share card.\n\nOn create, clients submit only `position_id` and `footer`. Every remaining\nfield is overwritten from the authenticated user's stored position and its\ncanonical market rows.",
-        "required": [
-          "position_id",
-          "footer"
-        ],
-        "properties": {
-          "footer": {
-            "$ref": "#/components/schemas/ShareCardFooter"
-          },
-          "market_image": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ShareImageRef"
-              }
-            ],
-            "nullable": true
-          },
-          "meta_label": {
-            "type": "string",
-            "nullable": true
-          },
-          "multiplier_label": {
-            "type": "string"
-          },
-          "payout_label": {
-            "type": "string",
-            "nullable": true
-          },
-          "picks": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CultureSharePick"
-            }
-          },
-          "position_id": {
-            "type": "string"
-          },
-          "state": {
-            "$ref": "#/components/schemas/CultureShareState"
-          },
-          "title": {
-            "type": "string"
-          },
-          "wager_label": {
-            "type": "string"
-          }
-        }
-      },
-      "CultureSharePick": {
-        "type": "object",
-        "required": [
-          "market_id",
-          "label",
-          "side",
-          "grade"
-        ],
-        "properties": {
-          "grade": {
-            "$ref": "#/components/schemas/CultureSharePickGrade"
-          },
-          "label": {
-            "type": "string",
-            "description": "Concise outcome label from the child market."
-          },
-          "market_id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Canonical Longshot child-market id.",
-            "minimum": 0
-          },
-          "odds_label": {
-            "type": "string",
-            "description": "Current selected-side decimal odds used by unsettled multi-outcome\ncards when the canonical market source exposes a probability.",
-            "nullable": true
-          },
-          "result": {
-            "type": "string",
-            "description": "Factual settled result (`Yes`, `No`, or `Voided`); absent while pending.",
-            "nullable": true
-          },
-          "side": {
-            "type": "string",
-            "description": "The user's selected side (`yes` or `no`)."
-          }
-        }
-      },
-      "CultureSharePickGrade": {
-        "type": "string",
-        "enum": [
-          "pending",
-          "correct",
-          "incorrect",
-          "voided"
-        ]
-      },
-      "CultureShareState": {
-        "type": "string",
-        "enum": [
-          "active",
-          "live",
-          "won",
-          "lost",
-          "voided"
-        ]
       },
       "DeleteWebPushSubscriptionRequest": {
         "type": "object",
@@ -28410,6 +30130,14 @@
             "type": "string",
             "nullable": true
           },
+          "featured_slot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Explicit home-page placement for this source event: 1 is left, 3 is right.",
+            "nullable": true,
+            "maximum": 3,
+            "minimum": 1
+          },
           "id": {
             "$ref": "#/components/schemas/MarketId"
           },
@@ -28530,6 +30258,137 @@
           }
         }
       },
+      "EventPositionShareCard": {
+        "type": "object",
+        "description": "Event-position share card for Culture, Mentions, and Sports markets.\n\nOn create, clients submit only `position_id`, `tz_offset_minutes`, and\n`footer`. Every remaining field is overwritten from the authenticated\nuser's stored position and its canonical market rows.",
+        "required": [
+          "position_id",
+          "footer"
+        ],
+        "properties": {
+          "footer": {
+            "$ref": "#/components/schemas/ShareCardFooter"
+          },
+          "market_image": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShareImageRef"
+              }
+            ],
+            "nullable": true
+          },
+          "market_kind": {
+            "type": "string",
+            "description": "Server-derived event vertical (`culture`, `mentions`, or `sports`).\nHistorical cards can predate this field.",
+            "nullable": true
+          },
+          "meta_label": {
+            "type": "string",
+            "nullable": true
+          },
+          "multiplier_label": {
+            "type": "string"
+          },
+          "nfl": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflShareMeta"
+              }
+            ],
+            "nullable": true
+          },
+          "payout_label": {
+            "type": "string",
+            "nullable": true
+          },
+          "picks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventPositionSharePick"
+            }
+          },
+          "position_id": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/EventPositionShareState"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tz_offset_minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Sharer's local UTC offset in minutes. This is a render hint for time\nlabels, such as an NFL kickoff. Absent values use US Eastern.",
+            "nullable": true
+          },
+          "wager_label": {
+            "type": "string"
+          }
+        }
+      },
+      "EventPositionSharePick": {
+        "type": "object",
+        "required": [
+          "market_id",
+          "label",
+          "side",
+          "grade"
+        ],
+        "properties": {
+          "grade": {
+            "$ref": "#/components/schemas/EventPositionSharePickGrade"
+          },
+          "label": {
+            "type": "string",
+            "description": "Concise outcome label from the child market."
+          },
+          "market_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Canonical Longshot child-market id.",
+            "minimum": 0
+          },
+          "odds_label": {
+            "type": "string",
+            "description": "Current selected-side decimal odds used by unsettled multi-outcome\ncards when the canonical market source exposes a probability.",
+            "nullable": true
+          },
+          "result": {
+            "type": "string",
+            "description": "Factual settled result (`Yes`, `No`, or `Voided`); absent while pending.",
+            "nullable": true
+          },
+          "side": {
+            "type": "string",
+            "description": "The user's selected side (`yes` or `no`)."
+          },
+          "team_abbr": {
+            "type": "string",
+            "description": "NFL only: team tricode for the pick's chip (game-wide markets omit it).",
+            "nullable": true
+          }
+        }
+      },
+      "EventPositionSharePickGrade": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "correct",
+          "incorrect",
+          "voided"
+        ]
+      },
+      "EventPositionShareState": {
+        "type": "string",
+        "enum": [
+          "active",
+          "live",
+          "won",
+          "lost",
+          "voided"
+        ]
+      },
       "ExpectedVoidedFantasyMarket": {
         "type": "object",
         "description": "An exact voided market identity that an admin expects to replace.",
@@ -28552,6 +30411,7 @@
         "enum": [
           "clob_ws",
           "kalshi_rest",
+          "manifold_rest",
           "cache",
           "none"
         ]
@@ -28810,6 +30670,23 @@
             "format": "int64"
           }
         }
+      },
+      "FeaturedMarketEventReference": {
+        "type": "object",
+        "description": "Composite identity for one featured event-market card.",
+        "required": [
+          "source",
+          "source_event_id"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "source_event_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "FeeScheduleResponse": {
         "type": "object",
@@ -29156,6 +31033,17 @@
           "finalized_at_ms": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "FollowStatusResponse": {
+        "type": "object",
+        "required": [
+          "following"
+        ],
+        "properties": {
+          "following": {
+            "type": "boolean"
           }
         }
       },
@@ -30202,6 +32090,98 @@
           }
         }
       },
+      "MarketDisplayContextResponse": {
+        "type": "object",
+        "description": "Small, product-owned market presentation projection. Raw provider payloads\nare intentionally not exposed.",
+        "properties": {
+          "event_slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "event_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "image_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceMarketDisplayContextResponse"
+              }
+            ],
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_event_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "sports": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SportsMarketDisplayContextResponse"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "MarketFairValueDecay": {
+        "type": "object",
+        "description": "Admin-scheduled decay from a start odds to an end odds over a time window.\n\nUnknown fields are accepted on purpose: this type also rides the\nserver-to-bot `market_fair_values` frame, where a bot on an older build must\nignore fields added later rather than reject the whole snapshot.",
+        "required": [
+          "start_ms",
+          "start_odds_bps",
+          "end_ms",
+          "end_odds_bps",
+          "decay_type"
+        ],
+        "properties": {
+          "decay_type": {
+            "$ref": "#/components/schemas/MarketFairValueDecayType"
+          },
+          "end_ms": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Window end in Unix milliseconds; must be after `start_ms` by at least\n`MIN_DECAY_WINDOW_MS` and at most `MAX_DECAY_WINDOW_MS`.",
+            "minimum": 0
+          },
+          "end_odds_bps": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Fair YES probability at and after the window end, in basis points.",
+            "maximum": 10000,
+            "minimum": 0
+          },
+          "start_ms": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Window start in Unix milliseconds; the fair value equals `start_odds_bps` here.",
+            "minimum": 1
+          },
+          "start_odds_bps": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Fair YES probability at the window start, in basis points.",
+            "maximum": 10000,
+            "minimum": 0
+          }
+        }
+      },
+      "MarketFairValueDecayType": {
+        "type": "string",
+        "description": "Interpolation shape for a scheduled fair-value decay.",
+        "enum": [
+          "linear",
+          "curved"
+        ]
+      },
       "MarketId": {
         "type": "integer",
         "format": "int64",
@@ -30727,7 +32707,7 @@
       },
       "MaxPayoutConfigResponse": {
         "type": "object",
-        "description": "Response for reading or updating max-payout caps.\n\nMarket makers poll `GET /v1/mm/max_payouts`. Caps are per-market values in\nthe protocol's base micro-unit.",
+        "description": "Deprecated compatibility response for `GET /v1/mm/max_payouts`.\n\nFrozen market-maker clients interpret these values as gross-payout caps.\nNew clients must use [`ProfitCapConfigResponse`] and its net-profit\nsemantics instead.",
         "required": [
           "max_binary_event_payout",
           "max_price_strike_payout"
@@ -30782,6 +32762,545 @@
           },
           "whitelist_required": {
             "type": "boolean"
+          }
+        }
+      },
+      "NflFeaturedMatchup": {
+        "type": "object",
+        "description": "One admin-picked featured NFL matchup, referenced by engine game id.",
+        "required": [
+          "game_id"
+        ],
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "description": "Engine game id (e.g. \"26SEP09NESEA\").",
+            "example": "26SEP09NESEA"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflFeaturedParlay": {
+        "type": "object",
+        "description": "Admin-curated featured parlay shown on the NFL hub.",
+        "required": [
+          "title",
+          "legs"
+        ],
+        "properties": {
+          "copy": {
+            "type": "string",
+            "description": "Optional supporting copy, at most 500 characters.",
+            "nullable": true
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NflParlayLeg"
+            },
+            "description": "Parlay legs, 1-9 entries."
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title, 1-120 characters after trimming."
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflHubConfigBody": {
+        "type": "object",
+        "description": "Curated NFL hub content. Persisted as one JSON blob; unknown or legacy\nstored shapes are served as the empty default.",
+        "required": [
+          "props_enabled"
+        ],
+        "properties": {
+          "featured_matchups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NflFeaturedMatchup"
+            },
+            "description": "Admin-picked featured games, by engine game id. At most 8, unique."
+          },
+          "featured_parlay": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflFeaturedParlay"
+              }
+            ],
+            "nullable": true
+          },
+          "props_enabled": {
+            "type": "boolean",
+            "description": "Kill switch for every player-prop surface on the NFL frontend. The\nlisting engine keeps listing props either way; this only gates render.\n\nRequired on the wire: the admin PUT is a full-blob replace, so a\nclient that predates the field must fail loudly instead of silently\nflipping props back on by omission."
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflHubConfigResponse": {
+        "type": "object",
+        "description": "Public NFL hub config.",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/NflHubConfigBody"
+          }
+        }
+      },
+      "NflParlayLeg": {
+        "type": "object",
+        "description": "One leg of the curated featured parlay.",
+        "required": [
+          "market_id",
+          "direction"
+        ],
+        "properties": {
+          "direction": {
+            "type": "string",
+            "description": "Direction: \"up\" or \"down\".",
+            "example": "up"
+          },
+          "market_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Market ID for the leg.",
+            "example": 42,
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionActionWire": {
+        "type": "string",
+        "enum": [
+          "RESOLVE_YES",
+          "RESOLVE_NO",
+          "VOID"
+        ]
+      },
+      "NflResolutionEvidenceMarket": {
+        "type": "object",
+        "required": [
+          "kind",
+          "selection"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "line": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "selection": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionEvidencePlayer": {
+        "type": "object",
+        "required": [
+          "market_name",
+          "provider_player_id",
+          "provider_name",
+          "canonical_team",
+          "stat_path",
+          "stat_value"
+        ],
+        "properties": {
+          "canonical_team": {
+            "type": "string"
+          },
+          "market_name": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          },
+          "provider_player_id": {
+            "type": "string"
+          },
+          "stat_path": {
+            "type": "string"
+          },
+          "stat_value": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionEvidenceProvider": {
+        "type": "string",
+        "enum": [
+          "tank01"
+        ]
+      },
+      "NflResolutionEvidenceScore": {
+        "type": "object",
+        "required": [
+          "home",
+          "away"
+        ],
+        "properties": {
+          "away": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "home": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionEvidenceTeamIdentity": {
+        "type": "object",
+        "required": [
+          "raw",
+          "canonical"
+        ],
+        "properties": {
+          "canonical": {
+            "type": "string"
+          },
+          "raw": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionEvidenceTeams": {
+        "type": "object",
+        "required": [
+          "home",
+          "away"
+        ],
+        "properties": {
+          "away": {
+            "$ref": "#/components/schemas/NflResolutionEvidenceTeamIdentity"
+          },
+          "home": {
+            "$ref": "#/components/schemas/NflResolutionEvidenceTeamIdentity"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionProposalEvidence": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "provider",
+          "observed_at_ms",
+          "engine_game_id",
+          "provider_game_id",
+          "provider_game_status",
+          "teams",
+          "score",
+          "market",
+          "reason"
+        ],
+        "properties": {
+          "engine_game_id": {
+            "type": "string"
+          },
+          "market": {
+            "$ref": "#/components/schemas/NflResolutionEvidenceMarket"
+          },
+          "observed_at_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "player": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflResolutionEvidencePlayer"
+              }
+            ],
+            "nullable": true
+          },
+          "provider": {
+            "$ref": "#/components/schemas/NflResolutionEvidenceProvider"
+          },
+          "provider_game_id": {
+            "type": "string"
+          },
+          "provider_game_status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "score": {
+            "$ref": "#/components/schemas/NflResolutionEvidenceScore"
+          },
+          "teams": {
+            "$ref": "#/components/schemas/NflResolutionEvidenceTeams"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionProposalListResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NflResolutionProposalResponse"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "NflResolutionProposalResponse": {
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "market_id",
+          "revision",
+          "status",
+          "suggested_action",
+          "decision_digest",
+          "season",
+          "week",
+          "game_id",
+          "market_title",
+          "market_attributes",
+          "evidence",
+          "created_at_ms",
+          "updated_at_ms"
+        ],
+        "properties": {
+          "applied_action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflResolutionActionWire"
+              }
+            ],
+            "nullable": true
+          },
+          "created_at_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "decision_digest": {
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/NflResolutionProposalEvidence"
+          },
+          "game_id": {
+            "type": "string"
+          },
+          "market_attributes": {},
+          "market_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "market_title": {
+            "type": "string"
+          },
+          "proposal_id": {
+            "type": "string"
+          },
+          "review_decision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflResolutionReviewDecisionWire"
+              }
+            ],
+            "nullable": true
+          },
+          "review_note": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewed_at_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reviewed_by": {
+            "type": "string",
+            "nullable": true
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "season": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/NflResolutionProposalStatusResponse"
+          },
+          "suggested_action": {
+            "$ref": "#/components/schemas/NflResolutionActionWire"
+          },
+          "superseded_by_proposal_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "updated_at_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "week": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "NflResolutionProposalStatusResponse": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "OVERRIDDEN",
+          "REJECTED",
+          "SUPERSEDED"
+        ]
+      },
+      "NflResolutionReviewDecisionRequest": {
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "revision",
+          "decision"
+        ],
+        "properties": {
+          "applied_action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflResolutionActionWire"
+              }
+            ],
+            "nullable": true
+          },
+          "decision": {
+            "$ref": "#/components/schemas/NflResolutionReviewDecisionWire"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000
+          },
+          "proposal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "NflResolutionReviewDecisionWire": {
+        "type": "string",
+        "enum": [
+          "ACCEPT",
+          "OVERRIDE",
+          "REJECT"
+        ]
+      },
+      "NflResolutionReviewRowResponse": {
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "revision",
+          "result"
+        ],
+        "properties": {
+          "applied_action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflResolutionActionWire"
+              }
+            ],
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposal_id": {
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/NflResolutionReviewRowResultResponseKind"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NflResolutionProposalStatusResponse"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "NflResolutionReviewRowResultResponseKind": {
+        "type": "string",
+        "enum": [
+          "applied",
+          "conflict"
+        ]
+      },
+      "NflResolutionSubmitDispositionResponse": {
+        "type": "string",
+        "enum": [
+          "created",
+          "unchanged",
+          "suppressed_after_rejection",
+          "superseded"
+        ]
+      },
+      "NflShareMeta": {
+        "type": "object",
+        "description": "NFL-card matchup identity (only present when `market_kind == \"sports\"`).",
+        "required": [
+          "away_abbr",
+          "home_abbr"
+        ],
+        "properties": {
+          "away_abbr": {
+            "type": "string"
+          },
+          "combo": {
+            "type": "boolean"
+          },
+          "home_abbr": {
+            "type": "string"
           }
         }
       },
@@ -32940,6 +35459,33 @@
           }
         }
       },
+      "PriceMarketDisplayContextResponse": {
+        "type": "object",
+        "description": "Price-window identity used by crypto winner cards. `settled_change_bps`\nis signed basis points from the canonical open to close when available.",
+        "required": [
+          "asset"
+        ],
+        "properties": {
+          "asset": {
+            "type": "string"
+          },
+          "duration_secs": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "settled_change_bps": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "window_start_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        }
+      },
       "PriceShareCard": {
         "type": "object",
         "description": "Price (Crypto Dailies, BTC) share card — all states.",
@@ -33242,6 +35788,45 @@
           "x_handle": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "ProfitCapConfigResponse": {
+        "type": "object",
+        "description": "Response for reading or updating profit caps.\n\nMarket makers poll `GET /v1/mm/profit_caps`. Each cap bounds taker profit\n(and therefore maker liability) per RFQ — the payout net of the taker's\nreturned stake, so a $100 fill at 1.01x is $1 against the cap — in the\nprotocol's base micro-unit.",
+        "required": [
+          "default_max_profit_micros",
+          "overrides"
+        ],
+        "properties": {
+          "default_max_profit_micros": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProfitCapOverrideResponse"
+            }
+          }
+        }
+      },
+      "ProfitCapOverrideResponse": {
+        "type": "object",
+        "description": "One category-specific profit-cap override.",
+        "required": [
+          "market_type",
+          "max_profit_micros"
+        ],
+        "properties": {
+          "market_type": {
+            "$ref": "#/components/schemas/MarketType"
+          },
+          "max_profit_micros": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },
@@ -33779,6 +36364,24 @@
           }
         }
       },
+      "PublicProfileFollowingResponse": {
+        "type": "object",
+        "required": [
+          "profiles"
+        ],
+        "properties": {
+          "next_cursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunityProfileResponse"
+            }
+          }
+        }
+      },
       "PublicProfilePnlEventResponse": {
         "type": "object",
         "description": "Public profile PNL point for charting.",
@@ -33833,7 +36436,7 @@
       },
       "PublicProfilePositionDetailResponse": {
         "type": "object",
-        "description": "Public position detail on a profile, using Longshot's additive leg contract.",
+        "description": "Public position detail on a profile.",
         "required": [
           "id",
           "wager_micros",
@@ -33848,7 +36451,8 @@
         "properties": {
           "app_token_wager_micros": {
             "type": "string",
-            "format": "int64"
+            "format": "int64",
+            "description": "Portion of the wager funded by bonus credits, in micros."
           },
           "created_at_ms": {
             "type": "integer",
@@ -33856,13 +36460,15 @@
           },
           "id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Position ID."
           },
           "legs": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LegDetail"
-            }
+            },
+            "description": "All legs with their outcomes."
           },
           "legs_count": {
             "type": "integer",
@@ -33874,20 +36480,24 @@
           "net_payout_micros": {
             "type": "string",
             "format": "int64",
+            "description": "Realized net payout in micros after fees.",
             "nullable": true
           },
           "payout_micros": {
             "type": "string",
-            "format": "int64"
+            "format": "int64",
+            "description": "Gross potential payout in micros before fees."
           },
           "pnl_micros": {
             "type": "string",
             "format": "int64",
+            "description": "Realized PNL in micros.",
             "nullable": true
           },
           "refunded_app_token_micros": {
             "type": "string",
             "format": "int64",
+            "description": "Bonus credits actually returned when this position was voided. Expired\ncredits reclaimed by the grantor are excluded; null for other states.",
             "nullable": true
           },
           "resolved_at_ms": {
@@ -33896,11 +36506,13 @@
             "nullable": true
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "Position status: \"open\", \"won\", \"lost\", \"pending\", \"cancelled\", or \"voided\"."
           },
           "wager_micros": {
             "type": "string",
-            "format": "int64"
+            "format": "int64",
+            "description": "Wager amount in micros."
           }
         }
       },
@@ -34019,7 +36631,9 @@
           "avatar_seed",
           "created_at_ms",
           "stats",
-          "top_ten_finishes"
+          "top_ten_finishes",
+          "follower_count",
+          "following_count"
         ],
         "properties": {
           "avatar_seed": {
@@ -34032,6 +36646,18 @@
           },
           "display_name": {
             "type": "string"
+          },
+          "follower_count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Visible profiles following this user.",
+            "minimum": 0
+          },
+          "following_count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Visible profiles this user follows.",
+            "minimum": 0
           },
           "handle": {
             "type": "string"
@@ -34624,6 +37250,50 @@
           "status": "ready"
         }
       },
+      "RecentContestWinnerDetailRefResponse": {
+        "type": "object",
+        "required": [
+          "handle",
+          "contest_id",
+          "entry_index"
+        ],
+        "properties": {
+          "contest_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entry_index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "handle": {
+            "type": "string"
+          }
+        }
+      },
+      "RecentMarketWinnerDetailRefResponse": {
+        "type": "object",
+        "required": [
+          "handle",
+          "position_id"
+        ],
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "position_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "RecentMarketWinnerEntryTypeResponse": {
+        "type": "string",
+        "enum": [
+          "single",
+          "combo"
+        ]
+      },
       "RecentResolutionEntry": {
         "type": "object",
         "description": "Single recent price-market resolution row.\n\n`outcome` is serialized as the wire string (`\"YES\"` or `\"NO\"`).\n`window_start_ms` identifies the price window and is the canonical field\nfor ordering resolutions and checking that consecutive windows are\nadjacent. `resolved_at_ms` records when settlement completed.",
@@ -34673,6 +37343,180 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RecentResolutionEntry"
+            }
+          }
+        }
+      },
+      "RecentWinnerResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "winner_id",
+              "settled_at_ms",
+              "profile",
+              "entry_type",
+              "multiplier_bps",
+              "position",
+              "detail_ref",
+              "type"
+            ],
+            "properties": {
+              "detail_ref": {
+                "$ref": "#/components/schemas/RecentMarketWinnerDetailRefResponse"
+              },
+              "entry_type": {
+                "$ref": "#/components/schemas/RecentMarketWinnerEntryTypeResponse"
+              },
+              "market_contexts": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/MarketDisplayContextResponse"
+                }
+              },
+              "multiplier_bps": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Credited net payout divided by stake, in basis points."
+              },
+              "position": {
+                "$ref": "#/components/schemas/PublicProfilePositionDetailResponse"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/CommunityProfileResponse"
+              },
+              "settled_at_ms": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "market"
+                ]
+              },
+              "winner_id": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "winner_id",
+              "settled_at_ms",
+              "profile",
+              "contest_id",
+              "entry_index",
+              "title",
+              "category",
+              "game_type",
+              "contest",
+              "detail_ref",
+              "stake_micros",
+              "payout_micros",
+              "net_payout_micros",
+              "pnl_micros",
+              "resolved_win_count",
+              "selection_count",
+              "type"
+            ],
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "contest": {
+                "$ref": "#/components/schemas/PublicProfileContestDetailResponse"
+              },
+              "contest_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "detail_ref": {
+                "$ref": "#/components/schemas/RecentContestWinnerDetailRefResponse"
+              },
+              "entry_index": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "game_type": {
+                "$ref": "#/components/schemas/ContestGameTypeResponse"
+              },
+              "image_url": {
+                "type": "string",
+                "nullable": true
+              },
+              "net_payout_micros": {
+                "type": "string",
+                "format": "int64"
+              },
+              "payout_micros": {
+                "type": "string",
+                "format": "int64"
+              },
+              "pnl_micros": {
+                "type": "string",
+                "format": "int64"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/CommunityProfileResponse"
+              },
+              "rank": {
+                "type": "integer",
+                "format": "int32",
+                "nullable": true
+              },
+              "resolved_win_count": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "roster_final_points_milli": {
+                "type": "string",
+                "format": "int64",
+                "nullable": true
+              },
+              "selection_count": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "settled_at_ms": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "stake_micros": {
+                "type": "string",
+                "format": "int64"
+              },
+              "title": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "contest"
+                ]
+              },
+              "winner_id": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "description": "One render-ready Home winner. The Home feed currently emits only `Market`;\n`Contest` remains in the wire type for backward-compatible deserialization.",
+        "discriminator": {
+          "propertyName": "type"
+        }
+      },
+      "RecentWinnersResponse": {
+        "type": "object",
+        "required": [
+          "winners"
+        ],
+        "properties": {
+          "winners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecentWinnerResponse"
             }
           }
         }
@@ -34812,6 +37656,43 @@
           }
         },
         "additionalProperties": false
+      },
+      "ReviewNflResolutionProposalsRequest": {
+        "type": "object",
+        "required": [
+          "game_id",
+          "decisions"
+        ],
+        "properties": {
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NflResolutionReviewDecisionRequest"
+            },
+            "maxItems": 500,
+            "minItems": 1
+          },
+          "game_id": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewNflResolutionProposalsResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NflResolutionReviewRowResponse"
+            }
+          }
+        }
       },
       "RfqEstimateBatchItemRequest": {
         "type": "object",
@@ -34965,7 +37846,7 @@
           },
           "shield_on": {
             "type": "boolean",
-            "description": "If true, price as a shielded order (no taker identity shared with\nmakers). Anonymous callers are always priced without taker identity."
+            "description": "If true, price as a shielded order (no taker identity shared with\nmakers). Anonymous callers are priced as the well-known anonymous\nsentinel (neutral base edge) unless shield is requested."
           },
           "wager_micros": {
             "type": "integer",
@@ -35018,7 +37899,7 @@
           },
           "reason": {
             "type": "string",
-            "description": "Why the order is not (fully) quotable: `no_quotes`,\n`insufficient_liquidity`, `payout_exceeds_maximum`, `no_valid_quotes`,\nor `estimate_timeout`.",
+            "description": "Why the order is not (fully) quotable: `no_quotes`,\n`insufficient_liquidity`, `profit_exceeds_maximum`, `no_valid_quotes`,\n`estimate_timeout`, or `sports_combination_unsupported`.",
             "nullable": true
           },
           "request_id": {
@@ -35458,6 +38339,38 @@
           }
         }
       },
+      "SetFeaturedMarketsRequest": {
+        "type": "object",
+        "description": "Replaces the home page's explicit market-event slots. Up to three events\nare ordered left-to-right in sequential slots; none clears every slot.",
+        "required": [
+          "markets"
+        ],
+        "properties": {
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeaturedMarketEventReference"
+            },
+            "maxItems": 3
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetFeaturedMarketsResponse": {
+        "type": "object",
+        "required": [
+          "markets"
+        ],
+        "properties": {
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeaturedMarketEventReference"
+            },
+            "description": "Effective event identities in left-to-right slot order."
+          }
+        }
+      },
       "SetManualEventMarketProbabilityRequest": {
         "type": "object",
         "description": "Admin request for updating a manual fantasy market's live probability.",
@@ -35502,6 +38415,14 @@
           "spread_cents"
         ],
         "properties": {
+          "decay": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketFairValueDecay"
+              }
+            ],
+            "nullable": true
+          },
           "spread_cents": {
             "type": "integer",
             "format": "int32",
@@ -35549,6 +38470,39 @@
           "title": {
             "type": "string",
             "description": "The stored title after the update."
+          }
+        }
+      },
+      "SetNflHubConfigRequest": {
+        "type": "object",
+        "description": "Request to replace the NFL hub config.",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/NflHubConfigBody"
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "config": {
+            "featured_matchups": [
+              {
+                "game_id": "26SEP09NESEA"
+              }
+            ],
+            "featured_parlay": {
+              "copy": null,
+              "legs": [
+                {
+                  "direction": "up",
+                  "market_id": 42
+                }
+              ],
+              "title": "Sunday sweep"
+            },
+            "props_enabled": true
           }
         }
       },
@@ -35695,7 +38649,7 @@
           {
             "allOf": [
               {
-                "$ref": "#/components/schemas/CultureShareCard"
+                "$ref": "#/components/schemas/EventPositionShareCard"
               },
               {
                 "type": "object",
@@ -35706,7 +38660,7 @@
                   "type": {
                     "type": "string",
                     "enum": [
-                      "culture"
+                      "event_position"
                     ]
                   }
                 }
@@ -35714,7 +38668,7 @@
             ]
           }
         ],
-        "description": "The tagged snapshot union persisted per share card. The local Culture arm\nintentionally extends the pinned SDK without changing any existing wire\ndiscriminants.",
+        "description": "The tagged snapshot union persisted per share card.",
         "discriminator": {
           "propertyName": "type"
         }
@@ -35850,6 +38804,41 @@
           "wager_micros": 100000000
         }
       },
+      "SignupDepositMatchPolicyResponse": {
+        "type": "object",
+        "description": "Admin response for the automatic deposit-match policy applied to new\nordinary accounts.",
+        "required": [
+          "enabled",
+          "match_limit_micros",
+          "duration_secs"
+        ],
+        "properties": {
+          "duration_secs": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Opportunity lifetime from account creation, in whole seconds."
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "match_limit_micros": {
+            "type": "string",
+            "format": "int64",
+            "description": "Maximum 1:1 match in USD micros, encoded as a decimal string.",
+            "example": "10000000"
+          },
+          "updated_at_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "updated_by": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
       "SignupPolicyResponse": {
         "type": "object",
         "description": "Admin response for reading or updating signup policy (invite phase).",
@@ -35880,6 +38869,39 @@
           "pending",
           "unavailable"
         ]
+      },
+      "SportsMarketDisplayContextResponse": {
+        "type": "object",
+        "description": "NFL matchup identity used by matchup/team artwork clients.",
+        "required": [
+          "league",
+          "product",
+          "game_id",
+          "away_team",
+          "home_team"
+        ],
+        "properties": {
+          "away_team": {
+            "type": "string"
+          },
+          "game_id": {
+            "type": "string"
+          },
+          "home_team": {
+            "type": "string"
+          },
+          "kickoff_at_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "league": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        }
       },
       "StreakCurrentRoundResponse": {
         "type": "object",
@@ -36897,6 +39919,47 @@
           "win_and_reset"
         ]
       },
+      "SubmitNflResolutionProposalRequest": {
+        "type": "object",
+        "required": [
+          "suggested_action",
+          "evidence"
+        ],
+        "properties": {
+          "evidence": {
+            "$ref": "#/components/schemas/NflResolutionProposalEvidence"
+          },
+          "suggested_action": {
+            "$ref": "#/components/schemas/NflResolutionActionWire"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubmitNflResolutionProposalResponse": {
+        "type": "object",
+        "required": [
+          "disposition",
+          "proposal_id",
+          "revision",
+          "status"
+        ],
+        "properties": {
+          "disposition": {
+            "$ref": "#/components/schemas/NflResolutionSubmitDispositionResponse"
+          },
+          "proposal_id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/NflResolutionProposalStatusResponse"
+          }
+        }
+      },
       "SurvivorContestResponse": {
         "type": "object",
         "description": "Additive public Survivor state on a contest detail response.",
@@ -37838,7 +40901,7 @@
       },
       "UpdateManualEventRequest": {
         "type": "object",
-        "description": "Atomic edit applied to every child contract in one manually managed event.",
+        "description": "Atomic public-copy edit applied to every child in one manual or Manifold event.",
         "required": [
           "event_title",
           "description",
@@ -37860,7 +40923,7 @@
           "scheduled_lock_at_ms": {
             "type": "integer",
             "format": "int64",
-            "description": "Null or omitted makes a Culture event open-ended.",
+            "description": "Null or omitted makes a manual Culture event open-ended. Manifold edits must omit it.",
             "nullable": true,
             "minimum": 0
           }
@@ -38892,6 +41955,141 @@
       "UserSetReferrerResponse": {
         "type": "object",
         "description": "Response after successfully setting the authenticated user's referrer."
+      },
+      "UserTransactionCategory": {
+        "type": "string",
+        "enum": [
+          "deposit",
+          "withdrawal",
+          "credits",
+          "market",
+          "contest"
+        ]
+      },
+      "UserTransactionFunding": {
+        "type": "string",
+        "enum": [
+          "cash",
+          "credits",
+          "cash_and_credits"
+        ]
+      },
+      "UserTransactionResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "title",
+          "status",
+          "occurred_at_ms",
+          "amount_micros",
+          "unit"
+        ],
+        "properties": {
+          "amount_micros": {
+            "type": "string",
+            "format": "int64",
+            "description": "Signed amount in micros: positive = money in, negative = money out."
+          },
+          "category": {
+            "$ref": "#/components/schemas/UserTransactionCategory"
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "expires_at_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "funding": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserTransactionFunding"
+              }
+            ],
+            "nullable": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Ledger event id, or a synthetic id for not-yet-ledgered rows\n(`pending_deposit:{chain_id}:{tx_hash}:{log_index}`)."
+          },
+          "network": {
+            "type": "string",
+            "nullable": true
+          },
+          "occurred_at_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserTransactionStatus"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tx_hash": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "$ref": "#/components/schemas/UserTransactionUnit"
+          },
+          "wallet_address": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UserTransactionStatus": {
+        "type": "string",
+        "enum": [
+          "completed",
+          "pending",
+          "failed",
+          "expired",
+          "entered",
+          "won"
+        ]
+      },
+      "UserTransactionUnit": {
+        "type": "string",
+        "enum": [
+          "usdc",
+          "credits"
+        ]
+      },
+      "UserTransactionsResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserTransactionResponse"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "description": "Opaque keyset cursor. Clients must key \"done\" off this being absent,\nnot off short pages: category filters can legitimately return fewer\nthan `limit` items while more pages remain.",
+            "nullable": true
+          }
+        }
       },
       "UserWithdrawParams": {
         "type": "object",
@@ -39993,6 +43191,10 @@
     {
       "name": "public-profile",
       "description": "Public user profile endpoints (no auth required)"
+    },
+    {
+      "name": "community",
+      "description": "Follow graph and copyable community entries"
     },
     {
       "name": "markets",

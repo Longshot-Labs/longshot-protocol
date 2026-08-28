@@ -1040,6 +1040,42 @@ mod tests {
     }
 
     #[test]
+    fn corrupted_leg_counts_clamp_instead_of_panicking() {
+        // Regression: both request types decode from untrusted bytes, so their
+        // leg accessors must clamp an oversized count instead of panicking.
+        let legs = [RfqLeg::new_price_strike(
+            MarketId::new(16),
+            0,
+            Asset::BTC,
+            Direction::Up,
+            Duration::FIFTEEN_MINUTES,
+            0,
+        )];
+
+        let mut request = RfqRequest::new(
+            RequestId::new(),
+            UserId::new(),
+            Amount::from_dollars(100),
+            OrderType::FOK,
+            Odds::MIN,
+            None,
+            &legs,
+        )
+        .unwrap();
+        let mut broadcast = BroadcastRfqRequest::from_bytes(&request.to_broadcast_bytes());
+
+        request.leg_count = u8::MAX;
+        assert!(request.leg(MAX_RFQ_LEGS).is_none());
+        assert_eq!(request.active_legs().len(), MAX_RFQ_LEGS);
+        assert_eq!(request.iter_legs().count(), MAX_RFQ_LEGS);
+
+        broadcast.leg_count = u8::MAX;
+        assert!(broadcast.leg_wire(MAX_RFQ_LEGS).is_none());
+        assert_eq!(broadcast.active_leg_wires().len(), MAX_RFQ_LEGS);
+        assert_eq!(broadcast.iter_leg_wires().count(), MAX_RFQ_LEGS);
+    }
+
+    #[test]
     fn price_rfq_leg_round_trips_through_wire() {
         let leg = RfqLeg::new_price_strike(
             42u64,

@@ -130,6 +130,7 @@ pub enum ExternalOddsSourceKind {
     #[serde(rename = "clob_ws")]
     PolymarketWs,
     KalshiRest,
+    ManifoldRest,
     Cache,
     None,
 }

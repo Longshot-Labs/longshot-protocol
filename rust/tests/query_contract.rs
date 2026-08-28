@@ -1,8 +1,8 @@
 use longshot_protocol::api::{
     ChatMentionCandidatesQuery, ConfirmPositionQuery, MarketCurrentQuery, MarketLookupQuery,
-    PnlHistoryScopedQuery, PositionsByMarketsQuery, TakerPnlQuery, TopOfBookHistoryQuery,
-    VaultContributorsQuery, VaultEventsQuery, VaultIdQuery, VaultPnlHistoryQuery,
-    VaultPositionsQuery,
+    PnlHistoryScopedQuery, PositionsByMarketsQuery, TopOfBookHistoryQuery,
+    UserTransactionsRawQuery, VaultContributorsQuery, VaultEventsQuery, VaultIdQuery,
+    VaultPnlHistoryQuery, VaultPositionsQuery,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -36,7 +36,6 @@ fn client_query_contracts_require_route_required_fields() {
     assert_missing_required::<MarketLookupQuery>();
     assert_missing_required::<MarketCurrentQuery>();
     assert_missing_required::<TopOfBookHistoryQuery>();
-    assert_missing_required::<TakerPnlQuery>();
     assert_missing_required::<PositionsByMarketsQuery>();
     assert_missing_required::<ConfirmPositionQuery>();
     assert_missing_required::<VaultIdQuery>();
@@ -51,7 +50,6 @@ fn client_query_contracts_require_route_required_fields() {
     );
     assert_accepts::<MarketCurrentQuery>(json!({"asset": "BTC", "duration_secs": 300}));
     assert_accepts::<TopOfBookHistoryQuery>(json!({"market_ids": "1,2"}));
-    assert_accepts::<TakerPnlQuery>(json!({"wallet": "wallet"}));
     assert_accepts::<PositionsByMarketsQuery>(json!({"market_ids": "1,2"}));
     assert_accepts::<ConfirmPositionQuery>(json!({"position_id": "position", "accept": true}));
     assert_accepts::<VaultIdQuery>(json!({"vault_id": "vault"}));
@@ -79,4 +77,22 @@ fn client_query_contracts_use_semantic_scalar_types() {
     assert_eq!(scoped.from, Some(1));
     assert_eq!(scoped.to, Some(2));
     assert!(serde_json::from_value::<PnlHistoryScopedQuery>(json!({"from": "1"})).is_err());
+
+    let transactions = serde_json::from_value::<UserTransactionsRawQuery>(json!({
+        "category": "withdrawal",
+        "from_ms": "1",
+        "to_ms": "2",
+        "limit": 25,
+        "cursor": "1:550e8400-e29b-41d4-a716-446655440000"
+    }))
+    .expect("user transaction query should decode its route wire types");
+    assert_eq!(transactions.limit, Some(25));
+    assert!(serde_json::from_value::<UserTransactionsRawQuery>(json!({
+        "limit": "25"
+    }))
+    .is_err());
+    assert!(serde_json::from_value::<UserTransactionsRawQuery>(json!({
+        "unexpected": true
+    }))
+    .is_err());
 }

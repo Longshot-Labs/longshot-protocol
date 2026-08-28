@@ -1,4 +1,4 @@
-#![doc = include_str!("../../CUSTOM_CLIENTS.md")]
+#![doc = include_str!("../README.md")]
 
 pub mod mm;
 

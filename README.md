@@ -1,12 +1,12 @@
 # Longshot Protocol
 
-Private, transport-neutral Longshot contracts and deterministic wire helpers
-for Rust, TypeScript, and Python.
+Private source mirror for the transport-neutral Longshot contracts and
+deterministic wire helpers for Rust, TypeScript, and Python.
 
 This repository is a standalone snapshot of
-[`Longshot-Labs/longshot`](https://github.com/Longshot-Labs/longshot) commit
-`6353e7e2423aedc4c36f34eb76ac3c787a3c856d`. The `longshot` monorepo is the
-source of truth, and compatibility updates flow one way from its
+[`Longshot-Labs/longshot#1595`](https://github.com/Longshot-Labs/longshot/pull/1595)
+source commit `3459f30576dd305024436ab1407365e80916d03a`. The `longshot`
+monorepo is the source of truth. Compatibility updates flow one way from its
 `longshot-protocol/` directory into this repository.
 
 The initial protocol implementation was imported from
@@ -31,19 +31,24 @@ are executed by the package test suites.
 - `fixtures/` contains the pinned OpenAPI contract and cross-language protocol
   parity vectors.
 
-## Clone and use
+## Install
 
-The packages are proprietary and are not published to public package
-registries. Clone this private repository and use the language package
-directly:
+Version 0.2.0 is distributed through public package registries under the
+included proprietary license:
 
 ```sh
-git clone https://github.com/Longshot-Labs/longshot-protocol.git
-
-cargo add longshot-protocol --path ./longshot-protocol/rust
-python -m pip install ./longshot-protocol/python
-npm install ./longshot-protocol/typescript
+cargo add longshot-protocol@0.2.0
+python -m pip install longshot-protocol==0.2.0
+npm install longshot-protocol@0.2.0
 ```
+
+Public package archives exclude repository-only guides, fixtures, examples,
+tests, and generators.
+
+The checked-in Rust manifest blocks direct publication because Cargo can add
+private repository metadata. Run `bash scripts/publish-rust.sh --check` to test
+the Git-free release path. Release operators use the same script with
+`--publish` only after review and approval.
 
 ## Validation
 

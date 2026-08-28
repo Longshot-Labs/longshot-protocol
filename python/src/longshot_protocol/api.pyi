@@ -343,6 +343,7 @@ class ExternalOddsSourceStatus(RustStringEnum):
 class ExternalOddsSourceKind(RustStringEnum):
     PolymarketWs = 'clob_ws'
     KalshiRest = 'kalshi_rest'
+    ManifoldRest = 'manifold_rest'
     Cache = 'cache'
     None_ = 'none'
 
@@ -499,11 +500,13 @@ class PublicMarketsRawQuery(LongshotModel):
     market_type: Optional[MarketType]
     source: Optional[str]
     source_event_id: Optional[str]
+    include_featured: Optional[bool]
+    featured_only: Optional[bool]
     trading_channel: Optional[TradingChannel]
     limit: Optional[int]
     cursor: Optional[str]
     statuses: Optional[List[MarketStatus]]
-    def __init__(self, *, market_type: Optional[MarketType] = ..., source: Optional[str] = ..., source_event_id: Optional[str] = ..., trading_channel: Optional[TradingChannel] = ..., limit: Optional[int] = ..., cursor: Optional[str] = ..., statuses: Optional[List[MarketStatus]] = ...) -> None: ...
+    def __init__(self, *, market_type: Optional[MarketType] = ..., source: Optional[str] = ..., source_event_id: Optional[str] = ..., include_featured: Optional[bool] = ..., featured_only: Optional[bool] = ..., trading_channel: Optional[TradingChannel] = ..., limit: Optional[int] = ..., cursor: Optional[str] = ..., statuses: Optional[List[MarketStatus]] = ...) -> None: ...
 
 class EventMarketSource(LongshotModel):
     source: str
@@ -541,6 +544,7 @@ class EventMarket(LongshotModel):
     resolution_rules: Optional[str]
     status: MarketStatus
     tradeable: bool
+    featured_slot: Optional[int]
     category_tags: List[str]
     opens_at_ms: Optional[int]
     source_starts_at_ms: Optional[int]
@@ -554,7 +558,7 @@ class EventMarket(LongshotModel):
     source: EventMarketSource
     manual_probability_bps: Optional[int]
     image_url: Optional[str]
-    def __init__(self, *, id: MarketId, market_type: MarketType, trading_channels: List[TradingChannel], chat_id: str, name: str, description: Optional[str] = ..., resolution_rules: Optional[str] = ..., status: MarketStatus, tradeable: bool, category_tags: List[str], opens_at_ms: Optional[int] = ..., source_starts_at_ms: Optional[int] = ..., betting_closes_at_ms: int, live_ends_at_ms: Optional[int] = ..., resolution_time_ms: int, resolved_outcome: Optional[Outcome] = ..., created_at_ms: int, opened_at_ms: Optional[int] = ..., resolved_at_ms: Optional[int] = ..., source: EventMarketSource, manual_probability_bps: Optional[int] = ..., image_url: Optional[str] = ...) -> None: ...
+    def __init__(self, *, id: MarketId, market_type: MarketType, trading_channels: List[TradingChannel], chat_id: str, name: str, description: Optional[str] = ..., resolution_rules: Optional[str] = ..., status: MarketStatus, tradeable: bool, featured_slot: Optional[int] = ..., category_tags: List[str], opens_at_ms: Optional[int] = ..., source_starts_at_ms: Optional[int] = ..., betting_closes_at_ms: int, live_ends_at_ms: Optional[int] = ..., resolution_time_ms: int, resolved_outcome: Optional[Outcome] = ..., created_at_ms: int, opened_at_ms: Optional[int] = ..., resolved_at_ms: Optional[int] = ..., source: EventMarketSource, manual_probability_bps: Optional[int] = ..., image_url: Optional[str] = ...) -> None: ...
 
 class PublicMarket(RustTaggedUnion):
     @classmethod
@@ -614,28 +618,6 @@ class RecentResolutionsResponse(LongshotModel):
     duration_secs: int
     resolutions: List[RecentResolutionEntry]
     def __init__(self, *, asset: str, duration_secs: int, resolutions: List[RecentResolutionEntry]) -> None: ...
-
-class TakerPnlQuery(LongshotModel):
-    wallet: str
-    def __init__(self, *, wallet: str) -> None: ...
-
-class TakerPnlResponse(LongshotModel):
-    wallet: str
-    stats: Optional[TakerPnlStats]
-    def __init__(self, *, wallet: str, stats: Optional[TakerPnlStats] = ...) -> None: ...
-
-class TakerPnlStats(LongshotModel):
-    total_pnl_micros: int
-    total_positions: int
-    open_positions: int
-    wins: int
-    losses: int
-    def __init__(self, *, total_pnl_micros: int, total_positions: int, open_positions: int, wins: int, losses: int) -> None: ...
-
-class MaxPayoutConfigResponse(LongshotModel):
-    max_binary_event_payout: int
-    max_price_strike_payout: int
-    def __init__(self, *, max_binary_event_payout: int, max_price_strike_payout: int) -> None: ...
 
 class NotificationsRawQuery(LongshotModel):
     filter: Optional[str]
@@ -732,7 +714,39 @@ class BinaryEventWinNotificationPayload(LongshotModel):
     net_payout_micros: int
     multiplier_bps: int
     market_title: str
-    def __init__(self, *, position_id: str, source: Optional[str] = ..., event_id: Optional[str] = ..., net_payout_micros: int, multiplier_bps: int, market_title: str) -> None: ...
+    market_ids: Optional[List[int]]
+    def __init__(self, *, position_id: str, source: Optional[str] = ..., event_id: Optional[str] = ..., net_payout_micros: int, multiplier_bps: int, market_title: str, market_ids: Optional[List[int]] = ...) -> None: ...
+
+class NflShareMeta(LongshotModel):
+    away_abbr: str
+    home_abbr: str
+    combo: Optional[bool]
+    def __init__(self, *, away_abbr: str, home_abbr: str, combo: Optional[bool] = ...) -> None: ...
+
+class NflFeaturedMatchup(LongshotModel):
+    game_id: str
+    def __init__(self, *, game_id: str) -> None: ...
+
+class NflParlayLeg(LongshotModel):
+    market_id: int
+    direction: str
+    def __init__(self, *, market_id: int, direction: str) -> None: ...
+
+class NflFeaturedParlay(LongshotModel):
+    title: str
+    copy: Optional[str]
+    legs: List[NflParlayLeg]
+    def __init__(self, *, title: str, copy: Optional[str] = ..., legs: List[NflParlayLeg]) -> None: ...
+
+class NflHubConfigBody(LongshotModel):
+    featured_matchups: Optional[List[NflFeaturedMatchup]]
+    featured_parlay: Optional[NflFeaturedParlay]
+    props_enabled: bool
+    def __init__(self, *, featured_matchups: Optional[List[NflFeaturedMatchup]] = ..., featured_parlay: Optional[NflFeaturedParlay] = ..., props_enabled: bool) -> None: ...
+
+class NflHubConfigResponse(LongshotModel):
+    config: NflHubConfigBody
+    def __init__(self, *, config: NflHubConfigBody) -> None: ...
 
 class PriceStrikeParlayWinNotificationPayload(LongshotModel):
     position_id: str
@@ -1140,7 +1154,9 @@ class PublicProfileResponse(LongshotModel):
     created_at_ms: int
     stats: PublicProfileStatsResponse
     top_ten_finishes: int
-    def __init__(self, *, handle: str, display_name: str, avatar_seed: int, x_handle: Optional[str] = ..., x_avatar_url: Optional[str] = ..., created_at_ms: int, stats: PublicProfileStatsResponse, top_ten_finishes: int) -> None: ...
+    follower_count: int
+    following_count: int
+    def __init__(self, *, handle: str, display_name: str, avatar_seed: int, x_handle: Optional[str] = ..., x_avatar_url: Optional[str] = ..., created_at_ms: int, stats: PublicProfileStatsResponse, top_ten_finishes: int, follower_count: int, following_count: int) -> None: ...
 
 class PublicProfileStatsResponse(LongshotModel):
     total_positions: int
@@ -1255,6 +1271,110 @@ class PublicProfilePositionDetailResponse(LongshotModel):
     legs: List[LegDetail]
     def __init__(self, *, id: str, wager_micros: int, app_token_wager_micros: int, refunded_app_token_micros: Optional[int], payout_micros: int, net_payout_micros: Optional[int], legs_count: int, legs_summary: str, status: str, pnl_micros: Optional[int], created_at_ms: int, resolved_at_ms: Optional[int] = ..., legs: List[LegDetail]) -> None: ...
 
+class FollowingRawQuery(LongshotModel):
+    limit: Optional[int]
+    cursor: Optional[str]
+    def __init__(self, *, limit: Optional[int] = ..., cursor: Optional[str] = ...) -> None: ...
+
+class CommunityPicksRawQuery(LongshotModel):
+    limit: Optional[int]
+    def __init__(self, *, limit: Optional[int] = ...) -> None: ...
+
+class RecentWinnersRawQuery(LongshotModel):
+    limit: Optional[int]
+    def __init__(self, *, limit: Optional[int] = ...) -> None: ...
+
+class FollowStatusResponse(LongshotModel):
+    following: bool
+    def __init__(self, *, following: bool) -> None: ...
+
+class CommunityProfileResponse(LongshotModel):
+    handle: str
+    display_name: str
+    avatar_seed: int
+    x_handle: Optional[str]
+    x_avatar_url: Optional[str]
+    viewer_follows: Optional[bool]
+    def __init__(self, *, handle: str, display_name: str, avatar_seed: int, x_handle: Optional[str] = ..., x_avatar_url: Optional[str] = ..., viewer_follows: Optional[bool] = ...) -> None: ...
+
+class PublicProfileFollowingResponse(LongshotModel):
+    profiles: List[CommunityProfileResponse]
+    next_cursor: Optional[str]
+    def __init__(self, *, profiles: List[CommunityProfileResponse], next_cursor: Optional[str] = ...) -> None: ...
+
+class CommunityPickReactionResponse(LongshotModel):
+    emoji: str
+    count: int
+    viewer_reacted: bool
+    def __init__(self, *, emoji: str, count: int, viewer_reacted: bool) -> None: ...
+
+class CommunityPickResponse(LongshotModel):
+    creator: CommunityProfileResponse
+    viewer_follows: bool
+    position: PublicProfilePositionDetailResponse
+    reactions: List[CommunityPickReactionResponse]
+    def __init__(self, *, creator: CommunityProfileResponse, viewer_follows: bool, position: PublicProfilePositionDetailResponse, reactions: List[CommunityPickReactionResponse]) -> None: ...
+
+class CommunityPicksResponse(LongshotModel):
+    picks: List[CommunityPickResponse]
+    copy_fee_bps: int
+    market_images: Optional[Dict[str, Optional[str]]]
+    market_contexts: Optional[Dict[str, MarketDisplayContextResponse]]
+    def __init__(self, *, picks: List[CommunityPickResponse], copy_fee_bps: int, market_images: Optional[Dict[str, Optional[str]]] = ..., market_contexts: Optional[Dict[str, MarketDisplayContextResponse]] = ...) -> None: ...
+
+class SportsMarketDisplayContextResponse(LongshotModel):
+    league: str
+    product: str
+    game_id: str
+    away_team: str
+    home_team: str
+    kickoff_at_ms: Optional[int]
+    def __init__(self, *, league: str, product: str, game_id: str, away_team: str, home_team: str, kickoff_at_ms: Optional[int] = ...) -> None: ...
+
+class PriceMarketDisplayContextResponse(LongshotModel):
+    asset: str
+    window_start_ms: Optional[int]
+    duration_secs: Optional[int]
+    settled_change_bps: Optional[int]
+    def __init__(self, *, asset: str, window_start_ms: Optional[int] = ..., duration_secs: Optional[int] = ..., settled_change_bps: Optional[int] = ...) -> None: ...
+
+class MarketDisplayContextResponse(LongshotModel):
+    source: Optional[str]
+    source_event_id: Optional[str]
+    event_slug: Optional[str]
+    event_title: Optional[str]
+    image_url: Optional[str]
+    sports: Optional[SportsMarketDisplayContextResponse]
+    price: Optional[PriceMarketDisplayContextResponse]
+    def __init__(self, *, source: Optional[str] = ..., source_event_id: Optional[str] = ..., event_slug: Optional[str] = ..., event_title: Optional[str] = ..., image_url: Optional[str] = ..., sports: Optional[SportsMarketDisplayContextResponse] = ..., price: Optional[PriceMarketDisplayContextResponse] = ...) -> None: ...
+
+class RecentMarketWinnerDetailRefResponse(LongshotModel):
+    handle: str
+    position_id: str
+    def __init__(self, *, handle: str, position_id: str) -> None: ...
+
+class RecentContestWinnerDetailRefResponse(LongshotModel):
+    handle: str
+    contest_id: str
+    entry_index: int
+    def __init__(self, *, handle: str, contest_id: str, entry_index: int) -> None: ...
+
+class RecentMarketWinnerEntryTypeResponse(RustStringEnum):
+    Single = 'single'
+    Combo = 'combo'
+
+class RecentWinnerResponse(RustTaggedUnion):
+    @classmethod
+    def market(cls, payload: Any=None, **fields: Any) -> RecentWinnerResponse:
+        ...
+    @classmethod
+    def contest(cls, payload: Any=None, **fields: Any) -> RecentWinnerResponse:
+        ...
+
+class RecentWinnersResponse(LongshotModel):
+    winners: List[RecentWinnerResponse]
+    def __init__(self, *, winners: List[RecentWinnerResponse]) -> None: ...
+
 class UpdateProfileRequest(LongshotModel):
     handle: Optional[str]
     display_name: Optional[str]
@@ -1272,21 +1392,15 @@ class CheckHandleResponse(LongshotModel):
 class CreateSessionRequest(LongshotModel):
     privy_token: str
     auth_wallet_address: Optional[str]
-    invite_code: Optional[str]
     referral_code: Optional[str]
-    def __init__(self, *, privy_token: str, auth_wallet_address: Optional[str] = ..., invite_code: Optional[str] = ..., referral_code: Optional[str] = ...) -> None: ...
+    def __init__(self, *, privy_token: str, auth_wallet_address: Optional[str] = ..., referral_code: Optional[str] = ...) -> None: ...
 
 class WalletAuthRequest(LongshotModel):
     address: str
     signature: str
     signed_at_ms: int
-    invite_code: Optional[str]
     referral_code: Optional[str]
-    def __init__(self, *, address: str, signature: str, signed_at_ms: int, invite_code: Optional[str] = ..., referral_code: Optional[str] = ...) -> None: ...
-
-class VerifyInviteCodeRequest(LongshotModel):
-    code: str
-    def __init__(self, *, code: str) -> None: ...
+    def __init__(self, *, address: str, signature: str, signed_at_ms: int, referral_code: Optional[str] = ...) -> None: ...
 
 class ChatPostMessageRequest(LongshotModel):
     body: str
@@ -1346,34 +1460,6 @@ class UserDepositRequest(LongshotModel):
     amount_micros: int
     idempotency_key: str
     def __init__(self, *, amount_micros: int, idempotency_key: str) -> None: ...
-
-class UserAppTokenDepositRequest(LongshotModel):
-    token_id: str
-    amount_micros: int
-    idempotency_key: str
-    def __init__(self, *, token_id: str, amount_micros: int, idempotency_key: str) -> None: ...
-
-class UserGrantAppTokenRequest(LongshotModel):
-    user_id: str
-    token_config: UserAppTokenConfigRequest
-    amount_micros: int
-    idempotency_key: str
-    def __init__(self, *, user_id: str, token_config: UserAppTokenConfigRequest, amount_micros: int, idempotency_key: str) -> None: ...
-
-class UserFundedGrantAppTokenRequest(LongshotModel):
-    user_id: str
-    token_config: UserAppTokenConfigRequest
-    amount_micros: int
-    idempotency_key: str
-    def __init__(self, *, user_id: str, token_config: UserAppTokenConfigRequest, amount_micros: int, idempotency_key: str) -> None: ...
-
-class UserAppTokenConfigRequest(LongshotModel):
-    expiry_secs: int
-    category: str
-    min_legs: int
-    max_legs: int
-    max_amount_per_bet_micros: int
-    def __init__(self, *, expiry_secs: int, category: str, min_legs: int, max_legs: int, max_amount_per_bet_micros: int) -> None: ...
 
 class UserDepositVaultRequest(LongshotModel):
     vault_id: str
@@ -1452,6 +1538,15 @@ class CreateRfqRequest(LongshotModel):
     def from_signed_order(cls, order: SignedOrder, use_app_tokens: bool) -> CreateRfqRequest:
         ...
 
+class CommunityPickMode(RustStringEnum):
+    Tail = 'tail'
+    Fade = 'fade'
+
+class CommunityPickRequest(LongshotModel):
+    source_position_id: PositionId
+    mode: CommunityPickMode
+    def __init__(self, *, source_position_id: PositionId, mode: CommunityPickMode) -> None: ...
+
 class UnsignedRfqOrderRequest(LongshotModel):
     wager_micros: int
     min_odds: float
@@ -1469,7 +1564,8 @@ class CreateUnsignedRfqRequest(LongshotModel):
     privy_token: str
     use_app_tokens: bool
     rfq_params: UnsignedRfqOrderRequest
-    def __init__(self, *, privy_token: str, use_app_tokens: bool, rfq_params: UnsignedRfqOrderRequest) -> None: ...
+    community_pick: Optional[CommunityPickRequest]
+    def __init__(self, *, privy_token: str, use_app_tokens: bool, rfq_params: UnsignedRfqOrderRequest, community_pick: Optional[CommunityPickRequest] = ...) -> None: ...
 
 class ParsedOrderLeg(LongshotModel):
     market_id: Optional[MarketId]
@@ -1528,9 +1624,7 @@ class SessionResponse(LongshotModel):
     expires_at: int
     account_created: Optional[bool]
     onboarding_completed: Optional[bool]
-    signup_access_code: Optional[str]
-    signup_access_code_type: Optional[str]
-    def __init__(self, *, session_token: str, address: str, auth_wallet_address: str, deposit_address: Optional[str] = ..., deposit_chain_id: Optional[int] = ..., user_id: str, expires_at: int, account_created: Optional[bool] = ..., onboarding_completed: Optional[bool] = ..., signup_access_code: Optional[str] = ..., signup_access_code_type: Optional[str] = ...) -> None: ...
+    def __init__(self, *, session_token: str, address: str, auth_wallet_address: str, deposit_address: Optional[str] = ..., deposit_chain_id: Optional[int] = ..., user_id: str, expires_at: int, account_created: Optional[bool] = ..., onboarding_completed: Optional[bool] = ...) -> None: ...
     def __repr__(self) -> str:
         ...
 
@@ -1607,22 +1701,6 @@ class WithdrawOperationResponse(RustTaggedUnion):
         ...
     @classmethod
     def operation_status(cls, payload: Any=None, **fields: Any) -> WithdrawOperationResponse:
-        ...
-
-class UserGrantAppTokenResponse(LongshotModel):
-    user_id: str
-    token_id: str
-    amount_micros: int
-    operation_id: UUID
-    tx_hash: str
-    def __init__(self, *, user_id: str, token_id: str, amount_micros: int, operation_id: UUID, tx_hash: str) -> None: ...
-
-class GrantAppTokenOperationResponse(RustTaggedUnion):
-    @classmethod
-    def completed(cls, payload: Any=None, **fields: Any) -> GrantAppTokenOperationResponse:
-        ...
-    @classmethod
-    def operation_status(cls, payload: Any=None, **fields: Any) -> GrantAppTokenOperationResponse:
         ...
 
 class UserRequestWithdrawalVaultResponse(LongshotModel):
@@ -1799,41 +1877,53 @@ class ReservedBalanceResponse(LongshotModel):
     reserved_micros: int
     def __init__(self, *, reserved_micros: int) -> None: ...
 
-class AvailableAppTokenBalanceResponse(LongshotModel):
-    available_app_token_micros: int
-    def __init__(self, *, available_app_token_micros: int) -> None: ...
-
-class ReservedAppTokenBalanceResponse(LongshotModel):
-    reserved_app_token_micros: int
-    def __init__(self, *, reserved_app_token_micros: int) -> None: ...
-
-class AppTokenGrantCategoryResponse(RustStringEnum):
-    Any = 'any'
-    PriceStrike = 'price_strike'
-    BinaryEvent = 'binary_event'
+class UserTransactionCategory(RustStringEnum):
+    Deposit = 'deposit'
+    Withdrawal = 'withdrawal'
+    Credits = 'credits'
+    Market = 'market'
     Contest = 'contest'
-    Markets = 'markets'
 
-class UserAppTokenGrantResponse(LongshotModel):
-    grant_id: UUID
-    app_token_id: Optional[str]
-    expires_at_ms: int
-    category: AppTokenGrantCategoryResponse
-    min_legs: int
-    max_legs: int
-    max_amount_per_bet_micros: int
-    unclaimed_micros: int
-    available_micros: int
-    reserved_micros: int
-    consumed_micros: int
-    expired: bool
-    def __init__(self, *, grant_id: UUID, app_token_id: Optional[str] = ..., expires_at_ms: int, category: AppTokenGrantCategoryResponse, min_legs: int, max_legs: int, max_amount_per_bet_micros: int, unclaimed_micros: int, available_micros: int, reserved_micros: int, consumed_micros: int, expired: bool) -> None: ...
+class UserTransactionStatus(RustStringEnum):
+    Completed = 'completed'
+    Pending = 'pending'
+    Failed = 'failed'
+    Expired = 'expired'
+    Entered = 'entered'
+    Won = 'won'
 
-class UserAppTokenGrantsResponse(LongshotModel):
-    grants: List[UserAppTokenGrantResponse]
-    has_more: bool
+class UserTransactionUnit(RustStringEnum):
+    Usdc = 'usdc'
+    Credits = 'credits'
+
+class UserTransactionFunding(RustStringEnum):
+    Cash = 'cash'
+    Credits = 'credits'
+    CashAndCredits = 'cash_and_credits'
+
+class UserTransactionResponse(LongshotModel):
+    id: str
+    category: UserTransactionCategory
+    title: str
+    detail: Optional[str]
+    status: UserTransactionStatus
+    occurred_at_ms: int
+    amount_micros: int
+    unit: UserTransactionUnit
+    funding: Optional[UserTransactionFunding]
+    network: Optional[str]
+    wallet_address: Optional[str]
+    tx_hash: Optional[str]
+    source: Optional[str]
+    expires_at_ms: Optional[int]
+    reason: Optional[str]
+    reference: Optional[str]
+    def __init__(self, *, id: str, category: UserTransactionCategory, title: str, detail: Optional[str] = ..., status: UserTransactionStatus, occurred_at_ms: int, amount_micros: int, unit: UserTransactionUnit, funding: Optional[UserTransactionFunding] = ..., network: Optional[str] = ..., wallet_address: Optional[str] = ..., tx_hash: Optional[str] = ..., source: Optional[str] = ..., expires_at_ms: Optional[int] = ..., reason: Optional[str] = ..., reference: Optional[str] = ...) -> None: ...
+
+class UserTransactionsResponse(LongshotModel):
+    items: List[UserTransactionResponse]
     next_cursor: Optional[str]
-    def __init__(self, *, grants: List[UserAppTokenGrantResponse], has_more: bool, next_cursor: Optional[str] = ...) -> None: ...
+    def __init__(self, *, items: List[UserTransactionResponse], next_cursor: Optional[str] = ...) -> None: ...
 
 class FeeScheduleTier(RustStringEnum):
     Standard = 'standard'
@@ -1855,31 +1945,6 @@ class FeeScheduleResponse(LongshotModel):
     shield_fee_multiplier: int
     tiers: List[TierFeeRate]
     def __init__(self, *, user_tier: FeeScheduleTier, parlay_fee_bps: int, spot_fee_bps: int, bonding_spot_fee_bps: int, shield_fee_multiplier: int, tiers: List[TierFeeRate]) -> None: ...
-
-class WithdrawalPolicyResponse(LongshotModel):
-    withdrawals_enabled: bool
-    reason: Optional[str]
-    disabled_by_tripwire: bool
-    updated_at_ms: Optional[int]
-    updated_by: Optional[str]
-    def __init__(self, *, withdrawals_enabled: bool, reason: Optional[str] = ..., disabled_by_tripwire: bool, updated_at_ms: Optional[int] = ..., updated_by: Optional[str] = ...) -> None: ...
-
-class BettingPolicyResponse(LongshotModel):
-    betting_enabled: bool
-    reason: Optional[str]
-    updated_at_ms: Optional[int]
-    updated_by: Optional[str]
-    def __init__(self, *, betting_enabled: bool, reason: Optional[str] = ..., updated_at_ms: Optional[int] = ..., updated_by: Optional[str] = ...) -> None: ...
-
-class SignupPolicyResponse(LongshotModel):
-    invite_required: bool
-    updated_at_ms: Optional[int]
-    updated_by: Optional[str]
-    def __init__(self, *, invite_required: bool, updated_at_ms: Optional[int] = ..., updated_by: Optional[str] = ...) -> None: ...
-
-class InviteCodeVerifyResponse(LongshotModel):
-    valid: bool
-    def __init__(self, *, valid: bool) -> None: ...
 
 class PlaceContestBetResponse(LongshotModel):
     contest_id: str
@@ -2014,7 +2079,8 @@ class PublicContestSummaryResponse(LongshotModel):
 
 class ContestCallerSummaryResponse(LongshotModel):
     joined: bool
-    def __init__(self, *, joined: bool) -> None: ...
+    entry_count: Optional[int]
+    def __init__(self, *, joined: bool, entry_count: Optional[int] = ...) -> None: ...
 
 class CallerContestSummaryResponse(LongshotModel):
     contest: PublicContestSummaryResponse
@@ -2280,15 +2346,6 @@ class UserReferralsListResponse(LongshotModel):
     total_count: int
     def __init__(self, *, entries: List[UserReferralEntryResponse], total_count: int) -> None: ...
 
-class HealthResponse(LongshotModel):
-    status: str
-    git_sha: str
-    def __init__(self, *, status: str, git_sha: str) -> None: ...
-
-class ReadyzResponse(LongshotModel):
-    status: str
-    def __init__(self, *, status: str) -> None: ...
-
 class ErrorResponse(LongshotModel):
     error: str
     code: str
@@ -2500,42 +2557,46 @@ MAX_SURVIVOR_SHARE_PICKS = 64
 
 MAX_SURVIVOR_SHARE_ROUNDS = 30
 
-class CultureShareState(RustStringEnum):
+class EventPositionShareState(RustStringEnum):
     Active = 'active'
     Live = 'live'
     Won = 'won'
     Lost = 'lost'
     Voided = 'voided'
 
-class CultureSharePickGrade(RustStringEnum):
+class EventPositionSharePickGrade(RustStringEnum):
     Pending = 'pending'
     Correct = 'correct'
     Incorrect = 'incorrect'
     Voided = 'voided'
 
-class CultureSharePick(LongshotModel):
+class EventPositionSharePick(LongshotModel):
     market_id: int
     label: str
     side: str
-    grade: CultureSharePickGrade
+    grade: EventPositionSharePickGrade
     odds_label: Optional[str]
     result: Optional[str]
-    def __init__(self, *, market_id: int, label: str, side: str, grade: CultureSharePickGrade, odds_label: Optional[str] = ..., result: Optional[str] = ...) -> None: ...
+    team_abbr: Optional[str]
+    def __init__(self, *, market_id: int, label: str, side: str, grade: EventPositionSharePickGrade, odds_label: Optional[str] = ..., result: Optional[str] = ..., team_abbr: Optional[str] = ...) -> None: ...
 
-class CultureShareCard(LongshotModel):
+class EventPositionShareCard(LongshotModel):
     position_id: str
-    state: Optional[CultureShareState]
+    tz_offset_minutes: Optional[int]
+    market_kind: Optional[str]
+    state: Optional[EventPositionShareState]
     title: Optional[str]
     meta_label: Optional[str]
     market_image: Optional[ShareImageRef]
-    picks: Optional[List[CultureSharePick]]
+    picks: Optional[List[EventPositionSharePick]]
     wager_label: Optional[str]
     multiplier_label: Optional[str]
     payout_label: Optional[str]
+    nfl: Optional[NflShareMeta]
     footer: ShareCardFooter
-    def __init__(self, *, position_id: str, state: Optional[CultureShareState] = ..., title: Optional[str] = ..., meta_label: Optional[str] = ..., market_image: Optional[ShareImageRef] = ..., picks: Optional[List[CultureSharePick]] = ..., wager_label: Optional[str] = ..., multiplier_label: Optional[str] = ..., payout_label: Optional[str] = ..., footer: ShareCardFooter) -> None: ...
+    def __init__(self, *, position_id: str, tz_offset_minutes: Optional[int] = ..., market_kind: Optional[str] = ..., state: Optional[EventPositionShareState] = ..., title: Optional[str] = ..., meta_label: Optional[str] = ..., market_image: Optional[ShareImageRef] = ..., picks: Optional[List[EventPositionSharePick]] = ..., wager_label: Optional[str] = ..., multiplier_label: Optional[str] = ..., payout_label: Optional[str] = ..., nfl: Optional[NflShareMeta] = ..., footer: ShareCardFooter) -> None: ...
 
-MAX_CULTURE_SHARE_PICKS = 9
+MAX_EVENT_POSITION_SHARE_PICKS = 9
 
 class ShareCardSnapshot(RustTaggedUnion):
     @classmethod
@@ -2557,7 +2618,7 @@ class ShareCardSnapshot(RustTaggedUnion):
     def survivor(cls, payload: Any=None, **fields: Any) -> ShareCardSnapshot:
         ...
     @classmethod
-    def culture(cls, payload: Any=None, **fields: Any) -> ShareCardSnapshot:
+    def event_position(cls, payload: Any=None, **fields: Any) -> ShareCardSnapshot:
         ...
     def type_str(self: ShareCardSnapshot) -> str:
         ...
@@ -2647,10 +2708,13 @@ class PlaceStreakPickResponse(LongshotModel):
     picked_at_ms: int
     def __init__(self, *, entry_index: int, picked_at_ms: int) -> None: ...
 
-class AppTokenGrantsRawQuery(LongshotModel):
+class UserTransactionsRawQuery(LongshotModel):
+    category: Optional[str]
+    from_ms: Optional[str]
+    to_ms: Optional[str]
     limit: Optional[int]
     cursor: Optional[str]
-    def __init__(self, *, limit: Optional[int] = ..., cursor: Optional[str] = ...) -> None: ...
+    def __init__(self, *, category: Optional[str] = ..., from_ms: Optional[str] = ..., to_ms: Optional[str] = ..., limit: Optional[int] = ..., cursor: Optional[str] = ...) -> None: ...
 
 class ConfirmPositionQuery(LongshotModel):
     position_id: str
@@ -2850,25 +2914,6 @@ class MarketCategoryVisibilityResponse(LongshotModel):
 class UserFeaturesResponse(LongshotModel):
     markets_access: bool
     def __init__(self, *, markets_access: bool) -> None: ...
-
-class DepositMatchSourceResponse(RustStringEnum):
-    AdminGrant = 'admin_grant'
-    Referral = 'referral'
-    Internal = 'internal'
-
-class UserDepositMatchOpportunityResponse(LongshotModel):
-    opportunity_id: str
-    match_limit_micros: int
-    matched_micros: int
-    source: DepositMatchSourceResponse
-    created_at_ms: int
-    expires_at_ms: int
-    def __init__(self, *, opportunity_id: str, match_limit_micros: int, matched_micros: int, source: DepositMatchSourceResponse, created_at_ms: int, expires_at_ms: int) -> None: ...
-
-class UserDepositMatchOpportunitiesResponse(LongshotModel):
-    opportunities: List[UserDepositMatchOpportunityResponse]
-    total_available_micros: int
-    def __init__(self, *, opportunities: List[UserDepositMatchOpportunityResponse], total_available_micros: int) -> None: ...
 
 class ChatMarketRoomResponse(LongshotModel):
     chat_id: str
@@ -3198,8 +3243,10 @@ class ChatGifAttachmentResponse(LongshotModel):
 
 class ContestLobbySummaryResponse(LongshotModel):
     summary: CallerContestSummaryResponse
+    description: Optional[str]
+    max_entries_per_player: Optional[int]
     protocol_prize_pool_pays_app_tokens: bool
-    def __init__(self, *, summary: CallerContestSummaryResponse, protocol_prize_pool_pays_app_tokens: bool) -> None: ...
+    def __init__(self, *, summary: CallerContestSummaryResponse, description: Optional[str] = ..., max_entries_per_player: Optional[int] = ..., protocol_prize_pool_pays_app_tokens: bool) -> None: ...
 
 __all__ = [
     "NOTIFICATION_LIST_DEFAULT_LIMIT",
@@ -3288,10 +3335,6 @@ __all__ = [
     "RecentResolutionsQuery",
     "RecentResolutionEntry",
     "RecentResolutionsResponse",
-    "TakerPnlQuery",
-    "TakerPnlResponse",
-    "TakerPnlStats",
-    "MaxPayoutConfigResponse",
     "NotificationsRawQuery",
     "NotificationStreamRawQuery",
     "NotificationPayload",
@@ -3300,6 +3343,12 @@ __all__ = [
     "StreakStartSoonNotificationPayload",
     "StreakExpiringNotificationPayload",
     "BinaryEventWinNotificationPayload",
+    "NflShareMeta",
+    "NflFeaturedMatchup",
+    "NflParlayLeg",
+    "NflFeaturedParlay",
+    "NflHubConfigBody",
+    "NflHubConfigResponse",
     "PriceStrikeParlayWinNotificationPayload",
     "RfqResultNotificationPayload",
     "RfqResultNotificationStatus",
@@ -3362,12 +3411,28 @@ __all__ = [
     "PublicProfilePositionSummaryResponse",
     "PublicProfilePositionsResponse",
     "PublicProfilePositionDetailResponse",
+    "FollowingRawQuery",
+    "CommunityPicksRawQuery",
+    "RecentWinnersRawQuery",
+    "FollowStatusResponse",
+    "CommunityProfileResponse",
+    "PublicProfileFollowingResponse",
+    "CommunityPickReactionResponse",
+    "CommunityPickResponse",
+    "CommunityPicksResponse",
+    "SportsMarketDisplayContextResponse",
+    "PriceMarketDisplayContextResponse",
+    "MarketDisplayContextResponse",
+    "RecentMarketWinnerDetailRefResponse",
+    "RecentContestWinnerDetailRefResponse",
+    "RecentMarketWinnerEntryTypeResponse",
+    "RecentWinnerResponse",
+    "RecentWinnersResponse",
     "UpdateProfileRequest",
     "SyncXProfileRequest",
     "CheckHandleResponse",
     "CreateSessionRequest",
     "WalletAuthRequest",
-    "VerifyInviteCodeRequest",
     "ChatPostMessageRequest",
     "ChatEditMessageRequest",
     "ChatEmojiReactRequest",
@@ -3379,10 +3444,6 @@ __all__ = [
     "PlaceContestBetSelectionRequest",
     "PlaceContestBetRequest",
     "UserDepositRequest",
-    "UserAppTokenDepositRequest",
-    "UserGrantAppTokenRequest",
-    "UserFundedGrantAppTokenRequest",
-    "UserAppTokenConfigRequest",
     "UserDepositVaultRequest",
     "UserWithdrawParams",
     "WithdrawalAuthorization",
@@ -3394,6 +3455,8 @@ __all__ = [
     "OrderLegJson",
     "SignedOrderJson",
     "CreateRfqRequest",
+    "CommunityPickMode",
+    "CommunityPickRequest",
     "UnsignedRfqOrderRequest",
     "CreateUnsignedRfqRequest",
     "ParsedOrderLeg",
@@ -3412,8 +3475,6 @@ __all__ = [
     "BalanceOperationStatusResponse",
     "DepositOperationResponse",
     "WithdrawOperationResponse",
-    "UserGrantAppTokenResponse",
-    "GrantAppTokenOperationResponse",
     "UserRequestWithdrawalVaultResponse",
     "VaultClaimFeesResponse",
     "VaultWithdrawalAmountResponse",
@@ -3439,18 +3500,15 @@ __all__ = [
     "VaultUserPerformanceResponse",
     "AvailableBalanceResponse",
     "ReservedBalanceResponse",
-    "AvailableAppTokenBalanceResponse",
-    "ReservedAppTokenBalanceResponse",
-    "AppTokenGrantCategoryResponse",
-    "UserAppTokenGrantResponse",
-    "UserAppTokenGrantsResponse",
+    "UserTransactionCategory",
+    "UserTransactionStatus",
+    "UserTransactionUnit",
+    "UserTransactionFunding",
+    "UserTransactionResponse",
+    "UserTransactionsResponse",
     "FeeScheduleTier",
     "TierFeeRate",
     "FeeScheduleResponse",
-    "WithdrawalPolicyResponse",
-    "BettingPolicyResponse",
-    "SignupPolicyResponse",
-    "InviteCodeVerifyResponse",
     "PlaceContestBetResponse",
     "ContestCategoryResponse",
     "ContestStatusResponse",
@@ -3502,8 +3560,6 @@ __all__ = [
     "ReferralLevelLabel",
     "UserReferralEntryResponse",
     "UserReferralsListResponse",
-    "HealthResponse",
-    "ReadyzResponse",
     "ErrorResponse",
     "ShareImageRef",
     "ShareCardFooter",
@@ -3536,11 +3592,11 @@ __all__ = [
     "SurvivorShareCard",
     "MAX_SURVIVOR_SHARE_PICKS",
     "MAX_SURVIVOR_SHARE_ROUNDS",
-    "CultureShareState",
-    "CultureSharePickGrade",
-    "CultureSharePick",
-    "CultureShareCard",
-    "MAX_CULTURE_SHARE_PICKS",
+    "EventPositionShareState",
+    "EventPositionSharePickGrade",
+    "EventPositionSharePick",
+    "EventPositionShareCard",
+    "MAX_EVENT_POSITION_SHARE_PICKS",
     "ShareCardSnapshot",
     "CreateShareCardResponse",
     "StreakRoundStatusResponse",
@@ -3553,7 +3609,7 @@ __all__ = [
     "StreakPickRound",
     "PlaceStreakPickRequest",
     "PlaceStreakPickResponse",
-    "AppTokenGrantsRawQuery",
+    "UserTransactionsRawQuery",
     "ConfirmPositionQuery",
     "ReferralsListRawQuery",
     "VaultIdQuery",
@@ -3588,9 +3644,6 @@ __all__ = [
     "ObserverAccessResponse",
     "MarketCategoryVisibilityResponse",
     "UserFeaturesResponse",
-    "DepositMatchSourceResponse",
-    "UserDepositMatchOpportunityResponse",
-    "UserDepositMatchOpportunitiesResponse",
     "ChatMarketRoomResponse",
     "ChatMentionCandidateResponse",
     "ChatMentionCandidatesResponse",

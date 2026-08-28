@@ -6,7 +6,7 @@ use std::fmt;
 use uuid::Uuid;
 
 use crate::taker::{OrderLeg, SignedOrder, SignedOrderError};
-use crate::types::{Address, Direction, MarketId, Odds, OrderType};
+use crate::types::{Address, Direction, MarketId, Odds, OrderType, PositionId};
 
 /// Request to create a session from Privy token.
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,12 +22,7 @@ pub struct CreateSessionRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth_wallet_address: Option<String>,
 
-    /// One-time invite code; required for brand-new accounts while the
-    /// invite phase is active. Case-insensitive. Ignored for existing users.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub invite_code: Option<String>,
-
-    /// Referral slug used as an alternative signup gate for new accounts.
+    /// Referral slug used for signup attribution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub referral_code: Option<String>,
 }
@@ -101,12 +96,7 @@ pub struct WalletAuthRequest {
     /// Unix timestamp in milliseconds bound into the signed message.
     pub signed_at_ms: u64,
 
-    /// One-time invite code; required for brand-new accounts while the
-    /// invite phase is active. Case-insensitive. Ignored for existing users.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub invite_code: Option<String>,
-
-    /// Referral slug used as an alternative signup gate for brand-new accounts.
+    /// Referral slug used for signup attribution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub referral_code: Option<String>,
 }
@@ -149,14 +139,6 @@ pub struct RfqEstimateBatchRequest {
     pub estimates: Vec<RfqEstimateBatchItemRequest>,
     #[serde(default)]
     pub shield_on: bool,
-}
-
-/// Request to verify an invite code before starting auth. Non-consuming.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct VerifyInviteCodeRequest {
-    /// The invite code to check (case-insensitive).
-    pub code: String,
 }
 
 /// Authenticated request to post a chat message.
@@ -331,96 +313,6 @@ pub struct UserDepositRequest {
     /// Client-supplied idempotency key for replay-safe submission.
     #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
     pub idempotency_key: String,
-}
-
-/// Request to move ERC1155 app tokens from onchain settlement balance into app-token grants.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "token_id": "0x0000000000000000000000000000000000000000000000000000000000000001",
-    "amount_micros": 1000000,
-    "idempotency_key": "550e8400-e29b-41d4-a716-446655440000"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct UserAppTokenDepositRequest {
-    /// ERC1155 token ID to burn from the user's settlement balance.
-    #[cfg_attr(feature = "openapi", schema(value_type = String, example = "0x0000000000000000000000000000000000000000000000000000000000000001"))]
-    pub token_id: String,
-    /// Amount to post from the user's settlement balance, in USDC micros.
-    #[cfg_attr(feature = "openapi", schema(example = 1000000, minimum = 1))]
-    pub amount_micros: u64,
-    /// Client-supplied idempotency key for replay-safe submission.
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub idempotency_key: String,
-}
-
-/// Request to mint app tokens to a user and register an unclaimed grant row.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    "token_config": {
-        "expiry_secs": 4102444800_u64,
-        "category": "price",
-        "min_legs": 1_u64,
-        "max_legs": 3_u64,
-        "max_amount_per_bet_micros": 500000_u64
-    },
-    "amount_micros": 1500000,
-    "idempotency_key": "550e8400-e29b-41d4-a716-446655440001"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct UserGrantAppTokenRequest {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub user_id: String,
-    pub token_config: UserAppTokenConfigRequest,
-    #[cfg_attr(feature = "openapi", schema(example = 1500000, minimum = 1))]
-    pub amount_micros: u64,
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440001"))]
-    pub idempotency_key: String,
-}
-
-/// Request to mint user-funded app tokens to a user and register an unclaimed grant row.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    "token_config": {
-        "expiry_secs": 4102444800_u64,
-        "category": "price",
-        "min_legs": 1_u64,
-        "max_legs": 3_u64,
-        "max_amount_per_bet_micros": 500000_u64
-    },
-    "amount_micros": 5000000,
-    "idempotency_key": "550e8400-e29b-41d4-a716-446655440001"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct UserFundedGrantAppTokenRequest {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub user_id: String,
-    pub token_config: UserAppTokenConfigRequest,
-    #[cfg_attr(feature = "openapi", schema(example = 5000000, minimum = 5000000))]
-    pub amount_micros: u64,
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440001"))]
-    pub idempotency_key: String,
-}
-
-/// App-token configuration used to derive the ERC1155 token ID.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct UserAppTokenConfigRequest {
-    #[cfg_attr(feature = "openapi", schema(example = 4102444800_u64, minimum = 0))]
-    pub expiry_secs: u64,
-    #[cfg_attr(feature = "openapi", schema(example = "price"))]
-    pub category: String,
-    #[cfg_attr(feature = "openapi", schema(example = 1_u64, minimum = 1))]
-    pub min_legs: u64,
-    #[cfg_attr(feature = "openapi", schema(example = 3_u64, minimum = 1))]
-    pub max_legs: u64,
-    #[cfg_attr(feature = "openapi", schema(example = 500000_u64, minimum = 1))]
-    pub max_amount_per_bet_micros: u64,
 }
 
 /// Request to move funds from available app balance into the vault.
@@ -643,6 +535,34 @@ pub struct SignedOrderJson {
     pub signature: String,
 }
 
+/// How a community position is copied.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum CommunityPickMode {
+    Tail,
+    Fade,
+}
+
+impl CommunityPickMode {
+    pub const fn to_u8(self) -> u8 {
+        match self {
+            Self::Tail => 0,
+            Self::Fade => 1,
+        }
+    }
+}
+
+/// Optional community-position attribution for an RFQ.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(deny_unknown_fields)]
+pub struct CommunityPickRequest {
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
+    pub source_position_id: PositionId,
+    pub mode: CommunityPickMode,
+}
+
 /// Request to create an RFQ.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -718,6 +638,10 @@ pub struct CreateUnsignedRfqRequest {
 
     /// Exact unsigned RFQ parameters to create.
     pub rfq_params: UnsignedRfqOrderRequest,
+
+    /// Community position being tailed or faded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub community_pick: Option<CommunityPickRequest>,
 }
 
 /// Parsed leg values with validated enums.

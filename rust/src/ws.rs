@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::types::{Asset, MarketId, MarketType};
+use crate::types::{Asset, MarketId, MarketType, RequestId};
 
 /// Terminal quote-result status sent to market makers over the WebSocket.
 ///
@@ -19,6 +19,15 @@ pub enum QuoteResultStatus {
     NotFilled,
     Rejected,
     SelectedFailed,
+}
+
+/// A closed reason reported when a market maker intentionally declines an RFQ.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum QuoteDeclineReason {
+    /// The sports provider does not support pricing this leg combination.
+    SportsCombinationUnsupported,
 }
 
 /// RFQ subscription filter for a market-maker WebSocket connection.
@@ -59,6 +68,14 @@ pub enum ClientMessage {
         /// Quote data (binary, base64 encoded).
         data: String,
     },
+    /// Explicitly decline an RFQ without fabricating a quote.
+    #[serde(rename = "quote_decline")]
+    QuoteDecline {
+        /// RFQ request being declined.
+        request_id: RequestId,
+        /// Machine-readable decline reason.
+        reason: QuoteDeclineReason,
+    },
     /// Pong response to a server heartbeat.
     #[serde(rename = "pong")]
     Pong,
@@ -70,6 +87,74 @@ pub enum ClientMessage {
         /// RFQ subscription filters to add to this connection.
         subscriptions: Vec<RfqSubscription>,
     },
+}
+
+/// Interpolation shape for a scheduled fair-value decay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum MarketFairValueDecayType {
+    /// Straight-line interpolation from the start odds to the end odds.
+    Linear,
+    /// Theta-style: the distance to the end odds shrinks with the square root
+    /// of the window fraction remaining, the shape of at-the-money option
+    /// time-value erosion (slow far out, accelerating into the end).
+    Curved,
+}
+
+/// Longest window a single admin confirmation may schedule. A schedule quotes
+/// unattended between confirmations, so it must not outlive plausible review.
+pub const MAX_DECAY_WINDOW_MS: u64 = 30 * 24 * 60 * 60 * 1_000;
+
+/// Shortest window a schedule may span. Below this the glide degenerates into a
+/// step that can land inside one quote's evaluate-to-send gap, invisible to the
+/// revision fence because the revision never moves.
+pub const MIN_DECAY_WINDOW_MS: u64 = 60 * 1_000;
+
+/// Admin-scheduled decay from a start odds to an end odds over a time window.
+///
+/// Unknown fields are accepted on purpose: this type also rides the
+/// server-to-bot `market_fair_values` frame, where a bot on an older build must
+/// ignore fields added later rather than reject the whole snapshot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct MarketFairValueDecay {
+    /// Window start in Unix milliseconds; the fair value equals `start_odds_bps` here.
+    #[cfg_attr(feature = "openapi", schema(minimum = 1))]
+    pub start_ms: u64,
+    /// Fair YES probability at the window start, in basis points.
+    #[cfg_attr(feature = "openapi", schema(minimum = 0, maximum = 10000))]
+    pub start_odds_bps: u16,
+    /// Window end in Unix milliseconds; must be after `start_ms` by at least
+    /// `MIN_DECAY_WINDOW_MS` and at most `MAX_DECAY_WINDOW_MS`.
+    pub end_ms: u64,
+    /// Fair YES probability at and after the window end, in basis points.
+    #[cfg_attr(feature = "openapi", schema(minimum = 0, maximum = 10000))]
+    pub end_odds_bps: u16,
+    /// Interpolation shape between the start and end odds.
+    pub decay_type: MarketFairValueDecayType,
+}
+
+impl MarketFairValueDecay {
+    /// Checks the schedule invariants, naming the offending field on error.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.start_odds_bps > 10_000 {
+            return Err("decay.start_odds_bps");
+        }
+        if self.end_odds_bps > 10_000 {
+            return Err("decay.end_odds_bps");
+        }
+        if self.start_ms == 0 {
+            return Err("decay.start_ms");
+        }
+        let span_ms = self.end_ms.saturating_sub(self.start_ms);
+        if !(MIN_DECAY_WINDOW_MS..=MAX_DECAY_WINDOW_MS).contains(&span_ms)
+            || i64::try_from(self.end_ms).is_err()
+        {
+            return Err("decay.end_ms");
+        }
+        Ok(())
+    }
 }
 
 /// Authoritative fair value and quote spread for one binary-event market.
@@ -90,6 +175,9 @@ pub struct MarketFairValue {
     pub revision: i64,
     /// Durable update time in Unix milliseconds.
     pub updated_at_ms: i64,
+    /// Optional scheduled decay. Inside the window it overrides
+    /// `yes_fair_value_bps`; before the window the static value applies.
+    pub decay: Option<MarketFairValueDecay>,
 }
 
 /// Server-to-client WebSocket messages used by market makers.
@@ -196,6 +284,47 @@ mod tests {
     use super::*;
 
     #[test]
+    fn decay_validation_names_the_offending_field() {
+        let valid = MarketFairValueDecay {
+            start_ms: 1_000,
+            start_odds_bps: 8_000,
+            end_ms: 1_000 + MIN_DECAY_WINDOW_MS,
+            end_odds_bps: 2_000,
+            decay_type: MarketFairValueDecayType::Linear,
+        };
+        let field = |mutate: fn(&mut MarketFairValueDecay)| {
+            let mut decay = valid;
+            mutate(&mut decay);
+            decay.validate()
+        };
+        assert_eq!(valid.validate(), Ok(()));
+        assert_eq!(
+            field(|d| d.start_odds_bps = 10_001),
+            Err("decay.start_odds_bps")
+        );
+        assert_eq!(
+            field(|d| d.end_odds_bps = 10_001),
+            Err("decay.end_odds_bps")
+        );
+        assert_eq!(field(|d| d.start_ms = 0), Err("decay.start_ms"));
+        assert_eq!(field(|d| d.end_ms = d.start_ms), Err("decay.end_ms"));
+        // A window shorter than the minimum is a step, not a glide.
+        assert_eq!(
+            field(|d| d.end_ms = d.start_ms + MIN_DECAY_WINDOW_MS - 1),
+            Err("decay.end_ms")
+        );
+        assert_eq!(
+            field(|d| d.end_ms = d.start_ms + MAX_DECAY_WINDOW_MS),
+            Ok(())
+        );
+        assert_eq!(
+            field(|d| d.end_ms = d.start_ms + MAX_DECAY_WINDOW_MS + 1),
+            Err("decay.end_ms")
+        );
+        assert_eq!(field(|d| d.end_ms = u64::MAX), Err("decay.end_ms"));
+    }
+
+    #[test]
     fn market_fair_values_round_trip() {
         let expected_values = vec![MarketFairValue {
             market_id: MarketId::new(7),
@@ -205,6 +334,13 @@ mod tests {
             resolution_time_ms: 1_800_000_100_000,
             revision: 3,
             updated_at_ms: 1_800_000_000_000,
+            decay: Some(MarketFairValueDecay {
+                start_ms: 1_800_000_000_000,
+                start_odds_bps: 8_000,
+                end_ms: 1_800_000_100_000,
+                end_odds_bps: 2_000,
+                decay_type: MarketFairValueDecayType::Curved,
+            }),
         }];
         let message = ServerMessage::MarketFairValues {
             values: expected_values.clone(),
@@ -222,14 +358,31 @@ mod tests {
                     "market_type": "culture",
                     "resolution_time_ms": 1800000100000_u64,
                     "revision": 3,
-                    "updated_at_ms": 1800000000000_i64
+                    "updated_at_ms": 1800000000000_i64,
+                    "decay": {
+                        "start_ms": 1800000000000_u64,
+                        "start_odds_bps": 8000,
+                        "end_ms": 1800000100000_u64,
+                        "end_odds_bps": 2000,
+                        "decay_type": "curved"
+                    }
                 }]
             })
         );
-        let ServerMessage::MarketFairValues { values } = serde_json::from_value(json).unwrap()
+        let ServerMessage::MarketFairValues { values } =
+            serde_json::from_value(json.clone()).unwrap()
         else {
             panic!("expected market fair values");
         };
         assert_eq!(values, expected_values);
+
+        // Payloads produced before the decay schedule existed omit the field.
+        let mut legacy = json;
+        legacy["values"][0].as_object_mut().unwrap().remove("decay");
+        let ServerMessage::MarketFairValues { values } = serde_json::from_value(legacy).unwrap()
+        else {
+            panic!("expected market fair values");
+        };
+        assert_eq!(values[0].decay, None);
     }
 }

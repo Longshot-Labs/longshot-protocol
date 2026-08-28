@@ -17,6 +17,10 @@ pub struct PublicMarketsRawQuery {
     pub source: Option<String>,
     /// Exact event identity (`source.event_id`); combine with `source` to scope one adapter.
     pub source_event_id: Option<String>,
+    /// Opts into explicit home-page placement metadata. Omit for the legacy-safe catalog shape.
+    pub include_featured: Option<bool>,
+    /// Returns only featured event groups. Requires `include_featured=true`.
+    pub featured_only: Option<bool>,
     /// Optional trading-surface filter.
     pub trading_channel: Option<TradingChannel>,
     #[cfg_attr(feature = "openapi", schema(minimum = 1, maximum = 100))]
@@ -140,6 +144,10 @@ pub struct EventMarket {
     pub resolution_rules: String,
     pub status: MarketStatus,
     pub tradeable: bool,
+    /// Explicit home-page placement for this source event: 1 is left, 3 is right.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "openapi", schema(minimum = 1, maximum = 3))]
+    pub featured_slot: Option<u8>,
     pub category_tags: Vec<String>,
     /// Scheduled time trading may open. This is distinct from actual lifecycle `opened_at_ms`.
     #[cfg_attr(feature = "openapi", schema(required))]
@@ -318,6 +326,8 @@ mod tests {
             market_type: Some(MarketType::from("sports")),
             source: Some("kalshi".to_string()),
             source_event_id: Some("KXGAME-1".to_string()),
+            include_featured: Some(true),
+            featured_only: Some(true),
             trading_channel: Some(TradingChannel::Rfq),
             limit: Some(100),
             cursor: None,
@@ -325,11 +335,22 @@ mod tests {
         };
         let value = serde_json::to_value(&query).unwrap();
         assert_eq!(value["statuses"], "PENDING,OPEN");
+        assert_eq!(value["include_featured"], true);
+        assert_eq!(value["featured_only"], true);
         let parsed: PublicMarketsRawQuery = serde_json::from_value(value).unwrap();
         assert_eq!(
             parsed.market_type.as_ref().map(MarketType::as_str),
             Some("sports")
         );
         assert_eq!(parsed.statuses, query.statuses);
+    }
+
+    #[test]
+    fn event_market_omits_absent_featured_slot() {
+        let mut value = event_json("culture");
+        value["featured_slot"] = serde_json::Value::Null;
+        let market: PublicMarket = serde_json::from_value(value).unwrap();
+        let serialized = serde_json::to_value(market).unwrap();
+        assert!(serialized.get("featured_slot").is_none());
     }
 }

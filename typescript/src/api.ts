@@ -23,7 +23,7 @@ export const MAX_TZ_OFFSET_MINUTES = 840 as const;
 export const MAX_QUESTION_LEGS = 32 as const;
 export const MAX_SUMMARY_STATS = 4 as const;
 export const MAX_ROSTER_SHARE_PICKS = 10 as const;
-export const MAX_CULTURE_SHARE_PICKS = 9 as const;
+export const MAX_EVENT_POSITION_SHARE_PICKS = 9 as const;
 export const MAX_SURVIVOR_SHARE_PICKS = 64 as const;
 export const MAX_SURVIVOR_SHARE_ROUNDS = 30 as const;
 export const MAX_TEXT_LEN = 200 as const;
@@ -412,6 +412,7 @@ export type ExternalOddsSourceStatus = (typeof ExternalOddsSourceStatus)[keyof t
 export const ExternalOddsSourceKind = {
   PolymarketWs: 'clob_ws',
   KalshiRest: 'kalshi_rest',
+  ManifoldRest: 'manifold_rest',
   Cache: 'cache',
   None_: 'none',
 } as const;
@@ -578,6 +579,8 @@ export interface PublicMarketsRawQuery {
   market_type?: MarketType | null;
   source?: string | null;
   source_event_id?: string | null;
+  include_featured?: boolean | null;
+  featured_only?: boolean | null;
   trading_channel?: TradingChannel | null;
   limit?: number | null;
   cursor?: string | null;
@@ -626,6 +629,8 @@ export interface EventMarket {
   resolution_rules?: string;
   status: MarketStatus;
   tradeable: boolean;
+  /** Explicit Home placement shared by this source event: 1 is left, 2 is right. */
+  featured_slot?: number | null;
   category_tags: string[];
   opens_at_ms?: WideInteger | null;
   /** Provider event start, distinct from Longshot's lifecycle `opens_at_ms`. */
@@ -695,28 +700,6 @@ export interface RecentResolutionsResponse {
   resolutions: RecentResolutionEntry[];
 }
 
-export interface TakerPnlQuery {
-  wallet: string;
-}
-
-export interface TakerPnlResponse {
-  wallet: string;
-  stats?: TakerPnlStats | null;
-}
-
-export interface TakerPnlStats {
-  total_pnl_micros: WideInteger;
-  total_positions: number;
-  open_positions: number;
-  wins: number;
-  losses: number;
-}
-
-export interface MaxPayoutConfigResponse {
-  max_binary_event_payout: WideInteger;
-  max_price_strike_payout: WideInteger;
-}
-
 export interface NotificationsRawQuery {
   filter?: string | null;
   limit?: number | null;
@@ -775,6 +758,31 @@ export interface StreakExpiringNotificationPayload {
   expires_at_ms: WideInteger;
 }
 
+export interface NflFeaturedMatchup {
+  game_id: string;
+}
+
+export interface NflParlayLeg {
+  market_id: WideInteger;
+  direction: string;
+}
+
+export interface NflFeaturedParlay {
+  title: string;
+  copy?: string | null;
+  legs: NflParlayLeg[];
+}
+
+export interface NflHubConfigBody {
+  featured_matchups?: NflFeaturedMatchup[];
+  featured_parlay?: NflFeaturedParlay | null;
+  props_enabled: boolean;
+}
+
+export interface NflHubConfigResponse {
+  config: NflHubConfigBody;
+}
+
 export interface BinaryEventWinNotificationPayload {
   position_id: string;
   source?: string | null;
@@ -782,6 +790,8 @@ export interface BinaryEventWinNotificationPayload {
   net_payout_micros: WideInteger;
   multiplier_bps: WideInteger;
   market_title: string;
+  /** Longshot market ids for every leg, so clients can resolve identity (e.g. NFL). Empty/absent on legacy rows. */
+  market_ids?: WideInteger[];
 }
 
 export interface PriceStrikeParlayWinNotificationPayload {
@@ -1213,6 +1223,8 @@ export interface PublicProfileResponse {
   created_at_ms: WideInteger;
   stats: PublicProfileStatsResponse;
   top_ten_finishes: number;
+  follower_count: number;
+  following_count: number;
 }
 
 export interface PublicProfileStatsResponse {
@@ -1287,10 +1299,14 @@ export interface PublicProfileContestOwnerResponse {
   entries: ContestUserEntryResponse[];
 }
 
-export interface PublicProfileContestDetailResponse {
+interface PublicProfileContestDetailResponseSerdeShape {
   contest: PublicContestDetailResponse;
   profile_owner: PublicProfileContestOwnerResponse;
 }
+
+export interface PublicProfileContestDetailResponse
+  extends PublicContestDetailResponse,
+    Omit<PublicProfileContestDetailResponseSerdeShape, 'contest'> {}
 
 export interface PublicProfilePositionSummaryResponse {
   id: string;
@@ -1330,6 +1346,140 @@ export interface PublicProfilePositionDetailResponse {
   legs: LegDetail[];
 }
 
+export interface FollowingRawQuery {
+  limit?: number | null;
+  cursor?: string | null;
+}
+
+export interface CommunityPicksRawQuery {
+  limit?: number | null;
+}
+
+export interface RecentWinnersRawQuery {
+  limit?: number | null;
+}
+
+export interface FollowStatusResponse {
+  following: boolean;
+}
+
+export interface CommunityProfileResponse {
+  handle: string;
+  display_name: string;
+  avatar_seed: number;
+  x_handle?: string | null;
+  x_avatar_url?: string | null;
+  viewer_follows?: boolean | null;
+}
+
+export interface PublicProfileFollowingResponse {
+  profiles: CommunityProfileResponse[];
+  next_cursor?: string | null;
+}
+
+export interface CommunityPickReactionResponse {
+  emoji: string;
+  count: WideInteger;
+  viewer_reacted: boolean;
+}
+
+export interface CommunityPickResponse {
+  creator: CommunityProfileResponse;
+  viewer_follows: boolean;
+  position: PublicProfilePositionDetailResponse;
+  reactions: CommunityPickReactionResponse[];
+}
+
+export interface CommunityPicksResponse {
+  picks: CommunityPickResponse[];
+  copy_fee_bps: number;
+  market_images?: Record<string, string | null>;
+  market_contexts?: Record<string, MarketDisplayContextResponse>;
+}
+
+export interface SportsMarketDisplayContextResponse {
+  league: string;
+  product: string;
+  game_id: string;
+  away_team: string;
+  home_team: string;
+  kickoff_at_ms?: WideInteger | null;
+}
+
+export interface PriceMarketDisplayContextResponse {
+  asset: string;
+  window_start_ms?: WideInteger | null;
+  duration_secs?: number | null;
+  settled_change_bps?: number | null;
+}
+
+export interface MarketDisplayContextResponse {
+  source?: string | null;
+  source_event_id?: string | null;
+  event_slug?: string | null;
+  event_title?: string | null;
+  image_url?: string | null;
+  sports?: SportsMarketDisplayContextResponse | null;
+  price?: PriceMarketDisplayContextResponse | null;
+}
+
+export interface RecentMarketWinnerDetailRefResponse {
+  handle: string;
+  position_id: string;
+}
+
+export interface RecentContestWinnerDetailRefResponse {
+  handle: string;
+  contest_id: string;
+  entry_index: number;
+}
+
+export const RecentMarketWinnerEntryTypeResponse = {
+  Single: 'single',
+  Combo: 'combo',
+} as const;
+export type RecentMarketWinnerEntryTypeResponse =
+  (typeof RecentMarketWinnerEntryTypeResponse)[keyof typeof RecentMarketWinnerEntryTypeResponse];
+
+export type RecentWinnerResponse =
+  | {
+      type: 'market';
+      winner_id: string;
+      settled_at_ms: WideInteger;
+      profile: CommunityProfileResponse;
+      entry_type: RecentMarketWinnerEntryTypeResponse;
+      multiplier_bps: WideInteger;
+      position: PublicProfilePositionDetailResponse;
+      detail_ref: RecentMarketWinnerDetailRefResponse;
+      market_contexts?: Record<string, MarketDisplayContextResponse>;
+    }
+  | {
+      type: 'contest';
+      winner_id: string;
+      settled_at_ms: WideInteger;
+      profile: CommunityProfileResponse;
+      contest_id: string;
+      entry_index: number;
+      title: string;
+      category: string;
+      game_type: ContestGameTypeResponse;
+      contest: PublicProfileContestDetailResponse;
+      detail_ref: RecentContestWinnerDetailRefResponse;
+      image_url: string | null;
+      stake_micros: string | number;
+      payout_micros: string | number;
+      net_payout_micros: string | number;
+      pnl_micros: string | number;
+      rank: number | null;
+      resolved_win_count: number;
+      selection_count: number;
+      roster_final_points_milli: string | number | null;
+    };
+
+export interface RecentWinnersResponse {
+  winners: RecentWinnerResponse[];
+}
+
 export interface UpdateProfileRequest {
   handle?: string | null;
   display_name?: string | null;
@@ -1347,7 +1497,6 @@ export interface CheckHandleResponse {
 export interface CreateSessionRequest {
   privy_token: string;
   auth_wallet_address?: string | null;
-  invite_code?: string | null;
   referral_code?: string | null;
 }
 
@@ -1355,12 +1504,7 @@ export interface WalletAuthRequest {
   address: string;
   signature: string;
   signed_at_ms: WideInteger;
-  invite_code?: string | null;
   referral_code?: string | null;
-}
-
-export interface VerifyInviteCodeRequest {
-  code: string;
 }
 
 export interface ChatPostMessageRequest {
@@ -1431,34 +1575,6 @@ export interface PlaceContestBetRequest {
 export interface UserDepositRequest {
   amount_micros: WideInteger;
   idempotency_key: string;
-}
-
-export interface UserAppTokenDepositRequest {
-  token_id: string;
-  amount_micros: WideInteger;
-  idempotency_key: string;
-}
-
-export interface UserGrantAppTokenRequest {
-  user_id: string;
-  token_config: UserAppTokenConfigRequest;
-  amount_micros: WideInteger;
-  idempotency_key: string;
-}
-
-export interface UserFundedGrantAppTokenRequest {
-  user_id: string;
-  token_config: UserAppTokenConfigRequest;
-  amount_micros: WideInteger;
-  idempotency_key: string;
-}
-
-export interface UserAppTokenConfigRequest {
-  expiry_secs: WideInteger;
-  category: string;
-  min_legs: WideInteger;
-  max_legs: WideInteger;
-  max_amount_per_bet_micros: WideInteger;
 }
 
 export interface UserDepositVaultRequest {
@@ -1553,6 +1669,13 @@ export interface SignedOrderJson {
   signature: string;
 }
 
+export type CommunityPickMode = 'tail' | 'fade';
+
+export interface CommunityPickRequest {
+  source_position_id: PositionId;
+  mode: CommunityPickMode;
+}
+
 export interface CreateRfqRequest {
   order: SignedOrderJson;
   use_app_tokens: boolean;
@@ -1571,6 +1694,7 @@ export interface CreateUnsignedRfqRequest {
   privy_token: string;
   use_app_tokens: boolean;
   rfq_params: UnsignedRfqOrderRequest;
+  community_pick?: CommunityPickRequest | null;
 }
 
 export interface ParsedOrderLeg {
@@ -1608,8 +1732,6 @@ export interface SessionResponse {
   expires_at: WideInteger;
   account_created?: boolean;
   onboarding_completed?: boolean;
-  signup_access_code?: string | null;
-  signup_access_code_type?: string | null;
 }
 
 export const RfqStatus = {
@@ -1678,16 +1800,6 @@ export interface BalanceOperationStatusResponse {
 export type DepositOperationResponse = UserDepositResponse | BalanceOperationStatusResponse;
 
 export type WithdrawOperationResponse = UserWithdrawResponse | BalanceOperationStatusResponse;
-
-export interface UserGrantAppTokenResponse {
-  user_id: string;
-  token_id: string;
-  amount_micros: string | number;
-  operation_id: string;
-  tx_hash: string;
-}
-
-export type GrantAppTokenOperationResponse = UserGrantAppTokenResponse | BalanceOperationStatusResponse;
 
 export interface UserRequestWithdrawalVaultResponse {
   queued: boolean;
@@ -1859,41 +1971,63 @@ export interface ReservedBalanceResponse {
   reserved_micros: string | number;
 }
 
-export interface AvailableAppTokenBalanceResponse {
-  available_app_token_micros: string | number;
-}
-
-export interface ReservedAppTokenBalanceResponse {
-  reserved_app_token_micros: string | number;
-}
-
-export const AppTokenGrantCategoryResponse = {
-  Any: 'any',
-  PriceStrike: 'price_strike',
-  BinaryEvent: 'binary_event',
+export const UserTransactionCategory = {
+  Deposit: 'deposit',
+  Withdrawal: 'withdrawal',
+  Credits: 'credits',
+  Market: 'market',
   Contest: 'contest',
-  Markets: 'markets',
 } as const;
-export type AppTokenGrantCategoryResponse = (typeof AppTokenGrantCategoryResponse)[keyof typeof AppTokenGrantCategoryResponse];
+export type UserTransactionCategory =
+  (typeof UserTransactionCategory)[keyof typeof UserTransactionCategory];
 
-export interface UserAppTokenGrantResponse {
-  grant_id: string;
-  app_token_id?: string | null;
-  expires_at_ms: WideInteger;
-  category: AppTokenGrantCategoryResponse;
-  min_legs: number;
-  max_legs: number;
-  max_amount_per_bet_micros: string | number;
-  unclaimed_micros: string | number;
-  available_micros: string | number;
-  reserved_micros: string | number;
-  consumed_micros: string | number;
-  expired: boolean;
+export const UserTransactionStatus = {
+  Completed: 'completed',
+  Pending: 'pending',
+  Failed: 'failed',
+  Expired: 'expired',
+  Entered: 'entered',
+  Won: 'won',
+} as const;
+export type UserTransactionStatus =
+  (typeof UserTransactionStatus)[keyof typeof UserTransactionStatus];
+
+export const UserTransactionUnit = {
+  Usdc: 'usdc',
+  Credits: 'credits',
+} as const;
+export type UserTransactionUnit =
+  (typeof UserTransactionUnit)[keyof typeof UserTransactionUnit];
+
+export const UserTransactionFunding = {
+  Cash: 'cash',
+  Credits: 'credits',
+  CashAndCredits: 'cash_and_credits',
+} as const;
+export type UserTransactionFunding =
+  (typeof UserTransactionFunding)[keyof typeof UserTransactionFunding];
+
+export interface UserTransactionResponse {
+  id: string;
+  category: UserTransactionCategory;
+  title: string;
+  detail?: string | null;
+  status: UserTransactionStatus;
+  occurred_at_ms: WideInteger;
+  amount_micros: string | number;
+  unit: UserTransactionUnit;
+  funding?: UserTransactionFunding | null;
+  network?: string | null;
+  wallet_address?: string | null;
+  tx_hash?: string | null;
+  source?: string | null;
+  expires_at_ms?: WideInteger | null;
+  reason?: string | null;
+  reference?: string | null;
 }
 
-export interface UserAppTokenGrantsResponse {
-  grants: UserAppTokenGrantResponse[];
-  has_more: boolean;
+export interface UserTransactionsResponse {
+  items: UserTransactionResponse[];
   next_cursor?: string | null;
 }
 
@@ -1918,31 +2052,6 @@ export interface FeeScheduleResponse {
   bonding_spot_fee_bps: number;
   shield_fee_multiplier: number;
   tiers: TierFeeRate[];
-}
-
-export interface WithdrawalPolicyResponse {
-  withdrawals_enabled: boolean;
-  reason?: string | null;
-  disabled_by_tripwire: boolean;
-  updated_at_ms?: WideInteger | null;
-  updated_by?: string | null;
-}
-
-export interface BettingPolicyResponse {
-  betting_enabled: boolean;
-  reason?: string | null;
-  updated_at_ms?: WideInteger | null;
-  updated_by?: string | null;
-}
-
-export interface SignupPolicyResponse {
-  invite_required: boolean;
-  updated_at_ms?: WideInteger | null;
-  updated_by?: string | null;
-}
-
-export interface InviteCodeVerifyResponse {
-  valid: boolean;
 }
 
 export interface PlaceContestBetResponse {
@@ -2067,6 +2176,7 @@ export interface PublicContestSummaryResponse {
 
 export interface ContestCallerSummaryResponse {
   joined: boolean;
+  entry_count?: number;
 }
 
 export interface CallerContestSummaryResponse {
@@ -2076,6 +2186,9 @@ export interface CallerContestSummaryResponse {
 
 export interface ContestLobbySummaryResponse {
   summary: CallerContestSummaryResponse;
+  /** Marker-free public display copy, capped at 160 characters. */
+  description?: string | null;
+  max_entries_per_player?: number;
   protocol_prize_pool_pays_app_tokens: boolean;
 }
 
@@ -2419,15 +2532,6 @@ export interface UserReferralsListResponse {
   total_count: WideInteger;
 }
 
-export interface HealthResponse {
-  status: string;
-  git_sha: string;
-}
-
-export interface ReadyzResponse {
-  status: string;
-}
-
 export interface ErrorResponse {
   error: string;
   code: string;
@@ -2641,44 +2745,56 @@ export interface SurvivorShareCard {
   footer: ShareCardFooter;
 }
 
-export const CultureShareState = {
+export const EventPositionShareState = {
   Active: 'active',
   Live: 'live',
   Won: 'won',
   Lost: 'lost',
   Voided: 'voided',
 } as const;
-export type CultureShareState = (typeof CultureShareState)[keyof typeof CultureShareState];
+export type EventPositionShareState = (typeof EventPositionShareState)[keyof typeof EventPositionShareState];
 
-export const CultureSharePickGrade = {
+export const EventPositionSharePickGrade = {
   Pending: 'pending',
   Correct: 'correct',
   Incorrect: 'incorrect',
   Voided: 'voided',
 } as const;
-export type CultureSharePickGrade =
-  (typeof CultureSharePickGrade)[keyof typeof CultureSharePickGrade];
+export type EventPositionSharePickGrade =
+  (typeof EventPositionSharePickGrade)[keyof typeof EventPositionSharePickGrade];
 
-export interface CultureSharePick {
+export interface EventPositionSharePick {
   market_id: WideInteger;
   label: string;
   side: string;
-  grade: CultureSharePickGrade;
+  grade: EventPositionSharePickGrade;
   odds_label?: string | null;
   result?: string | null;
+  /** NFL only: team tricode for the pick's chip (game-wide markets omit it). */
+  team_abbr?: string | null;
 }
 
-export interface CultureShareCard {
+export interface EventPositionShareCard {
   position_id: string;
-  state?: CultureShareState;
+  tz_offset_minutes?: number | null;
+  market_kind?: string | null;
+  state?: EventPositionShareState;
   title?: string;
   meta_label?: string | null;
   market_image?: ShareImageRef | null;
-  picks?: CultureSharePick[];
+  picks?: EventPositionSharePick[];
   wager_label?: string;
   multiplier_label?: string;
   payout_label?: string | null;
+  /** NFL only: matchup identity for team chips + combo/prediction heading. */
+  nfl?: NflShareMeta | null;
   footer: ShareCardFooter;
+}
+
+export interface NflShareMeta {
+  away_abbr: string;
+  home_abbr: string;
+  combo?: boolean;
 }
 
 export type ShareCardSnapshot =
@@ -2688,7 +2804,7 @@ export type ShareCardSnapshot =
   | ({type: 'markets'} & MarketsShareCard)
   | ({type: 'roster'} & RosterShareCard)
   | ({type: 'survivor'} & SurvivorShareCard)
-  | ({type: 'culture'} & CultureShareCard);
+  | ({type: 'event_position'} & EventPositionShareCard);
 
 export interface CreateShareCardResponse {
   id: string;
@@ -2777,7 +2893,10 @@ export interface PlaceStreakPickResponse {
   picked_at_ms: WideInteger;
 }
 
-export interface AppTokenGrantsRawQuery {
+export interface UserTransactionsRawQuery {
+  category?: string | null;
+  from_ms?: string | null;
+  to_ms?: string | null;
   limit?: number | null;
   cursor?: string | null;
 }
@@ -2984,27 +3103,6 @@ export interface MarketCategoryVisibilityResponse {
 
 export interface UserFeaturesResponse {
   markets_access: boolean;
-}
-
-export const DepositMatchSourceResponse = {
-  AdminGrant: 'admin_grant',
-  Referral: 'referral',
-  Internal: 'internal',
-} as const;
-export type DepositMatchSourceResponse = (typeof DepositMatchSourceResponse)[keyof typeof DepositMatchSourceResponse];
-
-export interface UserDepositMatchOpportunityResponse {
-  opportunity_id: string;
-  match_limit_micros: string | number;
-  matched_micros: string | number;
-  source: DepositMatchSourceResponse;
-  created_at_ms: WideInteger;
-  expires_at_ms: WideInteger;
-}
-
-export interface UserDepositMatchOpportunitiesResponse {
-  opportunities: UserDepositMatchOpportunityResponse[];
-  total_available_micros: string | number;
 }
 
 export interface ChatMarketRoomResponse {

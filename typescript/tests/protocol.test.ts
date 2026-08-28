@@ -17,6 +17,7 @@ import {
   Odds,
   OrderType,
   QuoteResponse,
+  QuoteDeclineReason,
   RequestId,
   RfqLeg,
   RfqLegWire,
@@ -56,9 +57,10 @@ import {
   signedQuoteResponse,
   stringifySerde,
   toSerdeValue,
-  type ClientMessage,
+  ClientMessage,
   type ConfirmPositionQuery,
-  type CultureShareCard,
+  type EventPositionShareCard,
+  type EventMarket,
   type EventMarketSource,
   type FeedEventWithLegsResponse,
   type MarketLookupQuery,
@@ -67,6 +69,8 @@ import {
   type PositionSummary,
   type RecentResolutionEntry,
   type SurvivorShareCard,
+  type UserTransactionsRawQuery,
+  type UserTransactionsResponse,
   unsignedRfqOrderRequestToSignedOrderForSession,
 } from "../src/index.js";
 import { OrderLeg, signOrder, signedOrder } from "../src/taker.js";
@@ -92,6 +96,31 @@ test("public JSON boundary preserves unsafe API integers", () => {
   assert.throws(() => decodeApiJson("{}", "MissingSchema"), SerdeDecodeError);
 });
 
+test("user transactions preserve wire amounts and query strictness", () => {
+  const response = decodeApiJson<UserTransactionsResponse>(
+    '{"items":[{"id":"ledger-event","category":"withdrawal","title":"Withdrawal","status":"completed","occurred_at_ms":1700000000000,"amount_micros":"-9007199254740993","unit":"usdc","tx_hash":"0xabc"}],"next_cursor":null}',
+    "UserTransactionsResponse",
+  );
+  assert.equal(response.items[0]?.amount_micros, "-9007199254740993");
+  assert.equal(response.items[0]?.category, "withdrawal");
+  assert.equal(response.next_cursor, null);
+
+  const query: UserTransactionsRawQuery = {
+    category: "withdrawal",
+    from_ms: "1",
+    to_ms: "2",
+    limit: 25,
+  };
+  assert.deepEqual(
+    decodeApiJson<UserTransactionsRawQuery>(JSON.stringify(query), "UserTransactionsRawQuery"),
+    query,
+  );
+  assert.throws(
+    () => decodeApiJson('{"limit":25,"unexpected":true}', "UserTransactionsRawQuery"),
+    SerdeDecodeError,
+  );
+});
+
 test("client query DTOs enforce required semantic route values", () => {
   const marketQuery: MarketLookupQuery = {
     asset: "BTC",
@@ -110,7 +139,6 @@ test("client query DTOs enforce required semantic route values", () => {
     "MarketLookupQuery",
     "MarketCurrentQuery",
     "TopOfBookHistoryQuery",
-    "TakerPnlQuery",
     "PositionsByMarketsQuery",
     "ConfirmPositionQuery",
     "VaultIdQuery",
@@ -220,6 +248,33 @@ test("API decoder materializes Rust map, wire-integer, and enum defaults", () =>
   );
   assert.deepEqual(source.attributes, {});
 
+  const featuredMarketWire = {
+    id: 42,
+    market_type: "culture",
+    trading_channels: ["rfq"],
+    chat_id: "culture-event",
+    name: "Culture event",
+    status: "OPEN",
+    tradeable: true,
+    featured_slot: 2,
+    category_tags: ["culture"],
+    betting_closes_at_ms: 1_000,
+    resolution_time_ms: 2_000,
+    created_at_ms: 500,
+    source: { source: "kalshi", source_market_ids: ["KX-1"] },
+  };
+  const featuredMarket = decodeApiJson<EventMarket>(
+    JSON.stringify(featuredMarketWire),
+    "EventMarket",
+  );
+  assert.equal(featuredMarket.featured_slot, 2);
+  const legacySafeMarketWire = { ...featuredMarketWire, featured_slot: undefined };
+  const legacySafeMarket = decodeApiJson<EventMarket>(
+    JSON.stringify(legacySafeMarketWire),
+    "EventMarket",
+  );
+  assert.equal(legacySafeMarket.featured_slot, undefined);
+
   const position = decodeApiJson<PositionSummary>(
     JSON.stringify({
       id: "position",
@@ -267,11 +322,11 @@ test("API decoder materializes Rust map, wire-integer, and enum defaults", () =>
     { state: "pre", contest_type: "free", presentation: "daily" },
   );
 
-  const culture = decodeApiJson<CultureShareCard>(
+  const eventPosition = decodeApiJson<EventPositionShareCard>(
     JSON.stringify({ position_id: "position", footer }),
-    "CultureShareCard",
+    "EventPositionShareCard",
   );
-  assert.equal(culture.state, "active");
+  assert.equal(eventPosition.state, "active");
 });
 
 test("API decoder requires nullable fields that Rust serde requires", () => {
@@ -324,6 +379,21 @@ test("schema decoder accepts Rust unit enums with explicit discriminants", () =>
     decodeApiJson<ClientMessage>(JSON.stringify(subscribe), "ClientMessage"),
     subscribe,
   );
+});
+
+test("quote decline preserves the typed request ID and closed reason", () => {
+  const decline = ClientMessage.quoteDecline(
+    requestId(),
+    QuoteDeclineReason.SportsCombinationUnsupported,
+  );
+  const wire = {
+    type: "quote_decline",
+    request_id: "00112233-4455-6677-8899-aabbccddeeff",
+    reason: "sports_combination_unsupported",
+  };
+
+  assert.deepEqual(decline, wire);
+  assert.deepEqual(decodeApiJson(JSON.stringify(wire), "ClientMessage"), wire);
 });
 
 type FixtureRfqLeg = {

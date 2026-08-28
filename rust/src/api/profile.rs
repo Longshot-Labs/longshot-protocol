@@ -68,6 +68,10 @@ pub struct PublicProfileResponse {
     pub stats: PublicProfileStatsResponse,
     /// Settled, non-refunded rank 1-10 entries, excluding Outcast.
     pub top_ten_finishes: i32,
+    /// Visible profiles following this user.
+    pub follower_count: u32,
+    /// Visible profiles this user follows.
+    pub following_count: u32,
 }
 
 /// Public profile portfolio statistics.

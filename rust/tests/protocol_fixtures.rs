@@ -11,7 +11,7 @@ use longshot_protocol::types::{
     RequestId, RfqLeg, RfqRequest, TakerMetadata, UserId, UserTier, MAX_RFQ_LEGS,
     RFQ_PROTOCOL_VERSION,
 };
-use longshot_protocol::ws::ClientMessage;
+use longshot_protocol::ws::{ClientMessage, QuoteDeclineReason};
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
@@ -52,6 +52,31 @@ fn rfq_leg(row: &Value) -> RfqLeg {
         2 => RfqLeg::new_binary_event(market_id, start_at_ms, direction, leg_index),
         tag => panic!("unsupported RFQ leg type tag {tag}"),
     }
+}
+
+#[test]
+fn quote_decline_uses_typed_request_id_and_closed_reason() {
+    let message = ClientMessage::QuoteDecline {
+        request_id: request_id(),
+        reason: QuoteDeclineReason::SportsCombinationUnsupported,
+    };
+
+    let json = serde_json::to_value(&message).unwrap();
+    assert_eq!(
+        json,
+        serde_json::json!({
+            "type": "quote_decline",
+            "request_id": "00112233-4455-6677-8899-aabbccddeeff",
+            "reason": "sports_combination_unsupported",
+        })
+    );
+    assert!(matches!(
+        serde_json::from_value::<ClientMessage>(json).unwrap(),
+        ClientMessage::QuoteDecline {
+            request_id: parsed_request_id,
+            reason: QuoteDeclineReason::SportsCombinationUnsupported,
+        } if parsed_request_id == request_id()
+    ));
 }
 
 #[test]

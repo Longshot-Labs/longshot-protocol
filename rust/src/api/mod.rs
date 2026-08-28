@@ -1,12 +1,14 @@
 //! Public Longshot HTTP API request and response contracts.
 
 pub mod chat;
+pub mod community;
 pub mod contests;
 pub mod feed;
 pub mod leaderboard;
 pub mod market_data;
 pub mod markets;
 pub mod mm_intel;
+pub mod nfl_hub;
 pub mod notifications;
 pub mod pool_images;
 pub mod portfolio;
@@ -22,12 +24,14 @@ pub mod web_push;
 pub(crate) mod wire_int;
 
 pub use chat::*;
+pub use community::*;
 pub use contests::*;
 pub use feed::*;
 pub use leaderboard::*;
 pub use market_data::*;
 pub use markets::*;
 pub use mm_intel::*;
+pub use nfl_hub::*;
 pub use notifications::*;
 pub use pool_images::*;
 pub use portfolio::*;

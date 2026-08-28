@@ -30,8 +30,8 @@ pub const MAX_TZ_OFFSET_MINUTES: i16 = 14 * 60;
 pub const MAX_SUMMARY_STATS: usize = 4;
 /// Upper bound on the number of picks on a roster card (one per tier).
 pub const MAX_ROSTER_SHARE_PICKS: usize = 10;
-/// Upper bound on the number of child-market picks on a culture card.
-pub const MAX_CULTURE_SHARE_PICKS: usize = 9;
+/// Upper bound on the number of child-market picks on an Event position card.
+pub const MAX_EVENT_POSITION_SHARE_PICKS: usize = 9;
 /// Maximum total number of Survivor pick images rendered on one share card.
 pub const MAX_SURVIVOR_SHARE_PICKS: usize = 64;
 /// Share-card rendering limit for Survivor rounds. This does not constrain the
@@ -447,7 +447,7 @@ pub struct SurvivorShareCard {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
-pub enum CultureShareState {
+pub enum EventPositionShareState {
     #[default]
     Active,
     Live,
@@ -459,7 +459,7 @@ pub enum CultureShareState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
-pub enum CultureSharePickGrade {
+pub enum EventPositionSharePickGrade {
     Pending,
     Correct,
     Incorrect,
@@ -468,32 +468,45 @@ pub enum CultureSharePickGrade {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct CultureSharePick {
+pub struct EventPositionSharePick {
     /// Canonical Longshot child-market id.
     pub market_id: u64,
     /// Concise outcome label from the child market.
     pub label: String,
     /// The user's selected side (`yes` or `no`).
     pub side: String,
-    pub grade: CultureSharePickGrade,
-    /// Current selected-side decimal odds for an unsettled multi-outcome card.
+    pub grade: EventPositionSharePickGrade,
+    /// Current selected-side decimal odds used by unsettled multi-outcome
+    /// cards when the canonical market source exposes a probability.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub odds_label: Option<String>,
     /// Factual settled result (`Yes`, `No`, or `Voided`); absent while pending.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result: Option<String>,
+    /// NFL only: team tricode for the pick's chip (game-wide markets omit it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub team_abbr: Option<String>,
 }
 
-/// Culture Event-position share card.
+/// Event-position share card for Culture, Mentions, and Sports markets.
 ///
-/// On create, clients submit only `position_id` and `footer`; the API derives
-/// and overwrites every remaining field from the authenticated user's position.
+/// On create, clients submit only `position_id`, `tz_offset_minutes`, and
+/// `footer`. Every remaining field is overwritten from the authenticated
+/// user's stored position and its canonical market rows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct CultureShareCard {
+pub struct EventPositionShareCard {
     pub position_id: String,
+    /// Sharer's local UTC offset in minutes. This is a render hint for time
+    /// labels, such as an NFL kickoff. Absent values use US Eastern.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tz_offset_minutes: Option<i16>,
+    /// Server-derived event vertical (`culture`, `mentions`, or `sports`).
+    /// Historical cards can predate this field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub market_kind: Option<String>,
     #[serde(default)]
-    pub state: CultureShareState,
+    pub state: EventPositionShareState,
     #[serde(default)]
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -501,14 +514,27 @@ pub struct CultureShareCard {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub market_image: Option<ShareImageRef>,
     #[serde(default)]
-    pub picks: Vec<CultureSharePick>,
+    pub picks: Vec<EventPositionSharePick>,
     #[serde(default)]
     pub wager_label: String,
     #[serde(default)]
     pub multiplier_label: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub payout_label: Option<String>,
+    /// NFL only: matchup identity for team chips + combo/prediction heading.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nfl: Option<NflShareMeta>,
     pub footer: ShareCardFooter,
+}
+
+/// NFL-card matchup identity (only present when `market_kind == "sports"`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct NflShareMeta {
+    pub away_abbr: String,
+    pub home_abbr: String,
+    #[serde(default)]
+    pub combo: bool,
 }
 
 /// The tagged snapshot union persisted per share card.
@@ -522,7 +548,7 @@ pub enum ShareCardSnapshot {
     Markets(MarketsShareCard),
     Roster(RosterShareCard),
     Survivor(SurvivorShareCard),
-    Culture(CultureShareCard),
+    EventPosition(EventPositionShareCard),
 }
 
 #[derive(Debug, Serialize)]
@@ -542,7 +568,7 @@ impl ShareCardSnapshot {
             ShareCardSnapshot::Markets(_) => "markets",
             ShareCardSnapshot::Roster(_) => "roster",
             ShareCardSnapshot::Survivor(_) => "survivor",
-            ShareCardSnapshot::Culture(_) => "culture",
+            ShareCardSnapshot::EventPosition(_) => "event_position",
         }
     }
 
@@ -728,13 +754,18 @@ impl ShareCardSnapshot {
                 check_summary(&c.summary)?;
                 check_footer(&c.footer)?;
             }
-            ShareCardSnapshot::Culture(c) => {
+            ShareCardSnapshot::EventPosition(c) => {
                 check_contest_id(&c.position_id).map_err(|_| "position_id")?;
+                if let Some(tz) = c.tz_offset_minutes {
+                    if tz.unsigned_abs() > MAX_TZ_OFFSET_MINUTES as u16 {
+                        return Err("tz_offset_minutes");
+                    }
+                }
                 check_text(&c.title, "title")?;
                 if let Some(meta_label) = &c.meta_label {
                     check_text(meta_label, "meta_label")?;
                 }
-                if c.picks.len() > MAX_CULTURE_SHARE_PICKS {
+                if c.picks.len() > MAX_EVENT_POSITION_SHARE_PICKS {
                     return Err("picks");
                 }
                 for pick in &c.picks {
@@ -751,10 +782,10 @@ impl ShareCardSnapshot {
                 }
                 check_text(&c.wager_label, "wager_label")?;
                 check_text(&c.multiplier_label, "multiplier_label")?;
+                check_footer(&c.footer)?;
                 if let Some(payout_label) = &c.payout_label {
                     check_text(payout_label, "payout_label")?;
                 }
-                check_footer(&c.footer)?;
             }
         }
         Ok(())
@@ -794,10 +825,12 @@ mod tests {
     }
 
     #[test]
-    fn culture_snapshot_round_trips_with_type_tag() {
-        let snap = ShareCardSnapshot::Culture(CultureShareCard {
+    fn event_position_snapshot_round_trips_with_type_tag() {
+        let mut snap = ShareCardSnapshot::EventPosition(EventPositionShareCard {
             position_id: Uuid::nil().to_string(),
-            state: CultureShareState::Active,
+            tz_offset_minutes: Some(-300),
+            market_kind: None,
+            state: EventPositionShareState::Active,
             title: String::new(),
             meta_label: None,
             market_image: None,
@@ -805,14 +838,26 @@ mod tests {
             wager_label: String::new(),
             multiplier_label: String::new(),
             payout_label: None,
+            nfl: None,
             footer: footer(),
         });
         let json = serde_json::to_string(&snap).expect("serialize");
-        assert!(json.contains("\"type\":\"culture\""));
+        assert!(json.contains("\"type\":\"event_position\""));
+        assert!(json.contains("\"tz_offset_minutes\":-300"));
         let back: ShareCardSnapshot = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, snap);
-        assert_eq!(snap.type_str(), "culture");
+        assert_eq!(snap.type_str(), "event_position");
         snap.validate().expect("valid");
+        assert!(serde_json::from_str::<ShareCardSnapshot>(
+            &json.replace("event_position", "culture")
+        )
+        .is_err());
+
+        let ShareCardSnapshot::EventPosition(card) = &mut snap else {
+            unreachable!("event-position snapshot changed variant")
+        };
+        card.tz_offset_minutes = Some(MAX_TZ_OFFSET_MINUTES + 1);
+        assert_eq!(snap.validate(), Err("tz_offset_minutes"));
     }
 
     #[test]

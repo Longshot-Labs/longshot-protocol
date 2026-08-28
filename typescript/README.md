@@ -1,12 +1,11 @@
 # Longshot Protocol for TypeScript
 
-Standalone TypeScript contracts and deterministic Longshot protocol helpers.
+TypeScript contracts and deterministic Longshot protocol helpers.
 The package contains no HTTP, SSE, or WebSocket transport client.
 
-The shared [custom client protocol guide](../CUSTOM_CLIENTS.md) documents wallet
-authentication, signed RFQs, MM WebSocket messages, withdrawals, configuration,
-and server-owned validation. The runnable example is
-[`examples/custom-client.ts`](examples/custom-client.ts).
+```bash
+npm install longshot-protocol@0.2.0
+```
 
 ## Lossless API JSON
 
@@ -77,10 +76,3 @@ Valid HTTP odds are greater than `1.0x` and no greater than the protocol maximum
 When a DTO is converted into a signed order, its decimal odds are multiplied by
 10,000 and `.5` ties round upward—Rust's half-away-from-zero rule on the valid
 domain. For example, `2.00005` becomes `20_001` basis points.
-
-Run the package tests from this directory:
-
-```bash
-npm install
-npm test
-```

@@ -41,7 +41,7 @@ MAX_TZ_OFFSET_MINUTES = 14 * 60
 MAX_QUESTION_LEGS = 32
 MAX_SUMMARY_STATS = 4
 MAX_ROSTER_SHARE_PICKS = 10
-MAX_CULTURE_SHARE_PICKS = 9
+MAX_EVENT_POSITION_SHARE_PICKS = 9
 MAX_SURVIVOR_SHARE_PICKS = 64
 MAX_SURVIVOR_SHARE_ROUNDS = 30
 MAX_TEXT_LEN = 200
@@ -457,6 +457,7 @@ class ExternalOddsSourceStatus(RustStringEnum):
 class ExternalOddsSourceKind(RustStringEnum):
     PolymarketWs = "clob_ws"
     KalshiRest = "kalshi_rest"
+    ManifoldRest = "manifold_rest"
     Cache = "cache"
     None_ = "none"
 
@@ -620,6 +621,8 @@ class PublicMarketsRawQuery(LongshotModel):
     market_type: Optional[MarketType] = None
     source: Optional[str] = None
     source_event_id: Optional[str] = None
+    include_featured: Optional[bool] = None
+    featured_only: Optional[bool] = None
     trading_channel: Optional[TradingChannel] = None
     limit: Optional[int] = None
     cursor: Optional[str] = None
@@ -655,7 +658,7 @@ class PriceStrikeMarket(LongshotModel):
 
 @dataclass
 class EventMarket(LongshotModel):
-    __serde_skip_none__ = set(["image_url"])
+    __serde_skip_none__ = set(["featured_slot", "image_url"])
     id: Optional[MarketId] = None
     market_type: Optional[MarketType] = None
     trading_channels: Optional[List[TradingChannel]] = None
@@ -665,6 +668,8 @@ class EventMarket(LongshotModel):
     resolution_rules: Optional[str] = None
     status: Optional[MarketStatus] = None
     tradeable: Optional[bool] = None
+    # Explicit Home placement shared by this source event: 1 is left, 2 is right.
+    featured_slot: Optional[int] = None
     category_tags: Optional[List[str]] = None
     opens_at_ms: Optional[int] = None
     # Provider event start, distinct from Longshot's lifecycle opens_at_ms.
@@ -748,26 +753,29 @@ class RecentResolutionsResponse(LongshotModel):
     resolutions: Optional[List[RecentResolutionEntry]] = None
 
 @dataclass
-class TakerPnlQuery(LongshotModel):
-    wallet: Optional[str] = None
+class NflFeaturedMatchup(LongshotModel):
+    game_id: Optional[str] = None
 
 @dataclass
-class TakerPnlResponse(LongshotModel):
-    wallet: Optional[str] = None
-    stats: Optional[TakerPnlStats] = None
+class NflParlayLeg(LongshotModel):
+    market_id: Optional[int] = None
+    direction: Optional[str] = None
 
 @dataclass
-class TakerPnlStats(LongshotModel):
-    total_pnl_micros: Optional[int] = None
-    total_positions: Optional[int] = None
-    open_positions: Optional[int] = None
-    wins: Optional[int] = None
-    losses: Optional[int] = None
+class NflFeaturedParlay(LongshotModel):
+    title: Optional[str] = None
+    copy: Optional[str] = None
+    legs: Optional[List[NflParlayLeg]] = None
 
 @dataclass
-class MaxPayoutConfigResponse(LongshotModel):
-    max_binary_event_payout: Optional[int] = None
-    max_price_strike_payout: Optional[int] = None
+class NflHubConfigBody(LongshotModel):
+    featured_matchups: Optional[List[NflFeaturedMatchup]] = None
+    featured_parlay: Optional[NflFeaturedParlay] = None
+    props_enabled: Optional[bool] = None
+
+@dataclass
+class NflHubConfigResponse(LongshotModel):
+    config: Optional[NflHubConfigBody] = None
 
 @dataclass
 class NotificationsRawQuery(LongshotModel):
@@ -895,12 +903,14 @@ class StreakExpiringNotificationPayload(LongshotModel):
 @dataclass
 class BinaryEventWinNotificationPayload(LongshotModel):
     __serde_skip_none__ = set(["source","event_id"])
+    __serde_skip_empty__ = set(["market_ids"])
     position_id: Optional[str] = None
     source: Optional[str] = None
     event_id: Optional[str] = None
     net_payout_micros: Optional[int] = None
     multiplier_bps: Optional[int] = None
     market_title: Optional[str] = None
+    market_ids: Optional[List[int]] = None
 
 @dataclass
 class PriceStrikeParlayWinNotificationPayload(LongshotModel):
@@ -1342,6 +1352,8 @@ class PublicProfileResponse(LongshotModel):
     created_at_ms: Optional[int] = None
     stats: Optional[PublicProfileStatsResponse] = None
     top_ten_finishes: Optional[int] = None
+    follower_count: Optional[int] = None
+    following_count: Optional[int] = None
 
 @dataclass
 class PublicProfileStatsResponse(LongshotModel):
@@ -1464,6 +1476,129 @@ class PublicProfilePositionDetailResponse(LongshotModel):
     legs: Optional[List[LegDetail]] = None
 
 @dataclass
+class FollowingRawQuery(LongshotModel):
+    limit: Optional[int] = None
+    cursor: Optional[str] = None
+
+@dataclass
+class CommunityPicksRawQuery(LongshotModel):
+    limit: Optional[int] = None
+
+@dataclass
+class RecentWinnersRawQuery(LongshotModel):
+    limit: Optional[int] = None
+
+@dataclass
+class FollowStatusResponse(LongshotModel):
+    following: Optional[bool] = None
+
+@dataclass
+class CommunityProfileResponse(LongshotModel):
+    __serde_skip_none__ = set(["viewer_follows", "x_avatar_url", "x_handle"])
+    handle: Optional[str] = None
+    display_name: Optional[str] = None
+    avatar_seed: Optional[int] = None
+    x_handle: Optional[str] = None
+    x_avatar_url: Optional[str] = None
+    viewer_follows: Optional[bool] = None
+
+@dataclass
+class PublicProfileFollowingResponse(LongshotModel):
+    profiles: Optional[List[CommunityProfileResponse]] = None
+    next_cursor: Optional[str] = None
+
+@dataclass
+class CommunityPickReactionResponse(LongshotModel):
+    emoji: Optional[str] = None
+    count: Optional[int] = None
+    viewer_reacted: Optional[bool] = None
+
+@dataclass
+class CommunityPickResponse(LongshotModel):
+    creator: Optional[CommunityProfileResponse] = None
+    viewer_follows: Optional[bool] = None
+    position: Optional[PublicProfilePositionDetailResponse] = None
+    reactions: Optional[List[CommunityPickReactionResponse]] = None
+
+@dataclass
+class CommunityPicksResponse(LongshotModel):
+    picks: Optional[List[CommunityPickResponse]] = None
+    copy_fee_bps: Optional[int] = None
+    market_images: Optional[Dict[str, Optional[str]]] = None
+    market_contexts: Optional[Dict[str, MarketDisplayContextResponse]] = None
+
+@dataclass
+class SportsMarketDisplayContextResponse(LongshotModel):
+    __serde_skip_none__ = set(["kickoff_at_ms"])
+    league: Optional[str] = None
+    product: Optional[str] = None
+    game_id: Optional[str] = None
+    away_team: Optional[str] = None
+    home_team: Optional[str] = None
+    kickoff_at_ms: Optional[int] = None
+
+@dataclass
+class PriceMarketDisplayContextResponse(LongshotModel):
+    __serde_skip_none__ = set(["duration_secs", "settled_change_bps", "window_start_ms"])
+    asset: Optional[str] = None
+    window_start_ms: Optional[int] = None
+    duration_secs: Optional[int] = None
+    settled_change_bps: Optional[int] = None
+
+@dataclass
+class MarketDisplayContextResponse(LongshotModel):
+    __serde_skip_none__ = set([
+        "event_slug",
+        "event_title",
+        "image_url",
+        "price",
+        "source",
+        "source_event_id",
+        "sports",
+    ])
+    source: Optional[str] = None
+    source_event_id: Optional[str] = None
+    event_slug: Optional[str] = None
+    event_title: Optional[str] = None
+    image_url: Optional[str] = None
+    sports: Optional[SportsMarketDisplayContextResponse] = None
+    price: Optional[PriceMarketDisplayContextResponse] = None
+
+@dataclass
+class RecentMarketWinnerDetailRefResponse(LongshotModel):
+    handle: Optional[str] = None
+    position_id: Optional[str] = None
+
+@dataclass
+class RecentContestWinnerDetailRefResponse(LongshotModel):
+    handle: Optional[str] = None
+    contest_id: Optional[str] = None
+    entry_index: Optional[int] = None
+
+class RecentMarketWinnerEntryTypeResponse(RustStringEnum):
+    Single = "single"
+    Combo = "combo"
+
+class RecentWinnerResponse(RustTaggedUnion):
+    __serde_tag__ = "type"
+    __serde_variants__ = {
+        "Market": "market",
+        "Contest": "contest",
+    }
+
+    @classmethod
+    def market(cls, payload: Any = None, **fields: Any) -> RecentWinnerResponse:
+        return cls("Market", payload, **fields)
+
+    @classmethod
+    def contest(cls, payload: Any = None, **fields: Any) -> RecentWinnerResponse:
+        return cls("Contest", payload, **fields)
+
+@dataclass
+class RecentWinnersResponse(LongshotModel):
+    winners: Optional[List[RecentWinnerResponse]] = None
+
+@dataclass
 class UpdateProfileRequest(LongshotModel):
     handle: Optional[str] = None
     display_name: Optional[str] = None
@@ -1480,24 +1615,18 @@ class CheckHandleResponse(LongshotModel):
 
 @dataclass
 class CreateSessionRequest(LongshotModel):
-    __serde_skip_none__ = set(["auth_wallet_address", "invite_code", "referral_code"])
+    __serde_skip_none__ = set(["auth_wallet_address", "referral_code"])
     privy_token: Optional[str] = None
     auth_wallet_address: Optional[str] = None
-    invite_code: Optional[str] = None
     referral_code: Optional[str] = None
 
 @dataclass
 class WalletAuthRequest(LongshotModel):
-    __serde_skip_none__ = set(["invite_code", "referral_code"])
+    __serde_skip_none__ = set(["referral_code"])
     address: Optional[str] = None
     signature: Optional[str] = None
     signed_at_ms: Optional[int] = None
-    invite_code: Optional[str] = None
     referral_code: Optional[str] = None
-
-@dataclass
-class VerifyInviteCodeRequest(LongshotModel):
-    code: Optional[str] = None
 
 @dataclass
 class ChatPostMessageRequest(LongshotModel):
@@ -1574,34 +1703,6 @@ class UserDepositRequest(LongshotModel):
     idempotency_key: Optional[str] = None
 
 @dataclass
-class UserAppTokenDepositRequest(LongshotModel):
-    token_id: Optional[str] = None
-    amount_micros: Optional[int] = None
-    idempotency_key: Optional[str] = None
-
-@dataclass
-class UserGrantAppTokenRequest(LongshotModel):
-    user_id: Optional[str] = None
-    token_config: Optional[UserAppTokenConfigRequest] = None
-    amount_micros: Optional[int] = None
-    idempotency_key: Optional[str] = None
-
-@dataclass
-class UserFundedGrantAppTokenRequest(LongshotModel):
-    user_id: Optional[str] = None
-    token_config: Optional[UserAppTokenConfigRequest] = None
-    amount_micros: Optional[int] = None
-    idempotency_key: Optional[str] = None
-
-@dataclass
-class UserAppTokenConfigRequest(LongshotModel):
-    expiry_secs: Optional[int] = None
-    category: Optional[str] = None
-    min_legs: Optional[int] = None
-    max_legs: Optional[int] = None
-    max_amount_per_bet_micros: Optional[int] = None
-
-@dataclass
 class UserDepositVaultRequest(LongshotModel):
     vault_id: Optional[str] = None
     amount_micros: Optional[int] = None
@@ -1665,6 +1766,15 @@ class SignedOrderJson(LongshotModel):
     shield_on: Optional[bool] = None
     signature: Optional[str] = None
 
+class CommunityPickMode(RustStringEnum):
+    Tail = "tail"
+    Fade = "fade"
+
+@dataclass
+class CommunityPickRequest(LongshotModel):
+    source_position_id: Optional[PositionId] = None
+    mode: Optional[CommunityPickMode] = None
+
 @dataclass
 class CreateRfqRequest(LongshotModel):
     order: Optional[SignedOrderJson] = None
@@ -1681,9 +1791,11 @@ class UnsignedRfqOrderRequest(LongshotModel):
 
 @dataclass
 class CreateUnsignedRfqRequest(LongshotModel):
+    __serde_skip_none__ = set(["community_pick"])
     privy_token: Optional[str] = None
     use_app_tokens: Optional[bool] = None
     rfq_params: Optional[UnsignedRfqOrderRequest] = None
+    community_pick: Optional[CommunityPickRequest] = None
 
 @dataclass
 class ParsedOrderLeg(LongshotModel):
@@ -1763,7 +1875,7 @@ class AccessResponse(LongshotModel):
 
 @dataclass
 class SessionResponse(LongshotModel):
-    __serde_skip_none__ = set(["deposit_address","deposit_chain_id","signup_access_code","signup_access_code_type"])
+    __serde_skip_none__ = set(["deposit_address","deposit_chain_id"])
     session_token: Optional[str] = None
     address: Optional[str] = None
     auth_wallet_address: Optional[str] = None
@@ -1773,12 +1885,9 @@ class SessionResponse(LongshotModel):
     expires_at: Optional[int] = None
     account_created: Optional[bool] = False
     onboarding_completed: Optional[bool] = False
-    signup_access_code: Optional[str] = None
-    signup_access_code_type: Optional[str] = None
 
     def __repr__(self) -> str:
         session_token = "'<redacted>'" if self.session_token else "None"
-        signup_access_code = "'<redacted>'" if self.signup_access_code else "None"
         return (
             "SessionResponse("
             f"session_token={session_token}"
@@ -1789,9 +1898,7 @@ class SessionResponse(LongshotModel):
             f", user_id={self.user_id!r}"
             f", expires_at={self.expires_at!r}"
             f", account_created={self.account_created!r}"
-            f", onboarding_completed={self.onboarding_completed!r}"
-            f", signup_access_code={signup_access_code}"
-            f", signup_access_code_type={self.signup_access_code_type!r})"
+            f", onboarding_completed={self.onboarding_completed!r})"
         )
 
 class RfqStatus(RustStringEnum):
@@ -1887,29 +1994,6 @@ class WithdrawOperationResponse(RustTaggedUnion):
 
     @classmethod
     def operation_status(cls, payload: Any = None, **fields: Any) -> WithdrawOperationResponse:
-        return cls("OperationStatus", payload, **fields)
-
-@dataclass
-class UserGrantAppTokenResponse(LongshotModel):
-    user_id: Optional[str] = None
-    token_id: Optional[str] = None
-    amount_micros: Optional[int] = None
-    operation_id: Optional[UUID] = None
-    tx_hash: Optional[str] = None
-
-class GrantAppTokenOperationResponse(RustTaggedUnion):
-    __serde_untagged__ = True
-    __serde_variants__ = {
-            "Completed": "Completed",
-            "OperationStatus": "OperationStatus"
-    }
-
-    @classmethod
-    def completed(cls, payload: Any = None, **fields: Any) -> GrantAppTokenOperationResponse:
-        return cls("Completed", payload, **fields)
-
-    @classmethod
-    def operation_status(cls, payload: Any = None, **fields: Any) -> GrantAppTokenOperationResponse:
         return cls("OperationStatus", payload, **fields)
 
 @dataclass
@@ -2096,41 +2180,53 @@ class AvailableBalanceResponse(LongshotModel):
 class ReservedBalanceResponse(LongshotModel):
     reserved_micros: Optional[int] = None
 
-@dataclass
-class AvailableAppTokenBalanceResponse(LongshotModel):
-    available_app_token_micros: Optional[int] = None
-
-@dataclass
-class ReservedAppTokenBalanceResponse(LongshotModel):
-    reserved_app_token_micros: Optional[int] = None
-
-class AppTokenGrantCategoryResponse(RustStringEnum):
-    Any = "any"
-    PriceStrike = "price_strike"
-    BinaryEvent = "binary_event"
+class UserTransactionCategory(RustStringEnum):
+    Deposit = "deposit"
+    Withdrawal = "withdrawal"
+    Credits = "credits"
+    Market = "market"
     Contest = "contest"
-    Markets = "markets"
+
+class UserTransactionStatus(RustStringEnum):
+    Completed = "completed"
+    Pending = "pending"
+    Failed = "failed"
+    Expired = "expired"
+    Entered = "entered"
+    Won = "won"
+
+class UserTransactionUnit(RustStringEnum):
+    Usdc = "usdc"
+    Credits = "credits"
+
+class UserTransactionFunding(RustStringEnum):
+    Cash = "cash"
+    Credits = "credits"
+    CashAndCredits = "cash_and_credits"
 
 @dataclass
-class UserAppTokenGrantResponse(LongshotModel):
-    grant_id: Optional[UUID] = None
-    app_token_id: Optional[str] = None
+class UserTransactionResponse(LongshotModel):
+    __serde_skip_none__ = set(["detail","expires_at_ms","funding","network","reason","reference","source","tx_hash","wallet_address"])
+    id: Optional[str] = None
+    category: Optional[UserTransactionCategory] = None
+    title: Optional[str] = None
+    detail: Optional[str] = None
+    status: Optional[UserTransactionStatus] = None
+    occurred_at_ms: Optional[int] = None
+    amount_micros: Optional[int] = None
+    unit: Optional[UserTransactionUnit] = None
+    funding: Optional[UserTransactionFunding] = None
+    network: Optional[str] = None
+    wallet_address: Optional[str] = None
+    tx_hash: Optional[str] = None
+    source: Optional[str] = None
     expires_at_ms: Optional[int] = None
-    category: Optional[AppTokenGrantCategoryResponse] = None
-    min_legs: Optional[int] = None
-    max_legs: Optional[int] = None
-    max_amount_per_bet_micros: Optional[int] = None
-    unclaimed_micros: Optional[int] = None
-    available_micros: Optional[int] = None
-    reserved_micros: Optional[int] = None
-    consumed_micros: Optional[int] = None
-    expired: Optional[bool] = None
+    reason: Optional[str] = None
+    reference: Optional[str] = None
 
 @dataclass
-class UserAppTokenGrantsResponse(LongshotModel):
-    __serde_skip_none__ = set(["next_cursor"])
-    grants: Optional[List[UserAppTokenGrantResponse]] = None
-    has_more: Optional[bool] = None
+class UserTransactionsResponse(LongshotModel):
+    items: Optional[List[UserTransactionResponse]] = None
     next_cursor: Optional[str] = None
 
 class FeeScheduleTier(RustStringEnum):
@@ -2153,33 +2249,6 @@ class FeeScheduleResponse(LongshotModel):
     bonding_spot_fee_bps: Optional[int] = None
     shield_fee_multiplier: Optional[int] = None
     tiers: Optional[List[TierFeeRate]] = None
-
-@dataclass
-class WithdrawalPolicyResponse(LongshotModel):
-    __serde_skip_none__ = set(["reason"])
-    withdrawals_enabled: Optional[bool] = None
-    reason: Optional[str] = None
-    disabled_by_tripwire: Optional[bool] = None
-    updated_at_ms: Optional[int] = None
-    updated_by: Optional[str] = None
-
-@dataclass
-class BettingPolicyResponse(LongshotModel):
-    __serde_skip_none__ = set(["reason"])
-    betting_enabled: Optional[bool] = None
-    reason: Optional[str] = None
-    updated_at_ms: Optional[int] = None
-    updated_by: Optional[str] = None
-
-@dataclass
-class SignupPolicyResponse(LongshotModel):
-    invite_required: Optional[bool] = None
-    updated_at_ms: Optional[int] = None
-    updated_by: Optional[str] = None
-
-@dataclass
-class InviteCodeVerifyResponse(LongshotModel):
-    valid: Optional[bool] = None
 
 @dataclass
 class PlaceContestBetResponse(LongshotModel):
@@ -2297,6 +2366,7 @@ class PublicContestSummaryResponse(LongshotModel):
 @dataclass
 class ContestCallerSummaryResponse(LongshotModel):
     joined: Optional[bool] = None
+    entry_count: Optional[int] = None
 
 @dataclass
 class CallerContestSummaryResponse(LongshotModel):
@@ -2308,6 +2378,8 @@ class CallerContestSummaryResponse(LongshotModel):
 class ContestLobbySummaryResponse(LongshotModel):
     __serde_flatten__ = set(["summary"])
     summary: Optional[CallerContestSummaryResponse] = None
+    description: Optional[str] = None
+    max_entries_per_player: Optional[int] = None
     protocol_prize_pool_pays_app_tokens: Optional[bool] = None
 
 @dataclass
@@ -2631,15 +2703,6 @@ class UserReferralsListResponse(LongshotModel):
     total_count: Optional[int] = None
 
 @dataclass
-class HealthResponse(LongshotModel):
-    status: Optional[str] = None
-    git_sha: Optional[str] = None
-
-@dataclass
-class ReadyzResponse(LongshotModel):
-    status: Optional[str] = None
-
-@dataclass
 class ErrorResponse(LongshotModel):
     __serde_skip_none__ = set(["details"])
     error: Optional[str] = None
@@ -2851,41 +2914,51 @@ class SurvivorShareCard(LongshotModel):
     summary: Optional[List[ShareStat]] = None
     footer: Optional[ShareCardFooter] = None
 
-class CultureShareState(RustStringEnum):
+class EventPositionShareState(RustStringEnum):
     Active = "active"
     Live = "live"
     Won = "won"
     Lost = "lost"
     Voided = "voided"
 
-class CultureSharePickGrade(RustStringEnum):
+class EventPositionSharePickGrade(RustStringEnum):
     Pending = "pending"
     Correct = "correct"
     Incorrect = "incorrect"
     Voided = "voided"
 
 @dataclass
-class CultureSharePick(LongshotModel):
-    __serde_skip_none__ = set(["odds_label", "result"])
+class EventPositionSharePick(LongshotModel):
+    __serde_skip_none__ = set(["odds_label", "result", "team_abbr"])
     market_id: Optional[int] = None
     label: Optional[str] = None
     side: Optional[str] = None
-    grade: Optional[CultureSharePickGrade] = None
+    grade: Optional[EventPositionSharePickGrade] = None
     odds_label: Optional[str] = None
     result: Optional[str] = None
+    team_abbr: Optional[str] = None
 
 @dataclass
-class CultureShareCard(LongshotModel):
-    __serde_skip_none__ = set(["meta_label", "market_image", "payout_label"])
+class NflShareMeta(LongshotModel):
+    away_abbr: Optional[str] = None
+    home_abbr: Optional[str] = None
+    combo: Optional[bool] = None
+
+@dataclass
+class EventPositionShareCard(LongshotModel):
+    __serde_skip_none__ = set(["tz_offset_minutes", "market_kind", "meta_label", "market_image", "payout_label", "nfl"])
     position_id: Optional[str] = None
-    state: Optional[CultureShareState] = None
+    tz_offset_minutes: Optional[int] = None
+    market_kind: Optional[str] = None
+    state: Optional[EventPositionShareState] = None
     title: Optional[str] = None
     meta_label: Optional[str] = None
     market_image: Optional[ShareImageRef] = None
-    picks: Optional[List[CultureSharePick]] = None
+    picks: Optional[List[EventPositionSharePick]] = None
     wager_label: Optional[str] = None
     multiplier_label: Optional[str] = None
     payout_label: Optional[str] = None
+    nfl: Optional[NflShareMeta] = None
     footer: Optional[ShareCardFooter] = None
 
 class ShareCardSnapshot(RustTaggedUnion):
@@ -2897,7 +2970,7 @@ class ShareCardSnapshot(RustTaggedUnion):
             "Markets": "markets",
             "Roster": "roster",
             "Survivor": "survivor",
-            "Culture": "culture"
+            "EventPosition": "event_position"
     }
 
     @classmethod
@@ -2925,8 +2998,8 @@ class ShareCardSnapshot(RustTaggedUnion):
         return cls("Survivor", payload, **fields)
 
     @classmethod
-    def culture(cls, payload: Any = None, **fields: Any) -> ShareCardSnapshot:
-        return cls("Culture", payload, **fields)
+    def event_position(cls, payload: Any = None, **fields: Any) -> ShareCardSnapshot:
+        return cls("EventPosition", payload, **fields)
 
 @dataclass
 class CreateShareCardResponse(LongshotModel):
@@ -3013,7 +3086,10 @@ class PlaceStreakPickResponse(LongshotModel):
     picked_at_ms: Optional[int] = None
 
 @dataclass
-class AppTokenGrantsRawQuery(LongshotModel):
+class UserTransactionsRawQuery(LongshotModel):
+    category: Optional[str] = None
+    from_ms: Optional[str] = None
+    to_ms: Optional[str] = None
     limit: Optional[int] = None
     cursor: Optional[str] = None
 
@@ -3392,7 +3468,7 @@ def _share_card_snapshot_validate(self: ShareCardSnapshot) -> None:
         _check_share_footer(_payload_get(payload, "footer"))
         return
 
-    if self.variant == "Culture":
+    if self.variant == "EventPosition":
         try:
             _check_share_contest_id(_payload_get(payload, "position_id"))
         except ValueError as exc:
@@ -3402,7 +3478,7 @@ def _share_card_snapshot_validate(self: ShareCardSnapshot) -> None:
         if meta_label is not None:
             _check_share_text(meta_label, "meta_label")
         picks = _payload_get(payload, "picks") or []
-        if len(picks) > MAX_CULTURE_SHARE_PICKS:
+        if len(picks) > MAX_EVENT_POSITION_SHARE_PICKS:
             raise ValueError("picks")
         for pick in picks:
             _check_share_text(_payload_get(pick, "label"), "picks.label")
@@ -3609,25 +3685,6 @@ class MarketCategoryVisibilityResponse(LongshotModel):
 @dataclass
 class UserFeaturesResponse(LongshotModel):
     markets_access: Optional[bool] = None
-
-class DepositMatchSourceResponse(RustStringEnum):
-    AdminGrant = "admin_grant"
-    Referral = "referral"
-    Internal = "internal"
-
-@dataclass
-class UserDepositMatchOpportunityResponse(LongshotModel):
-    opportunity_id: Optional[str] = None
-    match_limit_micros: Optional[int] = None
-    matched_micros: Optional[int] = None
-    source: Optional[DepositMatchSourceResponse] = None
-    created_at_ms: Optional[int] = None
-    expires_at_ms: Optional[int] = None
-
-@dataclass
-class UserDepositMatchOpportunitiesResponse(LongshotModel):
-    opportunities: Optional[List[UserDepositMatchOpportunityResponse]] = None
-    total_available_micros: Optional[int] = None
 
 @dataclass
 class ChatMarketRoomResponse(LongshotModel):
@@ -3907,6 +3964,8 @@ _install_serde_metadata(
 _DEFAULT_FIELDS = {
     "EventMarketSource": {"attributes": {}},
     "EventMarket": {"resolution_rules": ""},
+    "CommunityPicksResponse": {"market_images": {}, "market_contexts": {}},
+    "ContestCallerSummaryResponse": {"entry_count": 0},
     "ContestLeaderboardRowResponse": {
         "perfect_slate_payout_micros": 0,
         "perfect_slate_won": False,
@@ -3918,6 +3977,7 @@ _DEFAULT_FIELDS = {
         "perfect_slate_won": False,
         "refunded": False,
     },
+    "ContestLobbySummaryResponse": {"max_entries_per_player": 1},
     "PortfolioFantasyEntryResponse": {"refunded": False},
     "PublicContestDetailResponse": {"max_entries_per_player": 1},
     "PublicProfileFantasyEntryResponse": {"refunded": False},
@@ -3956,12 +4016,21 @@ _DEFAULT_FIELDS = {
         "rounds": [],
         "summary": [],
     },
-    "CultureShareCard": {
-        "state": CultureShareState.Active,
+    "EventPositionShareCard": {
+        "state": EventPositionShareState.Active,
         "title": "",
         "picks": [],
         "wager_label": "",
         "multiplier_label": "",
+    },
+    "NflShareMeta": {
+        "combo": False,
+    },
+    "BinaryEventWinNotificationPayload": {
+        "market_ids": [],
+    },
+    "NflHubConfigBody": {
+        "featured_matchups": [],
     },
 }
 
@@ -3983,15 +4052,6 @@ WithdrawOperationResponse.__serde_untagged_payloads__ = {
 }
 WithdrawOperationResponse.__serde_untagged_required_fields__ = {
     "Completed": {"amount_micros", "operation_id", "tx_hash"},
-    "OperationStatus": {"amount_micros", "operation_id", "status"},
-}
-
-GrantAppTokenOperationResponse.__serde_untagged_payloads__ = {
-    "Completed": UserGrantAppTokenResponse,
-    "OperationStatus": BalanceOperationStatusResponse,
-}
-GrantAppTokenOperationResponse.__serde_untagged_required_fields__ = {
-    "Completed": {"user_id", "token_id", "amount_micros", "operation_id", "tx_hash"},
     "OperationStatus": {"amount_micros", "operation_id", "status"},
 }
 
@@ -4058,7 +4118,7 @@ ShareCardSnapshot.__serde_variant_payloads__ = {
     "Markets": MarketsShareCard,
     "Roster": RosterShareCard,
     "Survivor": SurvivorShareCard,
-    "Culture": CultureShareCard,
+    "EventPosition": EventPositionShareCard,
 }
 
 _DENY_UNKNOWN_FIELDS = {
@@ -4093,7 +4153,6 @@ _DENY_UNKNOWN_FIELDS = {
     "MarketLookupQuery",
     "MarketCurrentQuery",
     "RecentResolutionsQuery",
-    "TakerPnlQuery",
     "NotificationsRawQuery",
     "NotificationStreamRawQuery",
     "PnlHistoryQuery",
@@ -4118,27 +4177,31 @@ _DENY_UNKNOWN_FIELDS = {
     "PlaceContestBetRequest",
     "PlaceRosterPickRequest",
     "UserDepositRequest",
-    "UserAppTokenDepositRequest",
-    "UserGrantAppTokenRequest",
-    "UserFundedGrantAppTokenRequest",
-    "UserAppTokenConfigRequest",
     "UserDepositVaultRequest",
     "UserWithdrawParams",
     "UserWithdrawRequest",
+    "FollowingRawQuery",
+    "CommunityPicksRawQuery",
+    "RecentWinnersRawQuery",
     "CreateRfqRequest",
+    "CommunityPickRequest",
     "UnsignedRfqOrderRequest",
     "CreateUnsignedRfqRequest",
     "PlaceStreakPickRequest",
     "StreakPicksRawQuery",
     "StreakHistoryRawQuery",
     "StreakLeaderboardRawQuery",
-    "AppTokenGrantsRawQuery",
+    "UserTransactionsRawQuery",
     "ConfirmPositionQuery",
     "ReferralsListRawQuery",
     "UserReferralStatsRawQuery",
     "WebPushSubscriptionKeys",
     "UpsertWebPushSubscriptionRequest",
     "DeleteWebPushSubscriptionRequest",
+    "NflFeaturedMatchup",
+    "NflParlayLeg",
+    "NflFeaturedParlay",
+    "NflHubConfigBody",
 }
 
 for _class_name in _DENY_UNKNOWN_FIELDS:
@@ -4150,7 +4213,6 @@ for _class_name in {
     "LeaderboardCaller",
     "DepositOperationResponse",
     "WithdrawOperationResponse",
-    "GrantAppTokenOperationResponse",
 }:
     globals()[_class_name].__serde_tag__ = None
 
@@ -4242,10 +4304,6 @@ __all__ = [
     "RecentResolutionsQuery",
     "RecentResolutionEntry",
     "RecentResolutionsResponse",
-    "TakerPnlQuery",
-    "TakerPnlResponse",
-    "TakerPnlStats",
-    "MaxPayoutConfigResponse",
     "NotificationsRawQuery",
     "NotificationStreamRawQuery",
     "NotificationPayload",
@@ -4254,6 +4312,12 @@ __all__ = [
     "StreakStartSoonNotificationPayload",
     "StreakExpiringNotificationPayload",
     "BinaryEventWinNotificationPayload",
+    "NflShareMeta",
+    "NflFeaturedMatchup",
+    "NflParlayLeg",
+    "NflFeaturedParlay",
+    "NflHubConfigBody",
+    "NflHubConfigResponse",
     "PriceStrikeParlayWinNotificationPayload",
     "RfqResultNotificationPayload",
     "RfqResultNotificationStatus",
@@ -4316,12 +4380,28 @@ __all__ = [
     "PublicProfilePositionSummaryResponse",
     "PublicProfilePositionsResponse",
     "PublicProfilePositionDetailResponse",
+    "FollowingRawQuery",
+    "CommunityPicksRawQuery",
+    "RecentWinnersRawQuery",
+    "FollowStatusResponse",
+    "CommunityProfileResponse",
+    "PublicProfileFollowingResponse",
+    "CommunityPickReactionResponse",
+    "CommunityPickResponse",
+    "CommunityPicksResponse",
+    "SportsMarketDisplayContextResponse",
+    "PriceMarketDisplayContextResponse",
+    "MarketDisplayContextResponse",
+    "RecentMarketWinnerDetailRefResponse",
+    "RecentContestWinnerDetailRefResponse",
+    "RecentMarketWinnerEntryTypeResponse",
+    "RecentWinnerResponse",
+    "RecentWinnersResponse",
     "UpdateProfileRequest",
     "SyncXProfileRequest",
     "CheckHandleResponse",
     "CreateSessionRequest",
     "WalletAuthRequest",
-    "VerifyInviteCodeRequest",
     "ChatPostMessageRequest",
     "ChatEditMessageRequest",
     "ChatEmojiReactRequest",
@@ -4333,10 +4413,6 @@ __all__ = [
     "PlaceContestBetSelectionRequest",
     "PlaceContestBetRequest",
     "UserDepositRequest",
-    "UserAppTokenDepositRequest",
-    "UserGrantAppTokenRequest",
-    "UserFundedGrantAppTokenRequest",
-    "UserAppTokenConfigRequest",
     "UserDepositVaultRequest",
     "UserWithdrawParams",
     "WithdrawalAuthorization",
@@ -4348,6 +4424,8 @@ __all__ = [
     "OrderLegJson",
     "SignedOrderJson",
     "CreateRfqRequest",
+    "CommunityPickMode",
+    "CommunityPickRequest",
     "UnsignedRfqOrderRequest",
     "CreateUnsignedRfqRequest",
     "ParsedOrderLeg",
@@ -4366,8 +4444,6 @@ __all__ = [
     "BalanceOperationStatusResponse",
     "DepositOperationResponse",
     "WithdrawOperationResponse",
-    "UserGrantAppTokenResponse",
-    "GrantAppTokenOperationResponse",
     "UserRequestWithdrawalVaultResponse",
     "VaultClaimFeesResponse",
     "VaultWithdrawalAmountResponse",
@@ -4393,18 +4469,15 @@ __all__ = [
     "VaultUserPerformanceResponse",
     "AvailableBalanceResponse",
     "ReservedBalanceResponse",
-    "AvailableAppTokenBalanceResponse",
-    "ReservedAppTokenBalanceResponse",
-    "AppTokenGrantCategoryResponse",
-    "UserAppTokenGrantResponse",
-    "UserAppTokenGrantsResponse",
+    "UserTransactionCategory",
+    "UserTransactionStatus",
+    "UserTransactionUnit",
+    "UserTransactionFunding",
+    "UserTransactionResponse",
+    "UserTransactionsResponse",
     "FeeScheduleTier",
     "TierFeeRate",
     "FeeScheduleResponse",
-    "WithdrawalPolicyResponse",
-    "BettingPolicyResponse",
-    "SignupPolicyResponse",
-    "InviteCodeVerifyResponse",
     "PlaceContestBetResponse",
     "ContestCategoryResponse",
     "ContestStatusResponse",
@@ -4456,8 +4529,6 @@ __all__ = [
     "ReferralLevelLabel",
     "UserReferralEntryResponse",
     "UserReferralsListResponse",
-    "HealthResponse",
-    "ReadyzResponse",
     "ErrorResponse",
     "ShareImageRef",
     "ShareCardFooter",
@@ -4490,11 +4561,11 @@ __all__ = [
     "SurvivorShareCard",
     "MAX_SURVIVOR_SHARE_PICKS",
     "MAX_SURVIVOR_SHARE_ROUNDS",
-    "CultureShareState",
-    "CultureSharePickGrade",
-    "CultureSharePick",
-    "CultureShareCard",
-    "MAX_CULTURE_SHARE_PICKS",
+    "EventPositionShareState",
+    "EventPositionSharePickGrade",
+    "EventPositionSharePick",
+    "EventPositionShareCard",
+    "MAX_EVENT_POSITION_SHARE_PICKS",
     "ShareCardSnapshot",
     "CreateShareCardResponse",
     "StreakRoundStatusResponse",
@@ -4507,7 +4578,7 @@ __all__ = [
     "StreakPickRound",
     "PlaceStreakPickRequest",
     "PlaceStreakPickResponse",
-    "AppTokenGrantsRawQuery",
+    "UserTransactionsRawQuery",
     "ConfirmPositionQuery",
     "ReferralsListRawQuery",
     "VaultIdQuery",
@@ -4542,9 +4613,6 @@ __all__ = [
     "ObserverAccessResponse",
     "MarketCategoryVisibilityResponse",
     "UserFeaturesResponse",
-    "DepositMatchSourceResponse",
-    "UserDepositMatchOpportunityResponse",
-    "UserDepositMatchOpportunitiesResponse",
     "ChatMarketRoomResponse",
     "ChatMentionCandidateResponse",
     "ChatMentionCandidatesResponse",

@@ -123,6 +123,11 @@ pub struct BinaryEventWinNotificationPayload {
     pub net_payout_micros: i64,
     pub multiplier_bps: i64,
     pub market_title: String,
+    /// Component market ids of the winning position, so surfaces that key off
+    /// a product catalog (e.g. the NFL portfolio/notification identity) can
+    /// resolve titles and images. Empty on legacy rows.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub market_ids: Vec<u64>,
 }
 
 /// Price-strike parlay win notification payload.

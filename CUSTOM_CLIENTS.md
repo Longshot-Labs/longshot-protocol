@@ -68,7 +68,6 @@ signed-RFQ and withdrawal policy is authoritative in
      "address": "0x...",
      "signature": "<padded-standard-base64>",
      "signed_at_ms": 1785529737000,
-     "invite_code": null,
      "referral_code": null
    }
    ```
@@ -103,6 +102,10 @@ the signed payload. Changing any of them after signing invalidates the
 signature. The signature covers the deterministic binary layout, not the JSON
 request body. The conversion helper performs the `min_odds_bps / 10_000`
 conversion and emits the padded Base64 signature.
+
+`community_pick` is not part of the signed-order bytes, so `POST /v1/rfq`
+does not accept it. Tail and Fade clients must send `CommunityPickRequest`
+through `POST /v1/rfq/unsigned`.
 
 The server additionally checks freshness, replay identity, signer/session
 identity, wager and odds bounds, account status, balance, market state, trading
