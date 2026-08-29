@@ -23,7 +23,7 @@ pub struct PublicMarketsRawQuery {
     pub featured_only: Option<bool>,
     /// Optional trading-surface filter.
     pub trading_channel: Option<TradingChannel>,
-    #[cfg_attr(feature = "openapi", schema(minimum = 1, maximum = 100))]
+    #[cfg_attr(feature = "openapi", schema(minimum = 1, maximum = 500))]
     pub limit: Option<u32>,
     pub cursor: Option<String>,
     /// Market status filter, sent as one comma-separated `statuses` query value.
