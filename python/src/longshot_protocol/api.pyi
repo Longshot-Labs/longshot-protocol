@@ -500,13 +500,11 @@ class PublicMarketsRawQuery(LongshotModel):
     market_type: Optional[MarketType]
     source: Optional[str]
     source_event_id: Optional[str]
-    include_featured: Optional[bool]
-    featured_only: Optional[bool]
     trading_channel: Optional[TradingChannel]
     limit: Optional[int]
     cursor: Optional[str]
     statuses: Optional[List[MarketStatus]]
-    def __init__(self, *, market_type: Optional[MarketType] = ..., source: Optional[str] = ..., source_event_id: Optional[str] = ..., include_featured: Optional[bool] = ..., featured_only: Optional[bool] = ..., trading_channel: Optional[TradingChannel] = ..., limit: Optional[int] = ..., cursor: Optional[str] = ..., statuses: Optional[List[MarketStatus]] = ...) -> None: ...
+    def __init__(self, *, market_type: Optional[MarketType] = ..., source: Optional[str] = ..., source_event_id: Optional[str] = ..., trading_channel: Optional[TradingChannel] = ..., limit: Optional[int] = ..., cursor: Optional[str] = ..., statuses: Optional[List[MarketStatus]] = ...) -> None: ...
 
 class EventMarketSource(LongshotModel):
     source: str
@@ -544,7 +542,6 @@ class EventMarket(LongshotModel):
     resolution_rules: Optional[str]
     status: MarketStatus
     tradeable: bool
-    featured_slot: Optional[int]
     category_tags: List[str]
     opens_at_ms: Optional[int]
     source_starts_at_ms: Optional[int]
@@ -558,7 +555,7 @@ class EventMarket(LongshotModel):
     source: EventMarketSource
     manual_probability_bps: Optional[int]
     image_url: Optional[str]
-    def __init__(self, *, id: MarketId, market_type: MarketType, trading_channels: List[TradingChannel], chat_id: str, name: str, description: Optional[str] = ..., resolution_rules: Optional[str] = ..., status: MarketStatus, tradeable: bool, featured_slot: Optional[int] = ..., category_tags: List[str], opens_at_ms: Optional[int] = ..., source_starts_at_ms: Optional[int] = ..., betting_closes_at_ms: int, live_ends_at_ms: Optional[int] = ..., resolution_time_ms: int, resolved_outcome: Optional[Outcome] = ..., created_at_ms: int, opened_at_ms: Optional[int] = ..., resolved_at_ms: Optional[int] = ..., source: EventMarketSource, manual_probability_bps: Optional[int] = ..., image_url: Optional[str] = ...) -> None: ...
+    def __init__(self, *, id: MarketId, market_type: MarketType, trading_channels: List[TradingChannel], chat_id: str, name: str, description: Optional[str] = ..., resolution_rules: Optional[str] = ..., status: MarketStatus, tradeable: bool, category_tags: List[str], opens_at_ms: Optional[int] = ..., source_starts_at_ms: Optional[int] = ..., betting_closes_at_ms: int, live_ends_at_ms: Optional[int] = ..., resolution_time_ms: int, resolved_outcome: Optional[Outcome] = ..., created_at_ms: int, opened_at_ms: Optional[int] = ..., resolved_at_ms: Optional[int] = ..., source: EventMarketSource, manual_probability_bps: Optional[int] = ..., image_url: Optional[str] = ...) -> None: ...
 
 class PublicMarket(RustTaggedUnion):
     @classmethod
@@ -722,31 +719,6 @@ class NflShareMeta(LongshotModel):
     home_abbr: str
     combo: Optional[bool]
     def __init__(self, *, away_abbr: str, home_abbr: str, combo: Optional[bool] = ...) -> None: ...
-
-class NflFeaturedMatchup(LongshotModel):
-    game_id: str
-    def __init__(self, *, game_id: str) -> None: ...
-
-class NflParlayLeg(LongshotModel):
-    market_id: int
-    direction: str
-    def __init__(self, *, market_id: int, direction: str) -> None: ...
-
-class NflFeaturedParlay(LongshotModel):
-    title: str
-    copy: Optional[str]
-    legs: List[NflParlayLeg]
-    def __init__(self, *, title: str, copy: Optional[str] = ..., legs: List[NflParlayLeg]) -> None: ...
-
-class NflHubConfigBody(LongshotModel):
-    featured_matchups: Optional[List[NflFeaturedMatchup]]
-    featured_parlay: Optional[NflFeaturedParlay]
-    props_enabled: bool
-    def __init__(self, *, featured_matchups: Optional[List[NflFeaturedMatchup]] = ..., featured_parlay: Optional[NflFeaturedParlay] = ..., props_enabled: bool) -> None: ...
-
-class NflHubConfigResponse(LongshotModel):
-    config: NflHubConfigBody
-    def __init__(self, *, config: NflHubConfigBody) -> None: ...
 
 class PriceStrikeParlayWinNotificationPayload(LongshotModel):
     position_id: str
@@ -1270,110 +1242,6 @@ class PublicProfilePositionDetailResponse(LongshotModel):
     resolved_at_ms: Optional[int]
     legs: List[LegDetail]
     def __init__(self, *, id: str, wager_micros: int, app_token_wager_micros: int, refunded_app_token_micros: Optional[int], payout_micros: int, net_payout_micros: Optional[int], legs_count: int, legs_summary: str, status: str, pnl_micros: Optional[int], created_at_ms: int, resolved_at_ms: Optional[int] = ..., legs: List[LegDetail]) -> None: ...
-
-class FollowingRawQuery(LongshotModel):
-    limit: Optional[int]
-    cursor: Optional[str]
-    def __init__(self, *, limit: Optional[int] = ..., cursor: Optional[str] = ...) -> None: ...
-
-class CommunityPicksRawQuery(LongshotModel):
-    limit: Optional[int]
-    def __init__(self, *, limit: Optional[int] = ...) -> None: ...
-
-class RecentWinnersRawQuery(LongshotModel):
-    limit: Optional[int]
-    def __init__(self, *, limit: Optional[int] = ...) -> None: ...
-
-class FollowStatusResponse(LongshotModel):
-    following: bool
-    def __init__(self, *, following: bool) -> None: ...
-
-class CommunityProfileResponse(LongshotModel):
-    handle: str
-    display_name: str
-    avatar_seed: int
-    x_handle: Optional[str]
-    x_avatar_url: Optional[str]
-    viewer_follows: Optional[bool]
-    def __init__(self, *, handle: str, display_name: str, avatar_seed: int, x_handle: Optional[str] = ..., x_avatar_url: Optional[str] = ..., viewer_follows: Optional[bool] = ...) -> None: ...
-
-class PublicProfileFollowingResponse(LongshotModel):
-    profiles: List[CommunityProfileResponse]
-    next_cursor: Optional[str]
-    def __init__(self, *, profiles: List[CommunityProfileResponse], next_cursor: Optional[str] = ...) -> None: ...
-
-class CommunityPickReactionResponse(LongshotModel):
-    emoji: str
-    count: int
-    viewer_reacted: bool
-    def __init__(self, *, emoji: str, count: int, viewer_reacted: bool) -> None: ...
-
-class CommunityPickResponse(LongshotModel):
-    creator: CommunityProfileResponse
-    viewer_follows: bool
-    position: PublicProfilePositionDetailResponse
-    reactions: List[CommunityPickReactionResponse]
-    def __init__(self, *, creator: CommunityProfileResponse, viewer_follows: bool, position: PublicProfilePositionDetailResponse, reactions: List[CommunityPickReactionResponse]) -> None: ...
-
-class CommunityPicksResponse(LongshotModel):
-    picks: List[CommunityPickResponse]
-    copy_fee_bps: int
-    market_images: Optional[Dict[str, Optional[str]]]
-    market_contexts: Optional[Dict[str, MarketDisplayContextResponse]]
-    def __init__(self, *, picks: List[CommunityPickResponse], copy_fee_bps: int, market_images: Optional[Dict[str, Optional[str]]] = ..., market_contexts: Optional[Dict[str, MarketDisplayContextResponse]] = ...) -> None: ...
-
-class SportsMarketDisplayContextResponse(LongshotModel):
-    league: str
-    product: str
-    game_id: str
-    away_team: str
-    home_team: str
-    kickoff_at_ms: Optional[int]
-    def __init__(self, *, league: str, product: str, game_id: str, away_team: str, home_team: str, kickoff_at_ms: Optional[int] = ...) -> None: ...
-
-class PriceMarketDisplayContextResponse(LongshotModel):
-    asset: str
-    window_start_ms: Optional[int]
-    duration_secs: Optional[int]
-    settled_change_bps: Optional[int]
-    def __init__(self, *, asset: str, window_start_ms: Optional[int] = ..., duration_secs: Optional[int] = ..., settled_change_bps: Optional[int] = ...) -> None: ...
-
-class MarketDisplayContextResponse(LongshotModel):
-    source: Optional[str]
-    source_event_id: Optional[str]
-    event_slug: Optional[str]
-    event_title: Optional[str]
-    image_url: Optional[str]
-    sports: Optional[SportsMarketDisplayContextResponse]
-    price: Optional[PriceMarketDisplayContextResponse]
-    def __init__(self, *, source: Optional[str] = ..., source_event_id: Optional[str] = ..., event_slug: Optional[str] = ..., event_title: Optional[str] = ..., image_url: Optional[str] = ..., sports: Optional[SportsMarketDisplayContextResponse] = ..., price: Optional[PriceMarketDisplayContextResponse] = ...) -> None: ...
-
-class RecentMarketWinnerDetailRefResponse(LongshotModel):
-    handle: str
-    position_id: str
-    def __init__(self, *, handle: str, position_id: str) -> None: ...
-
-class RecentContestWinnerDetailRefResponse(LongshotModel):
-    handle: str
-    contest_id: str
-    entry_index: int
-    def __init__(self, *, handle: str, contest_id: str, entry_index: int) -> None: ...
-
-class RecentMarketWinnerEntryTypeResponse(RustStringEnum):
-    Single = 'single'
-    Combo = 'combo'
-
-class RecentWinnerResponse(RustTaggedUnion):
-    @classmethod
-    def market(cls, payload: Any=None, **fields: Any) -> RecentWinnerResponse:
-        ...
-    @classmethod
-    def contest(cls, payload: Any=None, **fields: Any) -> RecentWinnerResponse:
-        ...
-
-class RecentWinnersResponse(LongshotModel):
-    winners: List[RecentWinnerResponse]
-    def __init__(self, *, winners: List[RecentWinnerResponse]) -> None: ...
 
 class UpdateProfileRequest(LongshotModel):
     handle: Optional[str]
@@ -3344,11 +3212,6 @@ __all__ = [
     "StreakExpiringNotificationPayload",
     "BinaryEventWinNotificationPayload",
     "NflShareMeta",
-    "NflFeaturedMatchup",
-    "NflParlayLeg",
-    "NflFeaturedParlay",
-    "NflHubConfigBody",
-    "NflHubConfigResponse",
     "PriceStrikeParlayWinNotificationPayload",
     "RfqResultNotificationPayload",
     "RfqResultNotificationStatus",
@@ -3411,23 +3274,6 @@ __all__ = [
     "PublicProfilePositionSummaryResponse",
     "PublicProfilePositionsResponse",
     "PublicProfilePositionDetailResponse",
-    "FollowingRawQuery",
-    "CommunityPicksRawQuery",
-    "RecentWinnersRawQuery",
-    "FollowStatusResponse",
-    "CommunityProfileResponse",
-    "PublicProfileFollowingResponse",
-    "CommunityPickReactionResponse",
-    "CommunityPickResponse",
-    "CommunityPicksResponse",
-    "SportsMarketDisplayContextResponse",
-    "PriceMarketDisplayContextResponse",
-    "MarketDisplayContextResponse",
-    "RecentMarketWinnerDetailRefResponse",
-    "RecentContestWinnerDetailRefResponse",
-    "RecentMarketWinnerEntryTypeResponse",
-    "RecentWinnerResponse",
-    "RecentWinnersResponse",
     "UpdateProfileRequest",
     "SyncXProfileRequest",
     "CheckHandleResponse",

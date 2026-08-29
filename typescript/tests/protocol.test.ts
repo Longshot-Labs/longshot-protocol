@@ -248,7 +248,7 @@ test("API decoder materializes Rust map, wire-integer, and enum defaults", () =>
   );
   assert.deepEqual(source.attributes, {});
 
-  const featuredMarketWire = {
+  const eventMarketWire = {
     id: 42,
     market_type: "culture",
     trading_channels: ["rfq"],
@@ -256,24 +256,17 @@ test("API decoder materializes Rust map, wire-integer, and enum defaults", () =>
     name: "Culture event",
     status: "OPEN",
     tradeable: true,
-    featured_slot: 2,
     category_tags: ["culture"],
     betting_closes_at_ms: 1_000,
     resolution_time_ms: 2_000,
     created_at_ms: 500,
     source: { source: "kalshi", source_market_ids: ["KX-1"] },
   };
-  const featuredMarket = decodeApiJson<EventMarket>(
-    JSON.stringify(featuredMarketWire),
+  const eventMarket = decodeApiJson<EventMarket>(
+    JSON.stringify(eventMarketWire),
     "EventMarket",
   );
-  assert.equal(featuredMarket.featured_slot, 2);
-  const legacySafeMarketWire = { ...featuredMarketWire, featured_slot: undefined };
-  const legacySafeMarket = decodeApiJson<EventMarket>(
-    JSON.stringify(legacySafeMarketWire),
-    "EventMarket",
-  );
-  assert.equal(legacySafeMarket.featured_slot, undefined);
+  assert.equal(eventMarket.resolution_rules, "");
 
   const position = decodeApiJson<PositionSummary>(
     JSON.stringify({

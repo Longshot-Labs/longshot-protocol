@@ -348,7 +348,7 @@ function rename(name, rule) {
 function validateCurrentOpenApi(document, protocolNames) {
   const components = document.components?.schemas ?? {};
   const roots = new Set(["CreateSessionRequest", "SessionResponse"]);
-  const serverOnlyPaths = new Set([
+  const excludedPaths = new Set([
     "/health",
     "/readyz",
     "/v1/auth/invite_code/verify",
@@ -361,9 +361,19 @@ function validateCurrentOpenApi(document, protocolNames) {
     "/v1/user/deposit_match_opportunities",
     "/v1/user/grant_app_token",
     "/v1/user/reserved_app_token_balance",
+    // First-party presentation routes are not part of the external protocol package.
+    "/v1/community-picks",
+    "/v1/community-picks/{position_id}/reactions/{emoji}",
+    "/v1/nfl_hub_config",
+    "/v1/recent-winners",
+    "/v1/u/{handle}/followers",
+    "/v1/u/{handle}/following",
+    "/v1/user/following/{handle}",
   ]);
-  const serverOnlyFields = new Map([
+  const excludedFields = new Map([
     ["CreateSessionRequest", new Set(["invite_code"])],
+    ["EventMarket", new Set(["featured_slot"])],
+    ["PublicMarketsRawQuery", new Set(["include_featured", "featured_only"])],
     ["SessionResponse", new Set(["signup_access_code", "signup_access_code_type"])],
     ["WalletAuthRequest", new Set(["invite_code"])],
   ]);
@@ -375,11 +385,11 @@ function validateCurrentOpenApi(document, protocolNames) {
     PriceSource: "PriceSourceResponse",
   };
 
-  // The protocol intentionally covers the public application API, not admin-only
-  // operations. Keep this route-derived so a new public JSON contract cannot be
-  // added to the server fixture without also being added to the shared protocol.
+  // Every supported external route remains checked against the full server fixture.
+  // Explicit exclusions keep first-party presentation and server-only contracts out
+  // of the registry packages without weakening drift checks for supported routes.
   for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
-    if (path.split("/").includes("admin") || serverOnlyPaths.has(path)) continue;
+    if (path.split("/").includes("admin") || excludedPaths.has(path)) continue;
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!/^(?:delete|get|patch|post|put)$/u.test(method)) continue;
       collectJsonSchemaRoots(operation.requestBody, roots);
@@ -391,7 +401,7 @@ function validateCurrentOpenApi(document, protocolNames) {
 
   const missing = [...roots].filter((name) => !protocolNames.has(name)).sort();
   if (missing.length)
-    throw new Error(`Rust protocol is missing current non-admin OpenAPI schemas: ${missing.join(", ")}`);
+    throw new Error(`Rust protocol is missing current supported OpenAPI schemas: ${missing.join(", ")}`);
 
   const reachable = new Set();
   const visit = (name) => {
@@ -406,7 +416,7 @@ function validateCurrentOpenApi(document, protocolNames) {
     .sort();
   if (missingReachable.length) {
     throw new Error(
-      `Rust protocol is missing schemas reachable from current non-admin OpenAPI contracts: `
+      `Rust protocol is missing schemas reachable from current supported OpenAPI contracts: `
       + missingReachable.join(", "),
     );
   }
@@ -416,7 +426,7 @@ function validateCurrentOpenApi(document, protocolNames) {
     const protocolName = schemaAliases[name] ?? name;
     const rustFields = rustObjectFieldNames(protocolName);
     const openApiFields = openApiObjectFieldNames(components[name], components);
-    for (const field of serverOnlyFields.get(name) ?? []) openApiFields?.delete(field);
+    for (const field of excludedFields.get(name) ?? []) openApiFields?.delete(field);
     if (rustFields && openApiFields && !sameSet(rustFields, openApiFields)) {
       schemaDrifts.push(
         `${name} field drift between Rust protocol and current OpenAPI: `
@@ -433,7 +443,7 @@ function validateCurrentOpenApi(document, protocolNames) {
   if (schemaDrifts.length) throw new Error(schemaDrifts.join("\n"));
 
   // OpenAPI preserves route-local query fields but not their Rust DTO names.
-  // Keep every public query operation bound explicitly so a new route cannot
+  // Keep every supported query operation bound explicitly so a new route cannot
   // silently evade requiredness and scalar-type validation.
   const queryOperations = [
     ["ChatMentionCandidatesQuery", "/v1/chat/mention_candidates", "get"],
@@ -443,8 +453,6 @@ function validateCurrentOpenApi(document, protocolNames) {
     ["ContestDetailQuery", "/v1/contests/{id}", "get"],
     ["ContestLeaderboardQuery", "/v1/contests/{id}/leaderboard", "get"],
     ["FeedRawQuery", "/v1/feed", "get"],
-    ["CommunityPicksRawQuery", "/v1/community-picks", "get"],
-    ["RecentWinnersRawQuery", "/v1/recent-winners", "get"],
     ["LeaderboardRawQuery", "/v1/leaderboard", "get"],
     ["MarketCandlesQuery", "/v1/market-data/candles", "get"],
     ["ReferencePriceQuery", "/v1/market-data/reference-price", "get"],
@@ -468,8 +476,6 @@ function validateCurrentOpenApi(document, protocolNames) {
     ["ContestDetailQuery", "/v1/u/{handle}/contests/{id}", "get"],
     ["FantasyEntriesQuery", "/v1/u/{handle}/fantasy", "get"],
     ["PnlHistoryScopedQuery", "/v1/u/{handle}/pnl", "get"],
-    ["FollowingRawQuery", "/v1/u/{handle}/following", "get"],
-    ["FollowingRawQuery", "/v1/u/{handle}/followers", "get"],
     ["PositionsQuery", "/v1/u/{handle}/positions", "get"],
     ["StreakHistoryRawQuery", "/v1/u/{handle}/streak/history", "get"],
     ["StreakPicksRawQuery", "/v1/u/{handle}/streak/picks", "get"],
@@ -495,7 +501,7 @@ function validateCurrentOpenApi(document, protocolNames) {
   for (const [name, path, method] of queryOperations) {
     const operationKey = `${method.toUpperCase()} ${path}`;
     if (mappedOperations.has(operationKey))
-      throw new Error(`duplicate public query operation mapping: ${operationKey}`);
+      throw new Error(`duplicate supported query operation mapping: ${operationKey}`);
     mappedOperations.add(operationKey);
     if (!protocolNames.has(name)) throw new Error(`Rust protocol is missing current query DTO ${name}`);
     const operation = document.paths?.[path]?.[method];
@@ -504,6 +510,7 @@ function validateCurrentOpenApi(document, protocolNames) {
     const rustFields = rustObjectFields(name);
     if (!rustFields) throw new Error(`${name} is not a Rust object query DTO`);
     const openApiFields = new Map(parameters.map((parameter) => [parameter.name, parameter]));
+    for (const field of excludedFields.get(name) ?? []) openApiFields.delete(field);
     if (!sameSet(new Set(rustFields.keys()), new Set(openApiFields.keys()))) {
       throw new Error(
         `${name} query drift between Rust protocol and ${operationKey}: `
@@ -532,20 +539,20 @@ function validateCurrentOpenApi(document, protocolNames) {
     }
   }
 
-  const publicQueryOperations = new Set();
+  const supportedQueryOperations = new Set();
   for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
-    if (path.split("/").includes("admin") || serverOnlyPaths.has(path)) continue;
+    if (path.split("/").includes("admin") || excludedPaths.has(path)) continue;
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!/^(?:delete|get|patch|post|put)$/u.test(method)) continue;
       if (queryParameters(pathItem, operation, document).length)
-        publicQueryOperations.add(`${method.toUpperCase()} ${path}`);
+        supportedQueryOperations.add(`${method.toUpperCase()} ${path}`);
     }
   }
-  if (!sameSet(mappedOperations, publicQueryOperations)) {
-    const missing = [...publicQueryOperations].filter((key) => !mappedOperations.has(key)).sort();
-    const stale = [...mappedOperations].filter((key) => !publicQueryOperations.has(key)).sort();
+  if (!sameSet(mappedOperations, supportedQueryOperations)) {
+    const missing = [...supportedQueryOperations].filter((key) => !mappedOperations.has(key)).sort();
+    const stale = [...mappedOperations].filter((key) => !supportedQueryOperations.has(key)).sort();
     throw new Error(
-      `public query operation coverage drift: missing=[${missing.join(", ")}], stale=[${stale.join(", ")}]`,
+      `supported query operation coverage drift: missing=[${missing.join(", ")}], stale=[${stale.join(", ")}]`,
     );
   }
 

@@ -621,8 +621,6 @@ class PublicMarketsRawQuery(LongshotModel):
     market_type: Optional[MarketType] = None
     source: Optional[str] = None
     source_event_id: Optional[str] = None
-    include_featured: Optional[bool] = None
-    featured_only: Optional[bool] = None
     trading_channel: Optional[TradingChannel] = None
     limit: Optional[int] = None
     cursor: Optional[str] = None
@@ -658,7 +656,7 @@ class PriceStrikeMarket(LongshotModel):
 
 @dataclass
 class EventMarket(LongshotModel):
-    __serde_skip_none__ = set(["featured_slot", "image_url"])
+    __serde_skip_none__ = set(["image_url"])
     id: Optional[MarketId] = None
     market_type: Optional[MarketType] = None
     trading_channels: Optional[List[TradingChannel]] = None
@@ -668,8 +666,6 @@ class EventMarket(LongshotModel):
     resolution_rules: Optional[str] = None
     status: Optional[MarketStatus] = None
     tradeable: Optional[bool] = None
-    # Explicit Home placement shared by this source event: 1 is left, 2 is right.
-    featured_slot: Optional[int] = None
     category_tags: Optional[List[str]] = None
     opens_at_ms: Optional[int] = None
     # Provider event start, distinct from Longshot's lifecycle opens_at_ms.
@@ -751,31 +747,6 @@ class RecentResolutionsResponse(LongshotModel):
     asset: Optional[str] = None
     duration_secs: Optional[int] = None
     resolutions: Optional[List[RecentResolutionEntry]] = None
-
-@dataclass
-class NflFeaturedMatchup(LongshotModel):
-    game_id: Optional[str] = None
-
-@dataclass
-class NflParlayLeg(LongshotModel):
-    market_id: Optional[int] = None
-    direction: Optional[str] = None
-
-@dataclass
-class NflFeaturedParlay(LongshotModel):
-    title: Optional[str] = None
-    copy: Optional[str] = None
-    legs: Optional[List[NflParlayLeg]] = None
-
-@dataclass
-class NflHubConfigBody(LongshotModel):
-    featured_matchups: Optional[List[NflFeaturedMatchup]] = None
-    featured_parlay: Optional[NflFeaturedParlay] = None
-    props_enabled: Optional[bool] = None
-
-@dataclass
-class NflHubConfigResponse(LongshotModel):
-    config: Optional[NflHubConfigBody] = None
 
 @dataclass
 class NotificationsRawQuery(LongshotModel):
@@ -1474,129 +1445,6 @@ class PublicProfilePositionDetailResponse(LongshotModel):
     created_at_ms: Optional[int] = None
     resolved_at_ms: Optional[int] = None
     legs: Optional[List[LegDetail]] = None
-
-@dataclass
-class FollowingRawQuery(LongshotModel):
-    limit: Optional[int] = None
-    cursor: Optional[str] = None
-
-@dataclass
-class CommunityPicksRawQuery(LongshotModel):
-    limit: Optional[int] = None
-
-@dataclass
-class RecentWinnersRawQuery(LongshotModel):
-    limit: Optional[int] = None
-
-@dataclass
-class FollowStatusResponse(LongshotModel):
-    following: Optional[bool] = None
-
-@dataclass
-class CommunityProfileResponse(LongshotModel):
-    __serde_skip_none__ = set(["viewer_follows", "x_avatar_url", "x_handle"])
-    handle: Optional[str] = None
-    display_name: Optional[str] = None
-    avatar_seed: Optional[int] = None
-    x_handle: Optional[str] = None
-    x_avatar_url: Optional[str] = None
-    viewer_follows: Optional[bool] = None
-
-@dataclass
-class PublicProfileFollowingResponse(LongshotModel):
-    profiles: Optional[List[CommunityProfileResponse]] = None
-    next_cursor: Optional[str] = None
-
-@dataclass
-class CommunityPickReactionResponse(LongshotModel):
-    emoji: Optional[str] = None
-    count: Optional[int] = None
-    viewer_reacted: Optional[bool] = None
-
-@dataclass
-class CommunityPickResponse(LongshotModel):
-    creator: Optional[CommunityProfileResponse] = None
-    viewer_follows: Optional[bool] = None
-    position: Optional[PublicProfilePositionDetailResponse] = None
-    reactions: Optional[List[CommunityPickReactionResponse]] = None
-
-@dataclass
-class CommunityPicksResponse(LongshotModel):
-    picks: Optional[List[CommunityPickResponse]] = None
-    copy_fee_bps: Optional[int] = None
-    market_images: Optional[Dict[str, Optional[str]]] = None
-    market_contexts: Optional[Dict[str, MarketDisplayContextResponse]] = None
-
-@dataclass
-class SportsMarketDisplayContextResponse(LongshotModel):
-    __serde_skip_none__ = set(["kickoff_at_ms"])
-    league: Optional[str] = None
-    product: Optional[str] = None
-    game_id: Optional[str] = None
-    away_team: Optional[str] = None
-    home_team: Optional[str] = None
-    kickoff_at_ms: Optional[int] = None
-
-@dataclass
-class PriceMarketDisplayContextResponse(LongshotModel):
-    __serde_skip_none__ = set(["duration_secs", "settled_change_bps", "window_start_ms"])
-    asset: Optional[str] = None
-    window_start_ms: Optional[int] = None
-    duration_secs: Optional[int] = None
-    settled_change_bps: Optional[int] = None
-
-@dataclass
-class MarketDisplayContextResponse(LongshotModel):
-    __serde_skip_none__ = set([
-        "event_slug",
-        "event_title",
-        "image_url",
-        "price",
-        "source",
-        "source_event_id",
-        "sports",
-    ])
-    source: Optional[str] = None
-    source_event_id: Optional[str] = None
-    event_slug: Optional[str] = None
-    event_title: Optional[str] = None
-    image_url: Optional[str] = None
-    sports: Optional[SportsMarketDisplayContextResponse] = None
-    price: Optional[PriceMarketDisplayContextResponse] = None
-
-@dataclass
-class RecentMarketWinnerDetailRefResponse(LongshotModel):
-    handle: Optional[str] = None
-    position_id: Optional[str] = None
-
-@dataclass
-class RecentContestWinnerDetailRefResponse(LongshotModel):
-    handle: Optional[str] = None
-    contest_id: Optional[str] = None
-    entry_index: Optional[int] = None
-
-class RecentMarketWinnerEntryTypeResponse(RustStringEnum):
-    Single = "single"
-    Combo = "combo"
-
-class RecentWinnerResponse(RustTaggedUnion):
-    __serde_tag__ = "type"
-    __serde_variants__ = {
-        "Market": "market",
-        "Contest": "contest",
-    }
-
-    @classmethod
-    def market(cls, payload: Any = None, **fields: Any) -> RecentWinnerResponse:
-        return cls("Market", payload, **fields)
-
-    @classmethod
-    def contest(cls, payload: Any = None, **fields: Any) -> RecentWinnerResponse:
-        return cls("Contest", payload, **fields)
-
-@dataclass
-class RecentWinnersResponse(LongshotModel):
-    winners: Optional[List[RecentWinnerResponse]] = None
 
 @dataclass
 class UpdateProfileRequest(LongshotModel):
@@ -3964,7 +3812,6 @@ _install_serde_metadata(
 _DEFAULT_FIELDS = {
     "EventMarketSource": {"attributes": {}},
     "EventMarket": {"resolution_rules": ""},
-    "CommunityPicksResponse": {"market_images": {}, "market_contexts": {}},
     "ContestCallerSummaryResponse": {"entry_count": 0},
     "ContestLeaderboardRowResponse": {
         "perfect_slate_payout_micros": 0,
@@ -4028,9 +3875,6 @@ _DEFAULT_FIELDS = {
     },
     "BinaryEventWinNotificationPayload": {
         "market_ids": [],
-    },
-    "NflHubConfigBody": {
-        "featured_matchups": [],
     },
 }
 
@@ -4180,9 +4024,6 @@ _DENY_UNKNOWN_FIELDS = {
     "UserDepositVaultRequest",
     "UserWithdrawParams",
     "UserWithdrawRequest",
-    "FollowingRawQuery",
-    "CommunityPicksRawQuery",
-    "RecentWinnersRawQuery",
     "CreateRfqRequest",
     "CommunityPickRequest",
     "UnsignedRfqOrderRequest",
@@ -4198,10 +4039,6 @@ _DENY_UNKNOWN_FIELDS = {
     "WebPushSubscriptionKeys",
     "UpsertWebPushSubscriptionRequest",
     "DeleteWebPushSubscriptionRequest",
-    "NflFeaturedMatchup",
-    "NflParlayLeg",
-    "NflFeaturedParlay",
-    "NflHubConfigBody",
 }
 
 for _class_name in _DENY_UNKNOWN_FIELDS:
@@ -4313,11 +4150,6 @@ __all__ = [
     "StreakExpiringNotificationPayload",
     "BinaryEventWinNotificationPayload",
     "NflShareMeta",
-    "NflFeaturedMatchup",
-    "NflParlayLeg",
-    "NflFeaturedParlay",
-    "NflHubConfigBody",
-    "NflHubConfigResponse",
     "PriceStrikeParlayWinNotificationPayload",
     "RfqResultNotificationPayload",
     "RfqResultNotificationStatus",
@@ -4380,23 +4212,6 @@ __all__ = [
     "PublicProfilePositionSummaryResponse",
     "PublicProfilePositionsResponse",
     "PublicProfilePositionDetailResponse",
-    "FollowingRawQuery",
-    "CommunityPicksRawQuery",
-    "RecentWinnersRawQuery",
-    "FollowStatusResponse",
-    "CommunityProfileResponse",
-    "PublicProfileFollowingResponse",
-    "CommunityPickReactionResponse",
-    "CommunityPickResponse",
-    "CommunityPicksResponse",
-    "SportsMarketDisplayContextResponse",
-    "PriceMarketDisplayContextResponse",
-    "MarketDisplayContextResponse",
-    "RecentMarketWinnerDetailRefResponse",
-    "RecentContestWinnerDetailRefResponse",
-    "RecentMarketWinnerEntryTypeResponse",
-    "RecentWinnerResponse",
-    "RecentWinnersResponse",
     "UpdateProfileRequest",
     "SyncXProfileRequest",
     "CheckHandleResponse",

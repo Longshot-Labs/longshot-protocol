@@ -3,16 +3,22 @@
 Private source mirror for the transport-neutral Longshot contracts and
 deterministic wire helpers for Rust, TypeScript, and Python.
 
-This repository is a standalone snapshot of
+This repository includes protocol changes from
 [`Longshot-Labs/longshot#1595`](https://github.com/Longshot-Labs/longshot/pull/1595)
-source commit `3459f30576dd305024436ab1407365e80916d03a`. The `longshot`
-monorepo is the source of truth. Compatibility updates flow one way from its
-`longshot-protocol/` directory into this repository.
+at `31476976682a7603133c75898734425fe21cd3c8` and
+[`Longshot-Labs/longshot#1577`](https://github.com/Longshot-Labs/longshot/pull/1577)
+at `fe87ac255d233881e29017b0f1470bbd27434eba`. The `longshot` monorepo is the
+source of truth. Compatibility updates flow one way from its
+`longshot-protocol/` directory into this repository, with the registry-package
+exclusions documented below.
 
 The initial protocol implementation was imported from
 `Longshot-Labs/longshot-sdk@a3f049b20ad7c83bd60aa69b366f4016495900ff`.
-Public API DTOs are synchronized with the pinned
-`fixtures/api/openapi.json`. Shared fixtures under `fixtures/protocol` preserve
+Supported external API DTOs are synchronized with the pinned
+`fixtures/api/openapi.json`. The full fixture remains private release input;
+first-party presentation routes and fields, including community browsing,
+Recent Winners, NFL hub curation, and featured market placement, are excluded
+from registry packages. Shared fixtures under `fixtures/protocol` preserve
 binary and signing compatibility with the production-pinned SDK revision.
 
 Network clients are intentionally out of scope. The private SDK remains the

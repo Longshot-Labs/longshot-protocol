@@ -42,13 +42,48 @@ forbidden_patterns=(
   'DepositMatchSourceResponse'
   'UserDepositMatchOpportunityResponse'
   'UserDepositMatchOpportunitiesResponse'
+  'CommunityPicksRawQuery'
+  'CommunityPicksResponse'
+  'CommunityPickReactionResponse'
+  'CommunityPickResponse'
+  'CommunityProfileResponse'
+  'FollowStatusResponse'
+  'FollowingRawQuery'
+  'MarketDisplayContextResponse'
+  'NflFeaturedMatchup'
+  'NflFeaturedParlay'
+  'NflHubConfig'
+  'NflParlayLeg'
+  'PublicProfileFollowingResponse'
+  'RecentContestWinnerDetailRefResponse'
+  'RecentMarketWinnerDetailRefResponse'
+  'RecentMarketWinnerEntryTypeResponse'
+  'RecentWinner'
+  'include_featured'
+  'featured_only'
 )
 
 for pattern in "${forbidden_patterns[@]}"; do
   if grep -R -n -E --exclude-dir=__pycache__ --exclude='*.pyc' "$pattern" "${public_sources[@]}"; then
-    echo "public protocol source contains a server-only contract" >&2
+    echo "public protocol source contains an excluded contract" >&2
     exit 1
   fi
 done
 
-echo "public protocol source excludes classified server-only contracts"
+for source in \
+  "$protocol_root/rust/src/api/request.rs" \
+  "$protocol_root/python/src/longshot_protocol/api.py" \
+  "$protocol_root/typescript/src/api.ts"; do
+  if ! grep -q 'CommunityPickRequest' "$source"; then
+    echo "public protocol source lost required Tail/Fade attribution" >&2
+    exit 1
+  fi
+done
+
+if sed -n '/pub struct EventMarket {/,/^}/p' "$protocol_root/rust/src/api/markets.rs" \
+  | grep -n 'featured_slot'; then
+  echo "public EventMarket contains first-party featured placement" >&2
+  exit 1
+fi
+
+echo "public protocol source excludes server-only and first-party presentation contracts"

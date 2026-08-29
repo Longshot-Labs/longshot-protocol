@@ -579,8 +579,6 @@ export interface PublicMarketsRawQuery {
   market_type?: MarketType | null;
   source?: string | null;
   source_event_id?: string | null;
-  include_featured?: boolean | null;
-  featured_only?: boolean | null;
   trading_channel?: TradingChannel | null;
   limit?: number | null;
   cursor?: string | null;
@@ -629,8 +627,6 @@ export interface EventMarket {
   resolution_rules?: string;
   status: MarketStatus;
   tradeable: boolean;
-  /** Explicit Home placement shared by this source event: 1 is left, 2 is right. */
-  featured_slot?: number | null;
   category_tags: string[];
   opens_at_ms?: WideInteger | null;
   /** Provider event start, distinct from Longshot's lifecycle `opens_at_ms`. */
@@ -756,31 +752,6 @@ export interface StreakExpiringNotificationPayload {
   entry_index: number;
   win_streak: number;
   expires_at_ms: WideInteger;
-}
-
-export interface NflFeaturedMatchup {
-  game_id: string;
-}
-
-export interface NflParlayLeg {
-  market_id: WideInteger;
-  direction: string;
-}
-
-export interface NflFeaturedParlay {
-  title: string;
-  copy?: string | null;
-  legs: NflParlayLeg[];
-}
-
-export interface NflHubConfigBody {
-  featured_matchups?: NflFeaturedMatchup[];
-  featured_parlay?: NflFeaturedParlay | null;
-  props_enabled: boolean;
-}
-
-export interface NflHubConfigResponse {
-  config: NflHubConfigBody;
 }
 
 export interface BinaryEventWinNotificationPayload {
@@ -1344,140 +1315,6 @@ export interface PublicProfilePositionDetailResponse {
   created_at_ms: WideInteger;
   resolved_at_ms?: WideInteger | null;
   legs: LegDetail[];
-}
-
-export interface FollowingRawQuery {
-  limit?: number | null;
-  cursor?: string | null;
-}
-
-export interface CommunityPicksRawQuery {
-  limit?: number | null;
-}
-
-export interface RecentWinnersRawQuery {
-  limit?: number | null;
-}
-
-export interface FollowStatusResponse {
-  following: boolean;
-}
-
-export interface CommunityProfileResponse {
-  handle: string;
-  display_name: string;
-  avatar_seed: number;
-  x_handle?: string | null;
-  x_avatar_url?: string | null;
-  viewer_follows?: boolean | null;
-}
-
-export interface PublicProfileFollowingResponse {
-  profiles: CommunityProfileResponse[];
-  next_cursor?: string | null;
-}
-
-export interface CommunityPickReactionResponse {
-  emoji: string;
-  count: WideInteger;
-  viewer_reacted: boolean;
-}
-
-export interface CommunityPickResponse {
-  creator: CommunityProfileResponse;
-  viewer_follows: boolean;
-  position: PublicProfilePositionDetailResponse;
-  reactions: CommunityPickReactionResponse[];
-}
-
-export interface CommunityPicksResponse {
-  picks: CommunityPickResponse[];
-  copy_fee_bps: number;
-  market_images?: Record<string, string | null>;
-  market_contexts?: Record<string, MarketDisplayContextResponse>;
-}
-
-export interface SportsMarketDisplayContextResponse {
-  league: string;
-  product: string;
-  game_id: string;
-  away_team: string;
-  home_team: string;
-  kickoff_at_ms?: WideInteger | null;
-}
-
-export interface PriceMarketDisplayContextResponse {
-  asset: string;
-  window_start_ms?: WideInteger | null;
-  duration_secs?: number | null;
-  settled_change_bps?: number | null;
-}
-
-export interface MarketDisplayContextResponse {
-  source?: string | null;
-  source_event_id?: string | null;
-  event_slug?: string | null;
-  event_title?: string | null;
-  image_url?: string | null;
-  sports?: SportsMarketDisplayContextResponse | null;
-  price?: PriceMarketDisplayContextResponse | null;
-}
-
-export interface RecentMarketWinnerDetailRefResponse {
-  handle: string;
-  position_id: string;
-}
-
-export interface RecentContestWinnerDetailRefResponse {
-  handle: string;
-  contest_id: string;
-  entry_index: number;
-}
-
-export const RecentMarketWinnerEntryTypeResponse = {
-  Single: 'single',
-  Combo: 'combo',
-} as const;
-export type RecentMarketWinnerEntryTypeResponse =
-  (typeof RecentMarketWinnerEntryTypeResponse)[keyof typeof RecentMarketWinnerEntryTypeResponse];
-
-export type RecentWinnerResponse =
-  | {
-      type: 'market';
-      winner_id: string;
-      settled_at_ms: WideInteger;
-      profile: CommunityProfileResponse;
-      entry_type: RecentMarketWinnerEntryTypeResponse;
-      multiplier_bps: WideInteger;
-      position: PublicProfilePositionDetailResponse;
-      detail_ref: RecentMarketWinnerDetailRefResponse;
-      market_contexts?: Record<string, MarketDisplayContextResponse>;
-    }
-  | {
-      type: 'contest';
-      winner_id: string;
-      settled_at_ms: WideInteger;
-      profile: CommunityProfileResponse;
-      contest_id: string;
-      entry_index: number;
-      title: string;
-      category: string;
-      game_type: ContestGameTypeResponse;
-      contest: PublicProfileContestDetailResponse;
-      detail_ref: RecentContestWinnerDetailRefResponse;
-      image_url: string | null;
-      stake_micros: string | number;
-      payout_micros: string | number;
-      net_payout_micros: string | number;
-      pnl_micros: string | number;
-      rank: number | null;
-      resolved_win_count: number;
-      selection_count: number;
-      roster_final_points_milli: string | number | null;
-    };
-
-export interface RecentWinnersResponse {
-  winners: RecentWinnerResponse[];
 }
 
 export interface UpdateProfileRequest {
