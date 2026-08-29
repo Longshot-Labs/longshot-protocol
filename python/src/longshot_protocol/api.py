@@ -371,249 +371,6 @@ class LeaderboardHighlightsResponse(LongshotModel):
     window: Optional[LeaderboardWindow] = None
     highlights: Optional[List[HighlightEntry]] = None
 
-class PriceSourceResponse(RustStringEnum):
-    Binance = "binance"
-    Polymarket = "polymarket"
-
-@dataclass
-class MarketCandlesQuery(LongshotModel):
-    asset: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    past_slots: Optional[int] = None
-    now_ms: Optional[int] = None
-    before_ms: Optional[int] = None
-    max_points: Optional[int] = None
-    ohlc_resolution_secs: Optional[int] = None
-
-@dataclass
-class MarketTicksStreamQuery(LongshotModel):
-    assets: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    since_ms: Optional[int] = None
-    since_seq: Optional[int] = None
-
-@dataclass
-class ExternalOddsSourceQuery(LongshotModel):
-    assets: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    window_start_ms: Optional[str] = None
-    market_ids: Optional[str] = None
-
-@dataclass
-class ChartPoint(LongshotModel):
-    timestamp_ms: Optional[int] = None
-    price: Optional[float] = None
-
-@dataclass
-class OhlcCandle(LongshotModel):
-    time_ms: Optional[int] = None
-    open: Optional[float] = None
-    high: Optional[float] = None
-    low: Optional[float] = None
-    close: Optional[float] = None
-
-@dataclass
-class MarketTickStreamEvent(LongshotModel):
-    asset: Optional[str] = None
-    price_source: Optional[PriceSourceResponse] = None
-    timestamp_ms: Optional[int] = None
-    price: Optional[float] = None
-    source_trade_id: Optional[int] = None
-    seq: Optional[int] = None
-    slot_start_ms: Optional[int] = None
-    sample_interval_ms: Optional[int] = None
-    is_synthetic: Optional[bool] = None
-    emitted_at_ms: Optional[int] = None
-
-class MarketTickStreamErrorCode(RustStringEnum):
-    PublisherSeedCursorFailed = "publisher_seed_cursor_failed"
-    PublisherIncrementalQueryFailed = "publisher_incremental_query_failed"
-    PublisherFallbackQueryFailed = "publisher_fallback_query_failed"
-
-@dataclass
-class MarketTickStreamErrorEvent(LongshotModel):
-    asset: Optional[str] = None
-    price_source: Optional[PriceSourceResponse] = None
-    code: Optional[MarketTickStreamErrorCode] = None
-    retry_after_ms: Optional[int] = None
-    emitted_at_ms: Optional[int] = None
-
-@dataclass
-class TopOfBookStreamQuery(LongshotModel):
-    assets: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    window_start_ms: Optional[str] = None
-    market_ids: Optional[str] = None
-    since_seq: Optional[int] = None
-
-class ExternalOddsSourceStatus(RustStringEnum):
-    Ok = "ok"
-    Partial = "partial"
-    Pending = "pending"
-    EmptyBook = "empty_book"
-    MissingBinding = "missing_tokens"
-    UpstreamError = "upstream_error"
-
-class ExternalOddsSourceKind(RustStringEnum):
-    PolymarketWs = "clob_ws"
-    KalshiRest = "kalshi_rest"
-    ManifoldRest = "manifold_rest"
-    Cache = "cache"
-    None_ = "none"
-
-@dataclass
-class ExternalOddsSourceRow(LongshotModel):
-    __serde_skip_none__ = set(["asset","timeframe_secs","window_start_ms","window_end_ms","market_id","source_market_id","yes_ask_cents","no_ask_cents"])
-    key: Optional[str] = None
-    asset: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    window_start_ms: Optional[int] = None
-    window_end_ms: Optional[int] = None
-    market_id: Optional[int] = None
-    source_market_id: Optional[str] = None
-    yes_ask_cents: Optional[float] = None
-    no_ask_cents: Optional[float] = None
-    status: Optional[ExternalOddsSourceStatus] = None
-    updated_at_ms: Optional[int] = None
-    source: Optional[ExternalOddsSourceKind] = None
-
-@dataclass
-class ExternalOddsSourceResponse(LongshotModel):
-    rows: Optional[List[ExternalOddsSourceRow]] = None
-
-@dataclass
-class TopOfBookStreamEvent(LongshotModel):
-    __serde_skip_none__ = set(["asset","timeframe_secs","window_start_ms","window_end_ms","market_id","source_market_id","yes_ask_cents","no_ask_cents"])
-    key: Optional[str] = None
-    asset: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    window_start_ms: Optional[int] = None
-    window_end_ms: Optional[int] = None
-    market_id: Optional[int] = None
-    source_market_id: Optional[str] = None
-    yes_ask_cents: Optional[float] = None
-    no_ask_cents: Optional[float] = None
-    status: Optional[ExternalOddsSourceStatus] = None
-    source: Optional[ExternalOddsSourceKind] = None
-    updated_at_ms: Optional[int] = None
-    seq: Optional[int] = None
-    emitted_at_ms: Optional[int] = None
-
-class TopOfBookStreamErrorCode(RustStringEnum):
-    SubscriberDisconnected = "subscriber_disconnected"
-
-@dataclass
-class TopOfBookStreamErrorEvent(LongshotModel):
-    code: Optional[TopOfBookStreamErrorCode] = None
-    retry_after_ms: Optional[int] = None
-    emitted_at_ms: Optional[int] = None
-
-@dataclass
-class TopOfBookHistoryQuery(LongshotModel):
-    market_ids: Optional[str] = None
-
-@dataclass
-class TopOfBookHistoryPoint(LongshotModel):
-    __serde_skip_none__ = set(["yes_ask_cents","no_ask_cents"])
-    timestamp_ms: Optional[int] = None
-    yes_ask_cents: Optional[float] = None
-    no_ask_cents: Optional[float] = None
-
-class TopOfBookHistoryStatus(RustStringEnum):
-    Ok = "ok"
-    Unsupported = "unsupported"
-    UpstreamError = "upstream_error"
-
-@dataclass
-class TopOfBookHistoryMarket(LongshotModel):
-    __serde_skip_none__ = set(["source_market_id"])
-    market_id: Optional[int] = None
-    source_market_id: Optional[str] = None
-    status: Optional[TopOfBookHistoryStatus] = None
-    points: Optional[List[TopOfBookHistoryPoint]] = None
-
-@dataclass
-class TopOfBookHistoryResponse(LongshotModel):
-    bucket_secs: Optional[int] = None
-    window_start_ms: Optional[int] = None
-    generated_at_ms: Optional[int] = None
-    markets: Optional[List[TopOfBookHistoryMarket]] = None
-
-@dataclass
-class MarketCandlesResponse(LongshotModel):
-    asset: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    past_slots: Optional[int] = None
-    requested_before_ms: Optional[int] = None
-    next_before_ms: Optional[int] = None
-    has_more_before: Optional[bool] = None
-    store_ready: Optional[bool] = None
-    timescale_enabled: Optional[bool] = None
-    cagg_enabled: Optional[bool] = None
-    source: Optional[str] = None
-    price_source: Optional[PriceSourceResponse] = None
-    generated_at_ms: Optional[int] = None
-    slot_ms: Optional[int] = None
-    candle_bucket_ms: Optional[int] = None
-    current_slot_start_ms: Optional[int] = None
-    current_slot_end_ms: Optional[int] = None
-    domain_start_ms: Optional[int] = None
-    domain_end_ms: Optional[int] = None
-    latest_price: Optional[float] = None
-    latest_price_timestamp_ms: Optional[int] = None
-    candle_count: Optional[int] = None
-    points: Optional[List[ChartPoint]] = None
-    ohlc: Optional[List[OhlcCandle]] = None
-
-@dataclass
-class ReferencePriceQuery(LongshotModel):
-    asset: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-
-class SourceStatus(RustStringEnum):
-    Ok = "ok"
-    Pending = "pending"
-    Unavailable = "unavailable"
-
-@dataclass
-class ReferencePriceResponse(LongshotModel):
-    asset: Optional[str] = None
-    timeframe_secs: Optional[int] = None
-    current_slot_start_ms: Optional[int] = None
-    window_open_price: Optional[float] = None
-    source_status: Optional[SourceStatus] = None
-
-@dataclass
-class WindowResultsQuery(LongshotModel):
-    timeframe_secs: Optional[int] = None
-    past_windows: Optional[int] = None
-
-class WindowDirection(RustStringEnum):
-    Up = "up"
-    Down = "down"
-
-@dataclass
-class WindowAssetResult(LongshotModel):
-    asset: Optional[str] = None
-    open_price: Optional[float] = None
-    close_price: Optional[float] = None
-    direction: Optional[WindowDirection] = None
-    price_source: Optional[PriceSourceResponse] = None
-
-@dataclass
-class WindowResult(LongshotModel):
-    slot_start_ms: Optional[int] = None
-    slot_end_ms: Optional[int] = None
-    assets: Optional[List[WindowAssetResult]] = None
-
-@dataclass
-class WindowResultsResponse(LongshotModel):
-    timeframe_secs: Optional[int] = None
-    past_windows: Optional[int] = None
-    price_source: Optional[PriceSourceResponse] = None
-    generated_at_ms: Optional[int] = None
-    windows: Optional[List[WindowResult]] = None
-
 @dataclass
 class PublicMarketsRawQuery(LongshotModel):
     __serde_skip_none__ = set(["statuses"])
@@ -1551,12 +1308,6 @@ class UserDepositRequest(LongshotModel):
     idempotency_key: Optional[str] = None
 
 @dataclass
-class UserDepositVaultRequest(LongshotModel):
-    vault_id: Optional[str] = None
-    amount_micros: Optional[int] = None
-    idempotency_key: Optional[str] = None
-
-@dataclass
 class UserWithdrawParams(LongshotModel):
     amount_micros: Optional[int] = None
     destination_address: Optional[str] = None
@@ -1581,21 +1332,6 @@ class WithdrawalAuthorization(RustTaggedUnion):
 class UserWithdrawRequest(LongshotModel):
     withdraw_params: Optional[UserWithdrawParams] = None
     authorization: Optional[WithdrawalAuthorization] = None
-
-class VaultWithdrawalAmountRequest(RustTaggedUnion):
-    __serde_tag__ = "type"
-    __serde_variants__ = {
-            "Full": "full",
-            "Partial": "partial"
-    }
-
-    @classmethod
-    def full(cls, payload: Any = None, **fields: Any) -> VaultWithdrawalAmountRequest:
-        return cls("Full", payload, **fields)
-
-    @classmethod
-    def partial(cls, payload: Any = None, **fields: Any) -> VaultWithdrawalAmountRequest:
-        return cls("Partial", payload, **fields)
 
 @dataclass
 class OrderLegJson(LongshotModel):
@@ -1789,10 +1525,6 @@ class UserDepositWalletResponse(LongshotModel):
     token_decimals: Optional[int] = None
 
 @dataclass
-class UserDepositVaultResponse(LongshotModel):
-    pass
-
-@dataclass
 class UserWithdrawResponse(LongshotModel):
     __serde_skip_none__ = set(["destination_address"])
     amount_micros: Optional[int] = None
@@ -1843,182 +1575,6 @@ class WithdrawOperationResponse(RustTaggedUnion):
     @classmethod
     def operation_status(cls, payload: Any = None, **fields: Any) -> WithdrawOperationResponse:
         return cls("OperationStatus", payload, **fields)
-
-@dataclass
-class UserRequestWithdrawalVaultResponse(LongshotModel):
-    queued: Optional[bool] = None
-
-@dataclass
-class VaultClaimFeesResponse(LongshotModel):
-    claimed_micros: Optional[int] = None
-
-class VaultWithdrawalAmountResponse(RustTaggedUnion):
-    __serde_tag__ = "type"
-    __serde_variants__ = {
-            "Full": "full",
-            "Partial": "partial"
-    }
-
-    @classmethod
-    def full(cls, payload: Any = None, **fields: Any) -> VaultWithdrawalAmountResponse:
-        return cls("Full", payload, **fields)
-
-    @classmethod
-    def partial(cls, payload: Any = None, **fields: Any) -> VaultWithdrawalAmountResponse:
-        return cls("Partial", payload, **fields)
-
-@dataclass
-class PendingVaultWithdrawalResponse(LongshotModel):
-    user_id: Optional[str] = None
-    requested_amount: Optional[VaultWithdrawalAmountResponse] = None
-    withdrawal_time_ms: Optional[int] = None
-
-@dataclass
-class VaultWithdrawalQueueResponse(LongshotModel):
-    withdrawal_queue: Optional[List[PendingVaultWithdrawalResponse]] = None
-
-@dataclass
-class VaultLiquidityProviderResponse(LongshotModel):
-    user_id: Optional[str] = None
-    liquidity_micros: Optional[int] = None
-
-@dataclass
-class PositionVaultResponse(LongshotModel):
-    total_deposit_micros: Optional[int] = None
-    liquidity_providers: Optional[List[VaultLiquidityProviderResponse]] = None
-
-@dataclass
-class VaultPositionVaultResponse(LongshotModel):
-    position_vault: Optional[PositionVaultResponse] = None
-
-@dataclass
-class VaultConfigsResponse(LongshotModel):
-    max_position_value_bps: Optional[int] = None
-    min_deposit_age_ms: Optional[int] = None
-    withdrawal_window_ms: Optional[int] = None
-    binary_event_utilization_cap_bps: Optional[int] = None
-    price_strike_utilization_cap_bps: Optional[int] = None
-    vault_manager_fee_bps: Optional[int] = None
-    external_deposits_enabled: Optional[bool] = None
-    making_enabled: Optional[bool] = None
-    taking_enabled: Optional[bool] = None
-    fee_receiver: Optional[str] = None
-
-@dataclass
-class VaultAmountResponse(LongshotModel):
-    total_deposit_micros: Optional[int] = None
-
-@dataclass
-class VaultAggregateAmountResponse(LongshotModel):
-    amount_micros: Optional[int] = None
-
-@dataclass
-class VaultResponse(LongshotModel):
-    configs: Optional[VaultConfigsResponse] = None
-    unallocated: Optional[VaultAmountResponse] = None
-    allocated: Optional[VaultAmountResponse] = None
-    binary_event_allocation: Optional[VaultAggregateAmountResponse] = None
-    price_strike_allocation: Optional[VaultAggregateAmountResponse] = None
-    total_fees: Optional[VaultAggregateAmountResponse] = None
-    unclaimed_fees: Optional[VaultAggregateAmountResponse] = None
-
-@dataclass
-class VaultStatsResponse(LongshotModel):
-    tvl_micros: Optional[int] = None
-    allocated_micros: Optional[int] = None
-    unallocated_micros: Optional[int] = None
-    all_time_pnl_micros: Optional[int] = None
-    trading_volume_micros: Optional[int] = None
-    past_month_apr_bps: Optional[int] = None
-    all_time_apr_bps: Optional[int] = None
-
-@dataclass
-class VaultPnlHistoryPoint(LongshotModel):
-    t_ms: Optional[int] = None
-    value_micros: Optional[int] = None
-
-@dataclass
-class VaultPnlHistoryResponse(LongshotModel):
-    series: Optional[List[VaultPnlHistoryPoint]] = None
-
-@dataclass
-class VaultPositionResponse(LongshotModel):
-    position_id: Optional[str] = None
-    legs_summary: Optional[str] = None
-    wager_micros: Optional[int] = None
-    multiplier_bps: Optional[int] = None
-    potential_payout_micros: Optional[int] = None
-    mark_value_micros: Optional[int] = None
-    created_at_ms: Optional[int] = None
-    resolved_at_ms: Optional[int] = None
-
-@dataclass
-class VaultPositionsResponse(LongshotModel):
-    __serde_skip_none__ = set(["next_cursor"])
-    items: Optional[List[VaultPositionResponse]] = None
-    next_cursor: Optional[str] = None
-
-@dataclass
-class PublicVaultPositionDetailResponse(LongshotModel):
-    id: Optional[str] = None
-    wager_micros: Optional[int] = None
-    payout_micros: Optional[int] = None
-    net_payout_micros: Optional[int] = None
-    legs_count: Optional[int] = None
-    legs_summary: Optional[str] = None
-    status: Optional[str] = None
-    pnl_micros: Optional[int] = None
-    created_at_ms: Optional[int] = None
-    resolved_at_ms: Optional[int] = None
-    legs: Optional[List[LegDetail]] = None
-
-@dataclass
-class PublicVaultActivityEventResponse(LongshotModel):
-    event_type: Optional[str] = None
-    user_id: Optional[str] = None
-    user_display_name: Optional[str] = None
-    user_handle: Optional[str] = None
-    user_avatar_seed: Optional[int] = None
-    user_x_avatar_url: Optional[str] = None
-    amount_micros: Optional[int] = None
-    position_id: Optional[str] = None
-    event_at_ms: Optional[int] = None
-
-@dataclass
-class PublicVaultActivityResponse(LongshotModel):
-    __serde_skip_none__ = set(["next_cursor"])
-    items: Optional[List[PublicVaultActivityEventResponse]] = None
-    next_cursor: Optional[str] = None
-
-@dataclass
-class PublicVaultContributorLeaderboardRowResponse(LongshotModel):
-    user_id: Optional[str] = None
-    user_display_name: Optional[str] = None
-    user_handle: Optional[str] = None
-    user_avatar_seed: Optional[int] = None
-    user_x_avatar_url: Optional[str] = None
-    total_deposits_micros: Optional[int] = None
-    all_time_earned_micros: Optional[int] = None
-    all_time_pnl_micros: Optional[int] = None
-    unrealized_pnl_micros: Optional[int] = None
-
-@dataclass
-class PublicVaultContributorLeaderboardResponse(LongshotModel):
-    __serde_skip_none__ = set(["next_cursor"])
-    items: Optional[List[PublicVaultContributorLeaderboardRowResponse]] = None
-    next_cursor: Optional[str] = None
-
-@dataclass
-class VaultUserPerformanceResponse(LongshotModel):
-    current_balance_micros: Optional[int] = None
-    unallocated_micros: Optional[int] = None
-    allocated_micros: Optional[int] = None
-    lifetime_deposits_micros: Optional[int] = None
-    all_time_earned_micros: Optional[int] = None
-    all_time_pnl_micros: Optional[int] = None
-    unrealized_pnl_micros: Optional[int] = None
-    latest_deposit_time_ms: Optional[int] = None
-    pending_withdrawal: Optional[PendingVaultWithdrawalResponse] = None
 
 @dataclass
 class AvailableBalanceResponse(LongshotModel):
@@ -2950,37 +2506,6 @@ class ConfirmPositionQuery(LongshotModel):
 class ReferralsListRawQuery(LongshotModel):
     page: Optional[int] = None
     limit: Optional[int] = None
-
-@dataclass
-class VaultIdQuery(LongshotModel):
-    vault_id: Optional[str] = None
-
-@dataclass
-class VaultPnlHistoryQuery(LongshotModel):
-    vault_id: Optional[str] = None
-    range: Optional[str] = None
-    metric: Optional[str] = None
-
-@dataclass
-class VaultPositionsQuery(LongshotModel):
-    vault_id: Optional[str] = None
-    status: Optional[str] = None
-    cursor: Optional[str] = None
-    limit: Optional[int] = None
-
-@dataclass
-class VaultEventsQuery(LongshotModel):
-    vault_id: Optional[str] = None
-    cursor: Optional[str] = None
-    limit: Optional[int] = None
-    event_type: Optional[str] = None
-
-@dataclass
-class VaultContributorsQuery(LongshotModel):
-    vault_id: Optional[str] = None
-    cursor: Optional[str] = None
-    limit: Optional[int] = None
-    sort: Optional[str] = None
 
 def _direction_to_wire(direction: Direction) -> int:
     return 0 if direction is Direction.Up else 1
@@ -3982,13 +3507,6 @@ _DENY_UNKNOWN_FIELDS = {
     "LeaderboardRawQuery",
     "LeaderboardMeRawQuery",
     "HighlightsRawQuery",
-    "MarketCandlesQuery",
-    "MarketTicksStreamQuery",
-    "ExternalOddsSourceQuery",
-    "TopOfBookStreamQuery",
-    "TopOfBookHistoryQuery",
-    "ReferencePriceQuery",
-    "WindowResultsQuery",
     "PublicMarketsRawQuery",
     "PriceStrikeMarket",
     "EventMarket",
@@ -4021,7 +3539,6 @@ _DENY_UNKNOWN_FIELDS = {
     "PlaceContestBetRequest",
     "PlaceRosterPickRequest",
     "UserDepositRequest",
-    "UserDepositVaultRequest",
     "UserWithdrawParams",
     "UserWithdrawRequest",
     "CreateRfqRequest",
@@ -4096,37 +3613,6 @@ __all__ = [
     "LeaderboardMyRankResponse",
     "HighlightEntry",
     "LeaderboardHighlightsResponse",
-    "PriceSourceResponse",
-    "MarketCandlesQuery",
-    "MarketTicksStreamQuery",
-    "ExternalOddsSourceQuery",
-    "ChartPoint",
-    "OhlcCandle",
-    "MarketTickStreamEvent",
-    "MarketTickStreamErrorCode",
-    "MarketTickStreamErrorEvent",
-    "TopOfBookStreamQuery",
-    "ExternalOddsSourceStatus",
-    "ExternalOddsSourceKind",
-    "ExternalOddsSourceRow",
-    "ExternalOddsSourceResponse",
-    "TopOfBookStreamEvent",
-    "TopOfBookStreamErrorCode",
-    "TopOfBookStreamErrorEvent",
-    "TopOfBookHistoryQuery",
-    "TopOfBookHistoryPoint",
-    "TopOfBookHistoryStatus",
-    "TopOfBookHistoryMarket",
-    "TopOfBookHistoryResponse",
-    "MarketCandlesResponse",
-    "ReferencePriceQuery",
-    "SourceStatus",
-    "ReferencePriceResponse",
-    "WindowResultsQuery",
-    "WindowDirection",
-    "WindowAssetResult",
-    "WindowResult",
-    "WindowResultsResponse",
     "PublicMarketsRawQuery",
     "EventMarketSource",
     "PriceStrikeMarket",
@@ -4228,14 +3714,12 @@ __all__ = [
     "PlaceContestBetSelectionRequest",
     "PlaceContestBetRequest",
     "UserDepositRequest",
-    "UserDepositVaultRequest",
     "UserWithdrawParams",
     "WithdrawalAuthorization",
     "UserWithdrawRequest",
     "build_wallet_authentication_message",
     "build_wallet_withdrawal_authorization_message",
     "encode_wallet_signature",
-    "VaultWithdrawalAmountRequest",
     "OrderLegJson",
     "SignedOrderJson",
     "CreateRfqRequest",
@@ -4253,35 +3737,11 @@ __all__ = [
     "CancelResponse",
     "UserDepositResponse",
     "UserDepositWalletResponse",
-    "UserDepositVaultResponse",
     "UserWithdrawResponse",
     "BalanceOperationStatus",
     "BalanceOperationStatusResponse",
     "DepositOperationResponse",
     "WithdrawOperationResponse",
-    "UserRequestWithdrawalVaultResponse",
-    "VaultClaimFeesResponse",
-    "VaultWithdrawalAmountResponse",
-    "PendingVaultWithdrawalResponse",
-    "VaultWithdrawalQueueResponse",
-    "VaultLiquidityProviderResponse",
-    "PositionVaultResponse",
-    "VaultPositionVaultResponse",
-    "VaultConfigsResponse",
-    "VaultAmountResponse",
-    "VaultAggregateAmountResponse",
-    "VaultResponse",
-    "VaultStatsResponse",
-    "VaultPnlHistoryPoint",
-    "VaultPnlHistoryResponse",
-    "VaultPositionResponse",
-    "VaultPositionsResponse",
-    "PublicVaultPositionDetailResponse",
-    "PublicVaultActivityEventResponse",
-    "PublicVaultActivityResponse",
-    "PublicVaultContributorLeaderboardRowResponse",
-    "PublicVaultContributorLeaderboardResponse",
-    "VaultUserPerformanceResponse",
     "AvailableBalanceResponse",
     "ReservedBalanceResponse",
     "UserTransactionCategory",
@@ -4396,11 +3856,6 @@ __all__ = [
     "UserTransactionsRawQuery",
     "ConfirmPositionQuery",
     "ReferralsListRawQuery",
-    "VaultIdQuery",
-    "VaultPnlHistoryQuery",
-    "VaultPositionsQuery",
-    "VaultEventsQuery",
-    "VaultContributorsQuery",
     "CreateEmbeddedWalletEnsureRequest",
     "ReferralPromptRequest",
     "ClaimReferralPromptRequest",

@@ -257,245 +257,6 @@ class LeaderboardHighlightsResponse(LongshotModel):
     highlights: List[HighlightEntry]
     def __init__(self, *, sort: HighlightSortResponse, window: LeaderboardWindow, highlights: List[HighlightEntry]) -> None: ...
 
-class PriceSourceResponse(RustStringEnum):
-    Binance = 'binance'
-    Polymarket = 'polymarket'
-
-class MarketCandlesQuery(LongshotModel):
-    asset: Optional[str]
-    timeframe_secs: Optional[int]
-    past_slots: Optional[int]
-    now_ms: Optional[int]
-    before_ms: Optional[int]
-    max_points: Optional[int]
-    ohlc_resolution_secs: Optional[int]
-    def __init__(self, *, asset: Optional[str] = ..., timeframe_secs: Optional[int] = ..., past_slots: Optional[int] = ..., now_ms: Optional[int] = ..., before_ms: Optional[int] = ..., max_points: Optional[int] = ..., ohlc_resolution_secs: Optional[int] = ...) -> None: ...
-
-class MarketTicksStreamQuery(LongshotModel):
-    assets: Optional[str]
-    timeframe_secs: Optional[int]
-    since_ms: Optional[int]
-    since_seq: Optional[int]
-    def __init__(self, *, assets: Optional[str] = ..., timeframe_secs: Optional[int] = ..., since_ms: Optional[int] = ..., since_seq: Optional[int] = ...) -> None: ...
-
-class ExternalOddsSourceQuery(LongshotModel):
-    assets: Optional[str]
-    timeframe_secs: Optional[int]
-    window_start_ms: Optional[str]
-    market_ids: Optional[str]
-    def __init__(self, *, assets: Optional[str] = ..., timeframe_secs: Optional[int] = ..., window_start_ms: Optional[str] = ..., market_ids: Optional[str] = ...) -> None: ...
-
-class ChartPoint(LongshotModel):
-    timestamp_ms: int
-    price: float
-    def __init__(self, *, timestamp_ms: int, price: float) -> None: ...
-
-class OhlcCandle(LongshotModel):
-    time_ms: int
-    open: float
-    high: float
-    low: float
-    close: float
-    def __init__(self, *, time_ms: int, open: float, high: float, low: float, close: float) -> None: ...
-
-class MarketTickStreamEvent(LongshotModel):
-    asset: str
-    price_source: PriceSourceResponse
-    timestamp_ms: int
-    price: float
-    source_trade_id: int
-    seq: int
-    slot_start_ms: int
-    sample_interval_ms: int
-    is_synthetic: bool
-    emitted_at_ms: int
-    def __init__(self, *, asset: str, price_source: PriceSourceResponse, timestamp_ms: int, price: float, source_trade_id: int, seq: int, slot_start_ms: int, sample_interval_ms: int, is_synthetic: bool, emitted_at_ms: int) -> None: ...
-
-class MarketTickStreamErrorCode(RustStringEnum):
-    PublisherSeedCursorFailed = 'publisher_seed_cursor_failed'
-    PublisherIncrementalQueryFailed = 'publisher_incremental_query_failed'
-    PublisherFallbackQueryFailed = 'publisher_fallback_query_failed'
-
-class MarketTickStreamErrorEvent(LongshotModel):
-    asset: str
-    price_source: PriceSourceResponse
-    code: MarketTickStreamErrorCode
-    retry_after_ms: int
-    emitted_at_ms: int
-    def __init__(self, *, asset: str, price_source: PriceSourceResponse, code: MarketTickStreamErrorCode, retry_after_ms: int, emitted_at_ms: int) -> None: ...
-
-class TopOfBookStreamQuery(LongshotModel):
-    assets: Optional[str]
-    timeframe_secs: Optional[int]
-    window_start_ms: Optional[str]
-    market_ids: Optional[str]
-    since_seq: Optional[int]
-    def __init__(self, *, assets: Optional[str] = ..., timeframe_secs: Optional[int] = ..., window_start_ms: Optional[str] = ..., market_ids: Optional[str] = ..., since_seq: Optional[int] = ...) -> None: ...
-
-class ExternalOddsSourceStatus(RustStringEnum):
-    Ok = 'ok'
-    Partial = 'partial'
-    Pending = 'pending'
-    EmptyBook = 'empty_book'
-    MissingBinding = 'missing_tokens'
-    UpstreamError = 'upstream_error'
-
-class ExternalOddsSourceKind(RustStringEnum):
-    PolymarketWs = 'clob_ws'
-    KalshiRest = 'kalshi_rest'
-    ManifoldRest = 'manifold_rest'
-    Cache = 'cache'
-    None_ = 'none'
-
-class ExternalOddsSourceRow(LongshotModel):
-    key: str
-    asset: Optional[str]
-    timeframe_secs: Optional[int]
-    window_start_ms: Optional[int]
-    window_end_ms: Optional[int]
-    market_id: Optional[int]
-    source_market_id: Optional[str]
-    yes_ask_cents: Optional[float]
-    no_ask_cents: Optional[float]
-    status: ExternalOddsSourceStatus
-    updated_at_ms: int
-    source: ExternalOddsSourceKind
-    def __init__(self, *, key: str, asset: Optional[str] = ..., timeframe_secs: Optional[int] = ..., window_start_ms: Optional[int] = ..., window_end_ms: Optional[int] = ..., market_id: Optional[int] = ..., source_market_id: Optional[str] = ..., yes_ask_cents: Optional[float] = ..., no_ask_cents: Optional[float] = ..., status: ExternalOddsSourceStatus, updated_at_ms: int, source: ExternalOddsSourceKind) -> None: ...
-
-class ExternalOddsSourceResponse(LongshotModel):
-    rows: List[ExternalOddsSourceRow]
-    def __init__(self, *, rows: List[ExternalOddsSourceRow]) -> None: ...
-
-class TopOfBookStreamEvent(LongshotModel):
-    key: str
-    asset: Optional[str]
-    timeframe_secs: Optional[int]
-    window_start_ms: Optional[int]
-    window_end_ms: Optional[int]
-    market_id: Optional[int]
-    source_market_id: Optional[str]
-    yes_ask_cents: Optional[float]
-    no_ask_cents: Optional[float]
-    status: ExternalOddsSourceStatus
-    source: ExternalOddsSourceKind
-    updated_at_ms: int
-    seq: int
-    emitted_at_ms: int
-    def __init__(self, *, key: str, asset: Optional[str] = ..., timeframe_secs: Optional[int] = ..., window_start_ms: Optional[int] = ..., window_end_ms: Optional[int] = ..., market_id: Optional[int] = ..., source_market_id: Optional[str] = ..., yes_ask_cents: Optional[float] = ..., no_ask_cents: Optional[float] = ..., status: ExternalOddsSourceStatus, source: ExternalOddsSourceKind, updated_at_ms: int, seq: int, emitted_at_ms: int) -> None: ...
-
-class TopOfBookStreamErrorCode(RustStringEnum):
-    SubscriberDisconnected = 'subscriber_disconnected'
-
-class TopOfBookStreamErrorEvent(LongshotModel):
-    code: TopOfBookStreamErrorCode
-    retry_after_ms: int
-    emitted_at_ms: int
-    def __init__(self, *, code: TopOfBookStreamErrorCode, retry_after_ms: int, emitted_at_ms: int) -> None: ...
-
-class TopOfBookHistoryQuery(LongshotModel):
-    market_ids: str
-    def __init__(self, *, market_ids: str) -> None: ...
-
-class TopOfBookHistoryPoint(LongshotModel):
-    timestamp_ms: int
-    yes_ask_cents: Optional[float]
-    no_ask_cents: Optional[float]
-    def __init__(self, *, timestamp_ms: int, yes_ask_cents: Optional[float] = ..., no_ask_cents: Optional[float] = ...) -> None: ...
-
-class TopOfBookHistoryStatus(RustStringEnum):
-    Ok = 'ok'
-    Unsupported = 'unsupported'
-    UpstreamError = 'upstream_error'
-
-class TopOfBookHistoryMarket(LongshotModel):
-    market_id: int
-    source_market_id: Optional[str]
-    status: TopOfBookHistoryStatus
-    points: List[TopOfBookHistoryPoint]
-    def __init__(self, *, market_id: int, source_market_id: Optional[str] = ..., status: TopOfBookHistoryStatus, points: List[TopOfBookHistoryPoint]) -> None: ...
-
-class TopOfBookHistoryResponse(LongshotModel):
-    bucket_secs: int
-    window_start_ms: int
-    generated_at_ms: int
-    markets: List[TopOfBookHistoryMarket]
-    def __init__(self, *, bucket_secs: int, window_start_ms: int, generated_at_ms: int, markets: List[TopOfBookHistoryMarket]) -> None: ...
-
-class MarketCandlesResponse(LongshotModel):
-    asset: str
-    timeframe_secs: int
-    past_slots: int
-    requested_before_ms: Optional[int]
-    next_before_ms: Optional[int]
-    has_more_before: bool
-    store_ready: bool
-    timescale_enabled: bool
-    cagg_enabled: bool
-    source: str
-    price_source: PriceSourceResponse
-    generated_at_ms: int
-    slot_ms: int
-    candle_bucket_ms: int
-    current_slot_start_ms: int
-    current_slot_end_ms: int
-    domain_start_ms: int
-    domain_end_ms: int
-    latest_price: Optional[float]
-    latest_price_timestamp_ms: Optional[int]
-    candle_count: int
-    points: List[ChartPoint]
-    ohlc: List[OhlcCandle]
-    def __init__(self, *, asset: str, timeframe_secs: int, past_slots: int, requested_before_ms: Optional[int] = ..., next_before_ms: Optional[int] = ..., has_more_before: bool, store_ready: bool, timescale_enabled: bool, cagg_enabled: bool, source: str, price_source: PriceSourceResponse, generated_at_ms: int, slot_ms: int, candle_bucket_ms: int, current_slot_start_ms: int, current_slot_end_ms: int, domain_start_ms: int, domain_end_ms: int, latest_price: Optional[float] = ..., latest_price_timestamp_ms: Optional[int] = ..., candle_count: int, points: List[ChartPoint], ohlc: List[OhlcCandle]) -> None: ...
-
-class ReferencePriceQuery(LongshotModel):
-    asset: Optional[str]
-    timeframe_secs: Optional[int]
-    def __init__(self, *, asset: Optional[str] = ..., timeframe_secs: Optional[int] = ...) -> None: ...
-
-class SourceStatus(RustStringEnum):
-    Ok = 'ok'
-    Pending = 'pending'
-    Unavailable = 'unavailable'
-
-class ReferencePriceResponse(LongshotModel):
-    asset: str
-    timeframe_secs: int
-    current_slot_start_ms: int
-    window_open_price: Optional[float]
-    source_status: SourceStatus
-    def __init__(self, *, asset: str, timeframe_secs: int, current_slot_start_ms: int, window_open_price: Optional[float] = ..., source_status: SourceStatus) -> None: ...
-
-class WindowResultsQuery(LongshotModel):
-    timeframe_secs: Optional[int]
-    past_windows: Optional[int]
-    def __init__(self, *, timeframe_secs: Optional[int] = ..., past_windows: Optional[int] = ...) -> None: ...
-
-class WindowDirection(RustStringEnum):
-    Up = 'up'
-    Down = 'down'
-
-class WindowAssetResult(LongshotModel):
-    asset: str
-    open_price: float
-    close_price: float
-    direction: WindowDirection
-    price_source: PriceSourceResponse
-    def __init__(self, *, asset: str, open_price: float, close_price: float, direction: WindowDirection, price_source: PriceSourceResponse) -> None: ...
-
-class WindowResult(LongshotModel):
-    slot_start_ms: int
-    slot_end_ms: int
-    assets: List[WindowAssetResult]
-    def __init__(self, *, slot_start_ms: int, slot_end_ms: int, assets: List[WindowAssetResult]) -> None: ...
-
-class WindowResultsResponse(LongshotModel):
-    timeframe_secs: int
-    past_windows: int
-    price_source: PriceSourceResponse
-    generated_at_ms: int
-    windows: List[WindowResult]
-    def __init__(self, *, timeframe_secs: int, past_windows: int, price_source: PriceSourceResponse, generated_at_ms: int, windows: List[WindowResult]) -> None: ...
-
 class PublicMarketsRawQuery(LongshotModel):
     market_type: Optional[MarketType]
     source: Optional[str]
@@ -1329,12 +1090,6 @@ class UserDepositRequest(LongshotModel):
     idempotency_key: str
     def __init__(self, *, amount_micros: int, idempotency_key: str) -> None: ...
 
-class UserDepositVaultRequest(LongshotModel):
-    vault_id: str
-    amount_micros: int
-    idempotency_key: str
-    def __init__(self, *, vault_id: str, amount_micros: int, idempotency_key: str) -> None: ...
-
 class UserWithdrawParams(LongshotModel):
     amount_micros: int
     destination_address: Optional[str]
@@ -1362,14 +1117,6 @@ def build_wallet_withdrawal_authorization_message(domain: str, chain_id: int, au
 
 def encode_wallet_signature(signature: bytes) -> str:
     ...
-
-class VaultWithdrawalAmountRequest(RustTaggedUnion):
-    @classmethod
-    def full(cls, payload: Any=None, **fields: Any) -> VaultWithdrawalAmountRequest:
-        ...
-    @classmethod
-    def partial(cls, payload: Any=None, **fields: Any) -> VaultWithdrawalAmountRequest:
-        ...
 
 class OrderLegJson(LongshotModel):
     market_id: int
@@ -1532,9 +1279,6 @@ class UserDepositWalletResponse(LongshotModel):
     token_decimals: int
     def __init__(self, *, address: str, chain_id: Optional[int] = ..., token_symbol: str, token_decimals: int) -> None: ...
 
-class UserDepositVaultResponse(LongshotModel):
-    def __init__(self) -> None: ...
-
 class UserWithdrawResponse(LongshotModel):
     amount_micros: int
     operation_id: UUID
@@ -1570,172 +1314,6 @@ class WithdrawOperationResponse(RustTaggedUnion):
     @classmethod
     def operation_status(cls, payload: Any=None, **fields: Any) -> WithdrawOperationResponse:
         ...
-
-class UserRequestWithdrawalVaultResponse(LongshotModel):
-    queued: bool
-    def __init__(self, *, queued: bool) -> None: ...
-
-class VaultClaimFeesResponse(LongshotModel):
-    claimed_micros: int
-    def __init__(self, *, claimed_micros: int) -> None: ...
-
-class VaultWithdrawalAmountResponse(RustTaggedUnion):
-    @classmethod
-    def full(cls, payload: Any=None, **fields: Any) -> VaultWithdrawalAmountResponse:
-        ...
-    @classmethod
-    def partial(cls, payload: Any=None, **fields: Any) -> VaultWithdrawalAmountResponse:
-        ...
-
-class PendingVaultWithdrawalResponse(LongshotModel):
-    user_id: str
-    requested_amount: VaultWithdrawalAmountResponse
-    withdrawal_time_ms: int
-    def __init__(self, *, user_id: str, requested_amount: VaultWithdrawalAmountResponse, withdrawal_time_ms: int) -> None: ...
-
-class VaultWithdrawalQueueResponse(LongshotModel):
-    withdrawal_queue: List[PendingVaultWithdrawalResponse]
-    def __init__(self, *, withdrawal_queue: List[PendingVaultWithdrawalResponse]) -> None: ...
-
-class VaultLiquidityProviderResponse(LongshotModel):
-    user_id: str
-    liquidity_micros: int
-    def __init__(self, *, user_id: str, liquidity_micros: int) -> None: ...
-
-class PositionVaultResponse(LongshotModel):
-    total_deposit_micros: int
-    liquidity_providers: List[VaultLiquidityProviderResponse]
-    def __init__(self, *, total_deposit_micros: int, liquidity_providers: List[VaultLiquidityProviderResponse]) -> None: ...
-
-class VaultPositionVaultResponse(LongshotModel):
-    position_vault: PositionVaultResponse
-    def __init__(self, *, position_vault: PositionVaultResponse) -> None: ...
-
-class VaultConfigsResponse(LongshotModel):
-    max_position_value_bps: int
-    min_deposit_age_ms: int
-    withdrawal_window_ms: int
-    binary_event_utilization_cap_bps: int
-    price_strike_utilization_cap_bps: int
-    vault_manager_fee_bps: int
-    external_deposits_enabled: bool
-    making_enabled: bool
-    taking_enabled: bool
-    fee_receiver: Optional[str]
-    def __init__(self, *, max_position_value_bps: int, min_deposit_age_ms: int, withdrawal_window_ms: int, binary_event_utilization_cap_bps: int, price_strike_utilization_cap_bps: int, vault_manager_fee_bps: int, external_deposits_enabled: bool, making_enabled: bool, taking_enabled: bool, fee_receiver: Optional[str] = ...) -> None: ...
-
-class VaultAmountResponse(LongshotModel):
-    total_deposit_micros: int
-    def __init__(self, *, total_deposit_micros: int) -> None: ...
-
-class VaultAggregateAmountResponse(LongshotModel):
-    amount_micros: int
-    def __init__(self, *, amount_micros: int) -> None: ...
-
-class VaultResponse(LongshotModel):
-    configs: VaultConfigsResponse
-    unallocated: VaultAmountResponse
-    allocated: VaultAmountResponse
-    binary_event_allocation: VaultAggregateAmountResponse
-    price_strike_allocation: VaultAggregateAmountResponse
-    total_fees: VaultAggregateAmountResponse
-    unclaimed_fees: VaultAggregateAmountResponse
-    def __init__(self, *, configs: VaultConfigsResponse, unallocated: VaultAmountResponse, allocated: VaultAmountResponse, binary_event_allocation: VaultAggregateAmountResponse, price_strike_allocation: VaultAggregateAmountResponse, total_fees: VaultAggregateAmountResponse, unclaimed_fees: VaultAggregateAmountResponse) -> None: ...
-
-class VaultStatsResponse(LongshotModel):
-    tvl_micros: int
-    allocated_micros: int
-    unallocated_micros: int
-    all_time_pnl_micros: int
-    trading_volume_micros: int
-    past_month_apr_bps: int
-    all_time_apr_bps: int
-    def __init__(self, *, tvl_micros: int, allocated_micros: int, unallocated_micros: int, all_time_pnl_micros: int, trading_volume_micros: int, past_month_apr_bps: int, all_time_apr_bps: int) -> None: ...
-
-class VaultPnlHistoryPoint(LongshotModel):
-    t_ms: int
-    value_micros: int
-    def __init__(self, *, t_ms: int, value_micros: int) -> None: ...
-
-class VaultPnlHistoryResponse(LongshotModel):
-    series: List[VaultPnlHistoryPoint]
-    def __init__(self, *, series: List[VaultPnlHistoryPoint]) -> None: ...
-
-class VaultPositionResponse(LongshotModel):
-    position_id: str
-    legs_summary: str
-    wager_micros: int
-    multiplier_bps: int
-    potential_payout_micros: int
-    mark_value_micros: int
-    created_at_ms: int
-    resolved_at_ms: Optional[int]
-    def __init__(self, *, position_id: str, legs_summary: str, wager_micros: int, multiplier_bps: int, potential_payout_micros: int, mark_value_micros: int, created_at_ms: int, resolved_at_ms: Optional[int] = ...) -> None: ...
-
-class VaultPositionsResponse(LongshotModel):
-    items: List[VaultPositionResponse]
-    next_cursor: Optional[str]
-    def __init__(self, *, items: List[VaultPositionResponse], next_cursor: Optional[str] = ...) -> None: ...
-
-class PublicVaultPositionDetailResponse(LongshotModel):
-    id: str
-    wager_micros: int
-    payout_micros: int
-    net_payout_micros: Optional[int]
-    legs_count: int
-    legs_summary: str
-    status: str
-    pnl_micros: Optional[int]
-    created_at_ms: int
-    resolved_at_ms: Optional[int]
-    legs: List[LegDetail]
-    def __init__(self, *, id: str, wager_micros: int, payout_micros: int, net_payout_micros: Optional[int], legs_count: int, legs_summary: str, status: str, pnl_micros: Optional[int], created_at_ms: int, resolved_at_ms: Optional[int] = ..., legs: List[LegDetail]) -> None: ...
-
-class PublicVaultActivityEventResponse(LongshotModel):
-    event_type: str
-    user_id: str
-    user_display_name: str
-    user_handle: Optional[str]
-    user_avatar_seed: Optional[int]
-    user_x_avatar_url: Optional[str]
-    amount_micros: int
-    position_id: Optional[str]
-    event_at_ms: int
-    def __init__(self, *, event_type: str, user_id: str, user_display_name: str, user_handle: Optional[str] = ..., user_avatar_seed: Optional[int] = ..., user_x_avatar_url: Optional[str] = ..., amount_micros: int, position_id: Optional[str] = ..., event_at_ms: int) -> None: ...
-
-class PublicVaultActivityResponse(LongshotModel):
-    items: List[PublicVaultActivityEventResponse]
-    next_cursor: Optional[str]
-    def __init__(self, *, items: List[PublicVaultActivityEventResponse], next_cursor: Optional[str] = ...) -> None: ...
-
-class PublicVaultContributorLeaderboardRowResponse(LongshotModel):
-    user_id: str
-    user_display_name: str
-    user_handle: Optional[str]
-    user_avatar_seed: Optional[int]
-    user_x_avatar_url: Optional[str]
-    total_deposits_micros: int
-    all_time_earned_micros: int
-    all_time_pnl_micros: int
-    unrealized_pnl_micros: int
-    def __init__(self, *, user_id: str, user_display_name: str, user_handle: Optional[str] = ..., user_avatar_seed: Optional[int] = ..., user_x_avatar_url: Optional[str] = ..., total_deposits_micros: int, all_time_earned_micros: int, all_time_pnl_micros: int, unrealized_pnl_micros: int) -> None: ...
-
-class PublicVaultContributorLeaderboardResponse(LongshotModel):
-    items: List[PublicVaultContributorLeaderboardRowResponse]
-    next_cursor: Optional[str]
-    def __init__(self, *, items: List[PublicVaultContributorLeaderboardRowResponse], next_cursor: Optional[str] = ...) -> None: ...
-
-class VaultUserPerformanceResponse(LongshotModel):
-    current_balance_micros: int
-    unallocated_micros: int
-    allocated_micros: int
-    lifetime_deposits_micros: int
-    all_time_earned_micros: int
-    all_time_pnl_micros: int
-    unrealized_pnl_micros: int
-    latest_deposit_time_ms: Optional[int]
-    pending_withdrawal: Optional[PendingVaultWithdrawalResponse]
-    def __init__(self, *, current_balance_micros: int, unallocated_micros: int, allocated_micros: int, lifetime_deposits_micros: int, all_time_earned_micros: int, all_time_pnl_micros: int, unrealized_pnl_micros: int, latest_deposit_time_ms: Optional[int] = ..., pending_withdrawal: Optional[PendingVaultWithdrawalResponse] = ...) -> None: ...
 
 class AvailableBalanceResponse(LongshotModel):
     available_micros: int
@@ -2594,37 +2172,6 @@ class ReferralsListRawQuery(LongshotModel):
     limit: Optional[int]
     def __init__(self, *, page: Optional[int] = ..., limit: Optional[int] = ...) -> None: ...
 
-class VaultIdQuery(LongshotModel):
-    vault_id: str
-    def __init__(self, *, vault_id: str) -> None: ...
-
-class VaultPnlHistoryQuery(LongshotModel):
-    vault_id: str
-    range: Optional[str]
-    metric: Optional[str]
-    def __init__(self, *, vault_id: str, range: Optional[str] = ..., metric: Optional[str] = ...) -> None: ...
-
-class VaultPositionsQuery(LongshotModel):
-    vault_id: str
-    status: Optional[str]
-    cursor: Optional[str]
-    limit: Optional[int]
-    def __init__(self, *, vault_id: str, status: Optional[str] = ..., cursor: Optional[str] = ..., limit: Optional[int] = ...) -> None: ...
-
-class VaultEventsQuery(LongshotModel):
-    vault_id: str
-    cursor: Optional[str]
-    limit: Optional[int]
-    event_type: Optional[str]
-    def __init__(self, *, vault_id: str, cursor: Optional[str] = ..., limit: Optional[int] = ..., event_type: Optional[str] = ...) -> None: ...
-
-class VaultContributorsQuery(LongshotModel):
-    vault_id: str
-    cursor: Optional[str]
-    limit: Optional[int]
-    sort: Optional[str]
-    def __init__(self, *, vault_id: str, cursor: Optional[str] = ..., limit: Optional[int] = ..., sort: Optional[str] = ...) -> None: ...
-
 class CreateEmbeddedWalletEnsureRequest(LongshotModel):
     privy_token: str
     def __init__(self, *, privy_token: str) -> None: ...
@@ -3158,37 +2705,6 @@ __all__ = [
     "LeaderboardMyRankResponse",
     "HighlightEntry",
     "LeaderboardHighlightsResponse",
-    "PriceSourceResponse",
-    "MarketCandlesQuery",
-    "MarketTicksStreamQuery",
-    "ExternalOddsSourceQuery",
-    "ChartPoint",
-    "OhlcCandle",
-    "MarketTickStreamEvent",
-    "MarketTickStreamErrorCode",
-    "MarketTickStreamErrorEvent",
-    "TopOfBookStreamQuery",
-    "ExternalOddsSourceStatus",
-    "ExternalOddsSourceKind",
-    "ExternalOddsSourceRow",
-    "ExternalOddsSourceResponse",
-    "TopOfBookStreamEvent",
-    "TopOfBookStreamErrorCode",
-    "TopOfBookStreamErrorEvent",
-    "TopOfBookHistoryQuery",
-    "TopOfBookHistoryPoint",
-    "TopOfBookHistoryStatus",
-    "TopOfBookHistoryMarket",
-    "TopOfBookHistoryResponse",
-    "MarketCandlesResponse",
-    "ReferencePriceQuery",
-    "SourceStatus",
-    "ReferencePriceResponse",
-    "WindowResultsQuery",
-    "WindowDirection",
-    "WindowAssetResult",
-    "WindowResult",
-    "WindowResultsResponse",
     "PublicMarketsRawQuery",
     "EventMarketSource",
     "PriceStrikeMarket",
@@ -3290,14 +2806,12 @@ __all__ = [
     "PlaceContestBetSelectionRequest",
     "PlaceContestBetRequest",
     "UserDepositRequest",
-    "UserDepositVaultRequest",
     "UserWithdrawParams",
     "WithdrawalAuthorization",
     "UserWithdrawRequest",
     "build_wallet_authentication_message",
     "build_wallet_withdrawal_authorization_message",
     "encode_wallet_signature",
-    "VaultWithdrawalAmountRequest",
     "OrderLegJson",
     "SignedOrderJson",
     "CreateRfqRequest",
@@ -3315,35 +2829,11 @@ __all__ = [
     "CancelResponse",
     "UserDepositResponse",
     "UserDepositWalletResponse",
-    "UserDepositVaultResponse",
     "UserWithdrawResponse",
     "BalanceOperationStatus",
     "BalanceOperationStatusResponse",
     "DepositOperationResponse",
     "WithdrawOperationResponse",
-    "UserRequestWithdrawalVaultResponse",
-    "VaultClaimFeesResponse",
-    "VaultWithdrawalAmountResponse",
-    "PendingVaultWithdrawalResponse",
-    "VaultWithdrawalQueueResponse",
-    "VaultLiquidityProviderResponse",
-    "PositionVaultResponse",
-    "VaultPositionVaultResponse",
-    "VaultConfigsResponse",
-    "VaultAmountResponse",
-    "VaultAggregateAmountResponse",
-    "VaultResponse",
-    "VaultStatsResponse",
-    "VaultPnlHistoryPoint",
-    "VaultPnlHistoryResponse",
-    "VaultPositionResponse",
-    "VaultPositionsResponse",
-    "PublicVaultPositionDetailResponse",
-    "PublicVaultActivityEventResponse",
-    "PublicVaultActivityResponse",
-    "PublicVaultContributorLeaderboardRowResponse",
-    "PublicVaultContributorLeaderboardResponse",
-    "VaultUserPerformanceResponse",
     "AvailableBalanceResponse",
     "ReservedBalanceResponse",
     "UserTransactionCategory",
@@ -3458,11 +2948,6 @@ __all__ = [
     "UserTransactionsRawQuery",
     "ConfirmPositionQuery",
     "ReferralsListRawQuery",
-    "VaultIdQuery",
-    "VaultPnlHistoryQuery",
-    "VaultPositionsQuery",
-    "VaultEventsQuery",
-    "VaultContributorsQuery",
     "CreateEmbeddedWalletEnsureRequest",
     "ReferralPromptRequest",
     "ClaimReferralPromptRequest",

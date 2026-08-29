@@ -315,27 +315,6 @@ pub struct UserDepositRequest {
     pub idempotency_key: String,
 }
 
-/// Request to move funds from available app balance into the vault.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "vault_id": "550e8400-e29b-41d4-a716-446655440000",
-    "amount_micros": 1000000,
-    "idempotency_key": "550e8400-e29b-41d4-a716-446655440000"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct UserDepositVaultRequest {
-    /// Vault user ID to deposit into.
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub vault_id: String,
-    /// Amount to move from the user's available balance into the vault, in USDC micros.
-    #[cfg_attr(feature = "openapi", schema(example = 1000000, minimum = 1))]
-    pub amount_micros: u64,
-    /// Client-supplied idempotency key scoped to the depositing LP identity.
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub idempotency_key: String,
-}
-
 /// Withdrawal parameters for moving app balance back into onchain settlement balance.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -437,23 +416,6 @@ pub fn build_wallet_withdrawal_authorization_message(
 /// Encode a 65-byte EVM signature using the API's padded standard Base64 format.
 pub fn encode_wallet_signature(signature: &[u8; 65]) -> String {
     STANDARD.encode(signature)
-}
-
-/// Tagged wire format for vault withdrawal requests.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum VaultWithdrawalAmountRequest {
-    Full {
-        #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-        vault_id: String,
-    },
-    Partial {
-        #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-        vault_id: String,
-        #[cfg_attr(feature = "openapi", schema(example = 1000000, minimum = 1))]
-        amount_micros: u64,
-    },
 }
 
 /// Order leg in JSON format.

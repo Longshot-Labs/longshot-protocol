@@ -1,8 +1,6 @@
 use longshot_protocol::api::{
     ChatMentionCandidatesQuery, ConfirmPositionQuery, MarketCurrentQuery, MarketLookupQuery,
-    PnlHistoryScopedQuery, PositionsByMarketsQuery, TopOfBookHistoryQuery,
-    UserTransactionsRawQuery, VaultContributorsQuery, VaultEventsQuery, VaultIdQuery,
-    VaultPnlHistoryQuery, VaultPositionsQuery,
+    PnlHistoryScopedQuery, PositionsByMarketsQuery, UserTransactionsRawQuery,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -35,24 +33,16 @@ fn client_query_contracts_require_route_required_fields() {
     assert_missing_required::<ChatMentionCandidatesQuery>();
     assert_missing_required::<MarketLookupQuery>();
     assert_missing_required::<MarketCurrentQuery>();
-    assert_missing_required::<TopOfBookHistoryQuery>();
     assert_missing_required::<PositionsByMarketsQuery>();
     assert_missing_required::<ConfirmPositionQuery>();
-    assert_missing_required::<VaultIdQuery>();
-    assert_missing_required::<VaultPnlHistoryQuery>();
-    assert_missing_required::<VaultPositionsQuery>();
-    assert_missing_required::<VaultEventsQuery>();
-    assert_missing_required::<VaultContributorsQuery>();
 
     assert_accepts::<ChatMentionCandidatesQuery>(json!({"chat_id": "room-id"}));
     assert_accepts::<MarketLookupQuery>(
         json!({"asset": "BTC", "duration_secs": 300, "window_start_ms": 1}),
     );
     assert_accepts::<MarketCurrentQuery>(json!({"asset": "BTC", "duration_secs": 300}));
-    assert_accepts::<TopOfBookHistoryQuery>(json!({"market_ids": "1,2"}));
     assert_accepts::<PositionsByMarketsQuery>(json!({"market_ids": "1,2"}));
     assert_accepts::<ConfirmPositionQuery>(json!({"position_id": "position", "accept": true}));
-    assert_accepts::<VaultIdQuery>(json!({"vault_id": "vault"}));
 }
 
 #[test]

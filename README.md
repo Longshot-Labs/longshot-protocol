@@ -16,13 +16,14 @@ The initial protocol implementation was imported from
 `Longshot-Labs/longshot-sdk@a3f049b20ad7c83bd60aa69b366f4016495900ff`.
 Supported external API DTOs are synchronized with the pinned
 `fixtures/api/openapi.json`. The full fixture remains private release input;
-first-party presentation routes and fields, including community browsing,
-Recent Winners, NFL hub curation, and featured market placement, are excluded
-from registry packages. Shared fixtures under `fixtures/protocol` preserve
-binary and signing compatibility with the production-pinned SDK revision.
+first-party presentation routes and fields, market-data routes, Vault routes,
+privileged fair-value control snapshots, and the server's full in-memory RFQ
+model are excluded from registry packages. Shared fixtures under
+`fixtures/protocol` preserve binary and signing compatibility with the
+production-pinned SDK revision.
 
 Network clients are intentionally out of scope. The private SDK remains the
-transport owner until the follow-up Vault client migration lands.
+transport owner for first-party services.
 
 See the [custom client protocol guide](CUSTOM_CLIENTS.md) for the supported
 JSON, signing, and binary-wire boundaries. Its TypeScript and Python examples

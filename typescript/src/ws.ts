@@ -1,5 +1,5 @@
 import { Asset, RequestId } from "./types.js";
-import type { MarketType, WideInteger } from "./types.js";
+import type { WideInteger } from "./types.js";
 
 export const QuoteResultStatus = {
   Filled: "filled",
@@ -70,37 +70,10 @@ export const ClientMessage = {
   },
 };
 
-export const MarketFairValueDecayType = {
-  Linear: "linear",
-  Curved: "curved",
-} as const;
-export type MarketFairValueDecayType =
-  (typeof MarketFairValueDecayType)[keyof typeof MarketFairValueDecayType];
-
-export interface MarketFairValueDecay {
-  start_ms: WideInteger;
-  start_odds_bps: number;
-  end_ms: WideInteger;
-  end_odds_bps: number;
-  decay_type: MarketFairValueDecayType;
-}
-
-export interface MarketFairValue {
-  market_id: WideInteger;
-  yes_fair_value_bps: number;
-  spread_cents: number;
-  market_type: MarketType;
-  resolution_time_ms: WideInteger;
-  revision: WideInteger;
-  updated_at_ms: WideInteger;
-  decay?: MarketFairValueDecay | null;
-}
-
 export type ServerMessage =
   | { type: "auth_challenge"; challenge_id: string; timestamp_ms: WideInteger }
   | { type: "auth_result"; success: boolean; error?: string | null; session_token?: string | null }
   | { type: "rfq"; data: string }
-  | { type: "market_fair_values"; values: MarketFairValue[] }
   | { type: "subscribed"; protocol_version: number }
   | {
       type: "quote_ack";
@@ -135,9 +108,6 @@ export const ServerMessage = {
   },
   rfq(data: string): ServerMessage {
     return { type: "rfq", data };
-  },
-  marketFairValues(values: MarketFairValue[]): ServerMessage {
-    return { type: "market_fair_values", values };
   },
   subscribed(protocolVersion: number): ServerMessage {
     return { type: "subscribed", protocol_version: protocolVersion };

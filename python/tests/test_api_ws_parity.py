@@ -41,7 +41,6 @@ from longshot_protocol import (
     ShareStat,
     SignedOrder,
     SignedOrderJson,
-    SourceStatus,
     Timestamp,
     UserTier,
 )
@@ -1099,7 +1098,7 @@ class ApiParityTests(unittest.TestCase):
             rust_api_required_nullable_fields(),
         )
         self.assertEqual(
-            sum(map(len, rust_api_required_nullable_fields().values())), 22
+            sum(map(len, rust_api_required_nullable_fields().values())), 20
         )
 
     def test_required_nullable_wire_field_distinguishes_missing_from_null(self) -> None:
@@ -1682,7 +1681,6 @@ class ApiParityTests(unittest.TestCase):
         encoded = response.to_dict()
         self.assertEqual(encoded["type"], "binary_event")
         self.assertNotIn("read_at_ms", encoded)
-        self.assertEqual(SourceStatus.Pending.to_json(), "pending")
 
     def test_api_from_dict_hydrates_nested_notification_payload(self) -> None:
         response = api.NotificationResponse.from_dict(
@@ -1789,8 +1787,6 @@ class ApiParityTests(unittest.TestCase):
             with self.subTest(value=value, target_type=target_type):
                 with self.assertRaises(ValueError):
                     model._coerce_from_serde(value, target_type)
-        with self.assertRaisesRegex(ValueError, "expects an object"):
-            api.ChartPoint.from_dict([])
         with self.assertRaisesRegex(ValueError, "expected <class 'int'>"):
             api.RfqResponse.from_dict(
                 {
@@ -1824,14 +1820,6 @@ class ApiParityTests(unittest.TestCase):
                 (1 << 64) - 1,
                 {"streak": 0, "has_app_token": False},
             ),
-            (
-                api.ChartPoint,
-                "timestamp_ms",
-                -(1 << 63),
-                (1 << 63) - 1,
-                {"price": 1.0},
-            ),
-            (api.MarketCandlesQuery, "max_points", 0, (sys.maxsize << 1) + 1, {}),
         ]
         for payload_type, field, minimum, maximum, required in cases:
             for value in (minimum, maximum):
@@ -1853,17 +1841,6 @@ class ApiParityTests(unittest.TestCase):
                 api.AvailableBalanceResponse.from_dict(
                     {"available_micros": invalid_balance}
                 )
-        for encoded, expected in (("-0", 0), (str(-(1 << 63)), -(1 << 63))):
-            point = api.VaultPnlHistoryPoint.from_dict(
-                {"t_ms": 0, "value_micros": encoded}
-            )
-            self.assertEqual(point.value_micros, expected)
-        for invalid_value in (str(-(1 << 63) - 1), str(1 << 63)):
-            with self.assertRaises(ValueError):
-                api.VaultPnlHistoryPoint.from_dict(
-                    {"t_ms": 0, "value_micros": invalid_value}
-                )
-
         notification = {
             "position_id": "position",
             "net_payout_micros": 0,
@@ -2050,11 +2027,6 @@ class ApiParityTests(unittest.TestCase):
                 api.ConfirmPositionQuery,
                 {"position_id": "position", "accept": True},
             ),
-            (api.VaultIdQuery, {"vault_id": "vault"}),
-            (api.VaultPnlHistoryQuery, {"vault_id": "vault"}),
-            (api.VaultPositionsQuery, {"vault_id": "vault"}),
-            (api.VaultEventsQuery, {"vault_id": "vault"}),
-            (api.VaultContributorsQuery, {"vault_id": "vault"}),
         ]
         for model, payload in cases:
             with self.subTest(model=model.__name__):
@@ -2106,20 +2078,6 @@ class ApiParityTests(unittest.TestCase):
         self.assertEqual(encoded["amount_micros"], "1000000")
         self.assertNotIn("destination_address", encoded)
         self.assertEqual(api.UserWithdrawResponse.from_dict(encoded).amount_micros, 1_000_000)
-
-        withdrawal_amount = api.VaultWithdrawalAmountResponse.partial(amount_micros=500_000)
-        withdrawal_encoded = withdrawal_amount.to_dict()
-        withdrawal_decoded = api.VaultWithdrawalAmountResponse.from_dict(withdrawal_encoded)
-
-        self.assertEqual(
-            withdrawal_encoded,
-            {"type": "partial", "amount_micros": "500000"},
-        )
-        self.assertEqual(withdrawal_decoded.payload["amount_micros"], 500_000)
-        with self.assertRaises(ValueError):
-            api.VaultWithdrawalAmountResponse.from_dict(
-                {"type": "partial", "amount_micros": str(1 << 64)}
-            )
 
     def test_rfq_response_omits_non_finite_odds_and_stringifies_payout(self) -> None:
         encoded = api.RfqResponse(

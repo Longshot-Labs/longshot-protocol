@@ -32,7 +32,6 @@ import type {
   SurvivorRoundBreakdownResponse,
   SurvivorRoundPicksResponse,
   UserWithdrawRequest,
-  VaultWithdrawalAmountRequest,
   WalletAuthRequest,
   WideInteger,
 } from "../src/index.js";
@@ -139,26 +138,6 @@ const checkHandleQuery: CheckHandleQuery = {
 
 // @ts-expect-error handle is required.
 const missingHandleQuery: CheckHandleQuery = {};
-
-const fullVaultWithdrawal: VaultWithdrawalAmountRequest = {
-  type: "full",
-  vault_id: "550e8400-e29b-41d4-a716-446655440000",
-};
-
-const partialVaultWithdrawal: VaultWithdrawalAmountRequest = {
-  type: "partial",
-  vault_id: "550e8400-e29b-41d4-a716-446655440000",
-  amount_micros: 1000000,
-};
-
-// @ts-expect-error full withdrawal requests require vault_id.
-const missingFullVaultId: VaultWithdrawalAmountRequest = { type: "full" };
-
-// @ts-expect-error partial withdrawal requests require amount_micros.
-const missingPartialAmount: VaultWithdrawalAmountRequest = {
-  type: "partial",
-  vault_id: "550e8400-e29b-41d4-a716-446655440000",
-};
 
 const avatarUrl: ChatUserAvatarResponse = {
   type: "x_avatar_url",
@@ -441,8 +420,6 @@ test("request DTO parity checks compile", () => {
   assert.ok(legacyWireOdds);
   assert.ok(walletAuthRequest);
   assert.ok(checkHandleQuery);
-  assert.ok(fullVaultWithdrawal);
-  assert.ok(partialVaultWithdrawal);
   assert.ok(avatarUrl);
   assert.ok(avatarSeed);
   assert.ok(missingAvatarUrl);

@@ -3,19 +3,13 @@ use static_assertions::const_assert_eq;
 
 use super::{
     Address, Amount, Asset, ClientQuoteId, Direction, Duration, Odds, OrderType, RequestId,
-    Timestamp, UserId, UserTier,
+    Timestamp, UserTier,
 };
 
 /// Maximum RFQ leg count encoded by the fixed-size market-maker wire protocol.
 ///
 /// A broadcast RFQ carries up to nine legs.
 pub const MAX_RFQ_LEGS: usize = 9;
-
-/// Default RFQ expiry in milliseconds.
-pub const RFQ_TIMEOUT_MS: u64 = 500;
-
-/// Minimum expiry headroom required for an RFQ request to remain processable.
-pub const PROCESSING_BUFFER_MS: u64 = 100;
 
 /// Current market-maker RFQ binary protocol version.
 pub const RFQ_PROTOCOL_VERSION: u8 = 2;
@@ -242,39 +236,6 @@ impl std::fmt::Display for RfqLegWireDecodeError {
 
 impl std::error::Error for RfqLegWireDecodeError {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RfqRequestError {
-    MissingLegs,
-    TooManyLegs { max: usize, actual: usize },
-}
-
-impl std::fmt::Display for RfqRequestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::MissingLegs => write!(f, "RFQ must include at least one leg"),
-            Self::TooManyLegs { max, actual } => {
-                write!(f, "RFQ legs exceed MAX_RFQ_LEGS: max {max}, got {actual}")
-            }
-        }
-    }
-}
-
-impl std::error::Error for RfqRequestError {}
-
-#[inline]
-fn validate_rfq_leg_count(actual: usize) -> Result<(), RfqRequestError> {
-    if actual == 0 {
-        return Err(RfqRequestError::MissingLegs);
-    }
-    if actual > MAX_RFQ_LEGS {
-        return Err(RfqRequestError::TooManyLegs {
-            max: MAX_RFQ_LEGS,
-            actual,
-        });
-    }
-    Ok(())
-}
-
 impl TryFrom<RfqLegWire> for RfqLeg {
     type Error = RfqLegWireDecodeError;
 
@@ -388,31 +349,6 @@ struct WireTakerMetadata {
 
 const_assert_eq!(std::mem::size_of::<WireTakerMetadata>(), 24);
 
-/// Full RFQ request representation.
-#[derive(Debug, Clone, Copy)]
-pub struct RfqRequest {
-    /// Request ID (UUID bytes).
-    pub request_id: [u8; 16],
-    /// Taker ID (UUID bytes).
-    pub taker_id: [u8; 16],
-    /// Wager amount in micro-units.
-    pub wager_micros: u64,
-    /// Expiry timestamp (ms since Unix epoch).
-    pub expires_at_ms: u64,
-    /// Optional taker metadata visible to market makers.
-    pub taker_metadata: Option<TakerMetadata>,
-    /// Minimum acceptable odds (basis points).
-    pub min_odds: u32,
-    /// Order type discriminator.
-    pub order_type: u8,
-    /// Number of populated entries in `legs`.
-    pub leg_count: u8,
-    /// Reserved padding for stable layout.
-    pub _reserved: [u8; 2],
-    /// Typed leg data. Only the first `leg_count` entries are active.
-    pub legs: [RfqLeg; MAX_RFQ_LEGS],
-}
-
 /// RFQ broadcast payload delivered to market makers.
 ///
 /// This fixed-size binary payload is carried in `ServerMessage::Rfq.data` after
@@ -443,191 +379,12 @@ pub struct BroadcastRfqRequest {
 const_assert_eq!(std::mem::size_of::<BroadcastRfqRequest>(), 280);
 
 #[inline]
-fn encode_taker_metadata(taker_metadata: Option<TakerMetadata>) -> WireTakerMetadata {
-    match taker_metadata {
-        Some(metadata) => WireTakerMetadata {
-            option: 1,
-            tier: metadata.tier,
-            _reserved: [0; 2],
-            address: metadata.address.into_array(),
-        },
-        None => WireTakerMetadata {
-            option: 0,
-            tier: 0,
-            _reserved: [0; 2],
-            address: [0; 20],
-        },
-    }
-}
-
-#[inline]
 fn decode_taker_metadata(wire: WireTakerMetadata) -> Option<TakerMetadata> {
     (wire.option != 0).then_some(TakerMetadata {
         tier: wire.tier,
         address: Address::from_slice(&wire.address),
         _reserved: [0; 3],
     })
-}
-
-impl RfqRequest {
-    pub fn new(
-        request_id: RequestId,
-        taker_id: UserId,
-        wager: Amount,
-        order_type: OrderType,
-        min_odds: Odds,
-        taker_metadata: Option<TakerMetadata>,
-        legs: &[RfqLeg],
-    ) -> Result<Self, RfqRequestError> {
-        validate_rfq_leg_count(legs.len())?;
-
-        let now = Timestamp::now();
-        let expires_at = now
-            .add_millis(RFQ_TIMEOUT_MS)
-            .unwrap_or(Timestamp::from_millis(u64::MAX));
-        let mut leg_array = [RfqLeg::default(); MAX_RFQ_LEGS];
-        let leg_count = legs.len();
-        leg_array[..leg_count].copy_from_slice(&legs[..leg_count]);
-
-        Ok(Self {
-            request_id: *request_id.as_bytes(),
-            taker_id: *taker_id.as_bytes(),
-            wager_micros: wager.as_micros(),
-            expires_at_ms: expires_at.as_millis(),
-            taker_metadata,
-            min_odds: min_odds.0,
-            order_type: order_type as u8,
-            leg_count: leg_count as u8,
-            _reserved: [0; 2],
-            legs: leg_array,
-        })
-    }
-
-    #[inline]
-    pub fn request_id(&self) -> RequestId {
-        RequestId::from_bytes(self.request_id)
-    }
-
-    #[inline]
-    pub fn taker_id(&self) -> UserId {
-        UserId::from_bytes(self.taker_id)
-    }
-
-    #[inline]
-    pub fn wager(&self) -> Amount {
-        Amount::from_micro(self.wager_micros)
-    }
-
-    #[inline]
-    pub fn expires_at(&self) -> Timestamp {
-        Timestamp::from_millis(self.expires_at_ms)
-    }
-
-    #[inline]
-    pub fn set_expires_at_ms(&mut self, ms: u64) {
-        self.expires_at_ms = ms;
-    }
-
-    #[inline]
-    pub fn clamp_expires_at_ms(&mut self, max_ms: u64) {
-        if self.expires_at_ms > max_ms {
-            self.expires_at_ms = max_ms;
-        }
-    }
-
-    #[inline]
-    pub fn order_type(&self) -> Option<OrderType> {
-        OrderType::from_u8(self.order_type)
-    }
-
-    #[inline]
-    pub fn is_expired(&self) -> bool {
-        Timestamp::now().as_millis() > self.expires_at_ms
-    }
-
-    #[inline]
-    pub fn active_legs(&self) -> &[RfqLeg] {
-        let leg_count = (self.leg_count as usize).min(MAX_RFQ_LEGS);
-        &self.legs[..leg_count]
-    }
-
-    #[inline]
-    pub fn leg(&self, index: usize) -> Option<RfqLeg> {
-        let leg_count = (self.leg_count as usize).min(MAX_RFQ_LEGS);
-        (index < leg_count).then(|| self.legs[index])
-    }
-
-    #[inline]
-    pub fn iter_legs(&self) -> impl Iterator<Item = RfqLeg> + '_ {
-        let leg_count = (self.leg_count as usize).min(MAX_RFQ_LEGS);
-        (0..leg_count).map(move |i| self.legs[i])
-    }
-
-    #[inline]
-    pub fn remaining_ms(&self) -> u64 {
-        self.expires_at_ms
-            .saturating_sub(Timestamp::now().as_millis())
-    }
-
-    #[inline]
-    pub fn get_taker_metadata(&self) -> Option<TakerMetadata> {
-        self.taker_metadata
-    }
-
-    #[inline]
-    pub fn min_odds(&self) -> Odds {
-        Odds(self.min_odds)
-    }
-
-    #[inline]
-    pub fn taker_tier(&self) -> Option<UserTier> {
-        self.get_taker_metadata()
-            .and_then(|metadata| UserTier::from_u8(metadata.tier))
-    }
-
-    #[inline]
-    pub fn taker_address(&self) -> Option<Address> {
-        self.get_taker_metadata().map(|metadata| metadata.address)
-    }
-
-    /// Serialize into the market-maker broadcast layout after checking `leg_count`.
-    #[inline]
-    pub fn try_to_broadcast_bytes(
-        &self,
-    ) -> Result<[u8; BroadcastRfqRequest::SIZE], RfqRequestError> {
-        let leg_count = usize::from(self.leg_count);
-        validate_rfq_leg_count(leg_count)?;
-        let mut legs = [RfqLegWire::default(); MAX_RFQ_LEGS];
-        for (dst, src) in legs[..leg_count]
-            .iter_mut()
-            .zip(self.legs[..leg_count].iter())
-        {
-            *dst = (*src).into();
-        }
-        let wire = BroadcastRfqRequest {
-            request_id: self.request_id,
-            wager_micros: self.wager_micros,
-            expires_at_ms: self.expires_at_ms,
-            taker_metadata: encode_taker_metadata(self.taker_metadata),
-            order_type: self.order_type,
-            leg_count: leg_count as u8,
-            protocol_version: RFQ_PROTOCOL_VERSION,
-            _reserved: [0; 5],
-            legs,
-        };
-        Ok(wire.to_bytes())
-    }
-
-    /// Serialize a valid RFQ request into the market-maker broadcast layout.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the public `leg_count` invariant has been broken after construction.
-    #[inline]
-    pub fn to_broadcast_bytes(&self) -> [u8; BroadcastRfqRequest::SIZE] {
-        self.try_to_broadcast_bytes()
-            .expect("RFQ leg count invariant violated")
-    }
 }
 
 impl BroadcastRfqRequest {
@@ -1041,33 +798,9 @@ mod tests {
 
     #[test]
     fn corrupted_leg_counts_clamp_instead_of_panicking() {
-        // Regression: both request types decode from untrusted bytes, so their
-        // leg accessors must clamp an oversized count instead of panicking.
-        let legs = [RfqLeg::new_price_strike(
-            MarketId::new(16),
-            0,
-            Asset::BTC,
-            Direction::Up,
-            Duration::FIFTEEN_MINUTES,
-            0,
-        )];
-
-        let mut request = RfqRequest::new(
-            RequestId::new(),
-            UserId::new(),
-            Amount::from_dollars(100),
-            OrderType::FOK,
-            Odds::MIN,
-            None,
-            &legs,
-        )
-        .unwrap();
-        let mut broadcast = BroadcastRfqRequest::from_bytes(&request.to_broadcast_bytes());
-
-        request.leg_count = u8::MAX;
-        assert!(request.leg(MAX_RFQ_LEGS).is_none());
-        assert_eq!(request.active_legs().len(), MAX_RFQ_LEGS);
-        assert_eq!(request.iter_legs().count(), MAX_RFQ_LEGS);
+        // Broadcasts decode from untrusted bytes, so leg accessors must clamp
+        // an oversized count instead of panicking.
+        let mut broadcast = BroadcastRfqRequest::from_bytes(&[0; BroadcastRfqRequest::SIZE]);
 
         broadcast.leg_count = u8::MAX;
         assert!(broadcast.leg_wire(MAX_RFQ_LEGS).is_none());
@@ -1200,68 +933,6 @@ mod tests {
     }
 
     #[test]
-    fn broadcast_rfq_round_trip_preserves_visible_fields() {
-        let legs = [
-            RfqLeg::new_price_strike(
-                MarketId::new(1),
-                0,
-                Asset::BTC,
-                Direction::Up,
-                Duration::FIFTEEN_MINUTES,
-                0,
-            ),
-            RfqLeg::new_price_strike(
-                MarketId::new(2),
-                0,
-                Asset::ETH,
-                Direction::Down,
-                Duration::ONE_HOUR,
-                1,
-            ),
-        ];
-        let request = RfqRequest::new(
-            RequestId::new(),
-            UserId::new(),
-            Amount::from_dollars(50),
-            OrderType::FOK,
-            Odds::from_decimal(2, 0),
-            Some(TakerMetadata::new(
-                UserTier::Gold,
-                Address::from_slice(&[7; 20]),
-            )),
-            &legs,
-        )
-        .unwrap();
-
-        let parsed = BroadcastRfqRequest::from_bytes(&request.to_broadcast_bytes());
-
-        assert_eq!(parsed.request_id, request.request_id);
-        assert_eq!(parsed.protocol_version, RFQ_PROTOCOL_VERSION);
-        assert_eq!(parsed.wager_micros, request.wager_micros);
-        assert_eq!(parsed.leg_count, 2);
-        assert_eq!(request.active_legs(), &legs);
-        assert_eq!(parsed.active_leg_wires().len(), 2);
-        assert_eq!(parsed.active_leg_wires()[0], RfqLegWire::from(legs[0]));
-        assert_eq!(parsed.active_leg_wires()[1], RfqLegWire::from(legs[1]));
-        assert_eq!(parsed.get_taker_metadata(), request.get_taker_metadata());
-
-        for (actual, expected) in [
-            (0, RfqRequestError::MissingLegs),
-            (
-                (MAX_RFQ_LEGS + 1) as u8,
-                RfqRequestError::TooManyLegs {
-                    max: MAX_RFQ_LEGS,
-                    actual: MAX_RFQ_LEGS + 1,
-                },
-            ),
-        ] {
-            let mut malformed = request;
-            malformed.leg_count = actual;
-            assert_eq!(malformed.try_to_broadcast_bytes().unwrap_err(), expected);
-        }
-    }
-
-    #[test]
     fn active_leg_accessors_skip_inactive_slots() {
         let active_leg = RfqLeg::new_price_strike(
             MarketId::new(1),
@@ -1272,23 +943,9 @@ mod tests {
             0,
         );
         let inactive_leg = RfqLeg::new_binary_event(MarketId::new(99), 123, Direction::Down, 7);
-        let mut request = RfqRequest::new(
-            RequestId::new(),
-            UserId::new(),
-            Amount::from_dollars(50),
-            OrderType::FOK,
-            Odds::from_decimal(2, 0),
-            None,
-            &[active_leg],
-        )
-        .unwrap();
-        request.legs[1] = inactive_leg;
-
-        assert_eq!(request.active_legs(), &[active_leg]);
-        assert_eq!(request.leg(1), None);
-        assert_eq!(request.iter_legs().collect::<Vec<_>>(), vec![active_leg]);
-
-        let mut parsed = BroadcastRfqRequest::from_bytes(&request.to_broadcast_bytes());
+        let mut parsed = BroadcastRfqRequest::from_bytes(&[0; BroadcastRfqRequest::SIZE]);
+        parsed.leg_count = 1;
+        parsed.legs[0] = RfqLegWire::from(active_leg);
         parsed.legs[1] = RfqLegWire::from(inactive_leg);
 
         assert_eq!(parsed.active_leg_wires(), &[RfqLegWire::from(active_leg)]);
@@ -1300,70 +957,8 @@ mod tests {
     }
 
     #[test]
-    fn rfq_request_new_rejects_unsupported_leg_counts() {
-        let leg = RfqLeg::new_price_strike(
-            MarketId::new(1),
-            0,
-            Asset::BTC,
-            Direction::Up,
-            Duration::FIFTEEN_MINUTES,
-            0,
-        );
-        assert_eq!(
-            RfqRequest::new(
-                RequestId::new(),
-                UserId::new(),
-                Amount::from_dollars(50),
-                OrderType::FOK,
-                Odds::from_decimal(2, 0),
-                None,
-                &[],
-            )
-            .unwrap_err(),
-            RfqRequestError::MissingLegs
-        );
-
-        let legs = vec![leg; MAX_RFQ_LEGS + 1];
-
-        assert_eq!(
-            RfqRequest::new(
-                RequestId::new(),
-                UserId::new(),
-                Amount::from_dollars(50),
-                OrderType::FOK,
-                Odds::from_decimal(2, 0),
-                None,
-                &legs,
-            )
-            .unwrap_err(),
-            RfqRequestError::TooManyLegs {
-                max: MAX_RFQ_LEGS,
-                actual: MAX_RFQ_LEGS + 1
-            }
-        );
-    }
-
-    #[test]
     fn broadcast_rfq_round_trip_preserves_shielded_metadata_absence() {
-        let request = RfqRequest::new(
-            RequestId::new(),
-            UserId::new(),
-            Amount::from_dollars(50),
-            OrderType::FOK,
-            Odds::from_decimal(2, 0),
-            None,
-            &[RfqLeg::new_price_strike(
-                MarketId::new(2),
-                0,
-                Asset::ETH,
-                Direction::Down,
-                Duration::ONE_HOUR,
-                0,
-            )],
-        )
-        .unwrap();
-
-        let parsed = BroadcastRfqRequest::from_bytes(&request.to_broadcast_bytes());
+        let parsed = BroadcastRfqRequest::from_bytes(&[0; BroadcastRfqRequest::SIZE]);
 
         assert!(parsed.get_taker_metadata().is_none());
         assert!(parsed.taker_tier().is_none());

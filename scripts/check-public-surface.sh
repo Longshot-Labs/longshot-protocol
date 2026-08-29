@@ -61,6 +61,26 @@ forbidden_patterns=(
   'RecentWinner'
   'include_featured'
   'featured_only'
+  'PriceSourceResponse'
+  'MarketCandles'
+  'MarketTickStream'
+  'ExternalOddsSource'
+  'TopOfBook'
+  'ReferencePrice'
+  'SourceStatus'
+  'WindowDirection'
+  'WindowAssetResult'
+  'WindowResult'
+  'ChartPoint'
+  'OhlcCandle'
+  'Vault'
+  'vault_id'
+  'MarketFairValue'
+  'market_fair_values'
+  'RFQ_TIMEOUT_MS'
+  'PROCESSING_BUFFER_MS'
+  'RfqRequestError'
+  '(^|[^[:alnum:]_])RfqRequest([^[:alnum:]_]|$)'
 )
 
 for pattern in "${forbidden_patterns[@]}"; do
@@ -76,6 +96,26 @@ for source in \
   "$protocol_root/typescript/src/api.ts"; do
   if ! grep -q 'CommunityPickRequest' "$source"; then
     echo "public protocol source lost required Tail/Fade attribution" >&2
+    exit 1
+  fi
+done
+
+for source in \
+  "$protocol_root/rust/src/api/request.rs" \
+  "$protocol_root/python/src/longshot_protocol/api.py" \
+  "$protocol_root/typescript/src/api.ts"; do
+  if ! grep -q 'CreateRfqRequest' "$source"; then
+    echo "public protocol source lost required signed RFQ request contract" >&2
+    exit 1
+  fi
+done
+
+for source in \
+  "$protocol_root/rust/src/types/rfq.rs" \
+  "$protocol_root/python/src/longshot_protocol/rfq.py" \
+  "$protocol_root/typescript/src/rfq.ts"; do
+  if ! grep -q 'BroadcastRfqRequest' "$source"; then
+    echo "public protocol source lost required market-maker RFQ broadcast contract" >&2
     exit 1
   fi
 done

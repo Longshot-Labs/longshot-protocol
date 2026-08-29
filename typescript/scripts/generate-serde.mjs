@@ -361,14 +361,35 @@ function validateCurrentOpenApi(document, protocolNames) {
     "/v1/user/deposit_match_opportunities",
     "/v1/user/grant_app_token",
     "/v1/user/reserved_app_token_balance",
-    // First-party presentation routes are not part of the external protocol package.
+    // First-party presentation and private service routes are not part of the
+    // external protocol package.
     "/v1/community-picks",
     "/v1/community-picks/{position_id}/reactions/{emoji}",
+    "/v1/market-data/candles",
+    "/v1/market-data/reference-price",
+    "/v1/market-data/stream",
+    "/v1/market-data/top-of-book",
+    "/v1/market-data/top-of-book/history",
+    "/v1/market-data/top-of-book/stream",
+    "/v1/market-data/window-results",
     "/v1/nfl_hub_config",
     "/v1/recent-winners",
     "/v1/u/{handle}/followers",
     "/v1/u/{handle}/following",
+    "/v1/user/deposit_vault",
     "/v1/user/following/{handle}",
+    "/v1/user/request_withdrawal_vault",
+    "/v1/user/vault/performance",
+    "/v1/vault/claim_fees",
+    "/v1/vault/contributors",
+    "/v1/vault/events",
+    "/v1/vault/get_vault",
+    "/v1/vault/pnl_history",
+    "/v1/vault/position_vault/{id}",
+    "/v1/vault/positions",
+    "/v1/vault/positions/{id}",
+    "/v1/vault/stats",
+    "/v1/vault/withdrawal_queue",
   ]);
   const excludedFields = new Map([
     ["CreateSessionRequest", new Set(["invite_code"])],
@@ -382,7 +403,6 @@ function validateCurrentOpenApi(document, protocolNames) {
   const schemaAliases = {
     AppTokenGrantCategory: "AppTokenGrantCategoryResponse",
     PortfolioIntegrityError: "PortfolioIntegrityErrorResponse",
-    PriceSource: "PriceSourceResponse",
   };
 
   // Every supported external route remains checked against the full server fixture.
@@ -454,13 +474,6 @@ function validateCurrentOpenApi(document, protocolNames) {
     ["ContestLeaderboardQuery", "/v1/contests/{id}/leaderboard", "get"],
     ["FeedRawQuery", "/v1/feed", "get"],
     ["LeaderboardRawQuery", "/v1/leaderboard", "get"],
-    ["MarketCandlesQuery", "/v1/market-data/candles", "get"],
-    ["ReferencePriceQuery", "/v1/market-data/reference-price", "get"],
-    ["MarketTicksStreamQuery", "/v1/market-data/stream", "get"],
-    ["ExternalOddsSourceQuery", "/v1/market-data/top-of-book", "get"],
-    ["TopOfBookHistoryQuery", "/v1/market-data/top-of-book/history", "get"],
-    ["TopOfBookStreamQuery", "/v1/market-data/top-of-book/stream", "get"],
-    ["WindowResultsQuery", "/v1/market-data/window-results", "get"],
     ["PublicMarketsRawQuery", "/v1/markets", "get"],
     ["RecentResolutionsQuery", "/v1/mm/recent_resolutions", "get"],
     ["FantasyEntriesQuery", "/v1/portfolio/fantasy", "get"],
@@ -488,14 +501,6 @@ function validateCurrentOpenApi(document, protocolNames) {
     ["HandleAvailabilityQuery", "/v1/user/profile/check-handle", "get"],
     ["UserReferralStatsRawQuery", "/v1/user/referral_stats", "get"],
     ["ReferralsListRawQuery", "/v1/user/referrals", "get"],
-    ["VaultIdQuery", "/v1/user/vault/performance", "get"],
-    ["VaultContributorsQuery", "/v1/vault/contributors", "get"],
-    ["VaultEventsQuery", "/v1/vault/events", "get"],
-    ["VaultIdQuery", "/v1/vault/get_vault", "get"],
-    ["VaultPnlHistoryQuery", "/v1/vault/pnl_history", "get"],
-    ["VaultPositionsQuery", "/v1/vault/positions", "get"],
-    ["VaultIdQuery", "/v1/vault/positions/{id}", "get"],
-    ["VaultIdQuery", "/v1/vault/stats", "get"],
   ];
   const mappedOperations = new Set();
   for (const [name, path, method] of queryOperations) {

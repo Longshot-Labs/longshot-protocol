@@ -29,16 +29,12 @@ from longshot_protocol import (
     RfqLegType,
     RfqLegWire,
     RfqLegWireDecodeError,
-    RfqRequest,
-    RfqRequestError,
     RFQ_PROTOCOL_VERSION,
     SignedOrder,
     SignedOrderError,
     SignedOrderJson,
-    TakerMetadata,
     TakerSignError,
     Timestamp,
-    UserId,
     UserTier,
     auth_response_message,
     build_auth_message,
@@ -381,36 +377,35 @@ class ProtocolFixtureTests(unittest.TestCase):
     def test_broadcast_rfq_matches_rust_fixture(self) -> None:
         case = self.fixture["broadcast_rfq"]
         legs = [_rfq_leg(row) for row in case["legs"]]
-        request = RfqRequest(
-            request_id=RequestId.from_string(case["request_id"]),
-            taker_id=UserId.from_string(case["taker_id"]),
-            wager_micros=case["wager_micros"],
-            expires_at_ms=case["expires_at_ms"],
-            taker_metadata=TakerMetadata(
-                tier=UserTier(case["taker_metadata"]["tier"]),
-                address=Address.from_hex(case["taker_metadata"]["address"]),
-            ),
-            min_odds=case["min_odds"],
-            order_type=OrderType(case["order_type"]),
-            legs=legs,
-        )
-        encoded = request.to_broadcast_bytes()
+        padding = "=" * ((4 - len(case["base64"]) % 4) % 4)
+        encoded = b64decode(case["base64"] + padding, validate=True)
+        decoded = decode_broadcast_rfq(case["base64"])
+
         self.assertEqual(encoded.hex(), case["bytes_hex"])
         self.assertEqual(
-            b64encode(encoded).decode("ascii").rstrip("="),
+            b64encode(decoded.to_bytes()).decode("ascii").rstrip("="),
             case["base64"],
         )
-
-        decoded = decode_broadcast_rfq(case["base64"])
         self.assertEqual(decoded.protocol_version, RFQ_PROTOCOL_VERSION)
         self.assertEqual(decoded.to_bytes(), encoded)
+        self.assertEqual(decoded.wager(), Amount.from_micro(case["wager_micros"]))
         self.assertEqual(decoded.request_id(), RequestId.from_string(case["request_id"]))
+        self.assertEqual(decoded.expires_at(), Timestamp.from_millis(case["expires_at_ms"]))
         self.assertEqual(decoded.order_type(), OrderType(case["order_type"]))
+        self.assertEqual(decoded.order_type_value(), OrderType(case["order_type"]))
         self.assertEqual(decoded.leg_count, MAX_RFQ_LEGS)
         self.assertEqual(len(decoded.active_leg_wires()), MAX_RFQ_LEGS)
+        self.assertEqual(len(list(decoded.iter_leg_wires())), MAX_RFQ_LEGS)
+        self.assertEqual(list(decoded.iter_legs()), legs)
+        self.assertEqual(decoded.leg_wire(0).to_leg(), legs[0])
         self.assertEqual(decoded.leg(MAX_RFQ_LEGS - 1), legs[-1])
         self.assertIsNone(decoded.leg(MAX_RFQ_LEGS))
         self.assertEqual(decoded.taker_metadata.tier, case["taker_metadata"]["tier"])
+        self.assertEqual(decoded.taker_tier(), UserTier(case["taker_metadata"]["tier"]))
+        self.assertEqual(
+            decoded.taker_address(),
+            Address.from_hex(case["taker_metadata"]["address"]),
+        )
 
     def test_broadcast_rfq_preserves_taker_metadata_wire_bytes(self) -> None:
         case = self.fixture["broadcast_rfq"]
@@ -424,26 +419,6 @@ class ProtocolFixtureTests(unittest.TestCase):
         )
 
         self.assertEqual(decoded.to_bytes(), bytes(raw))
-
-    def test_rfq_request_rejects_unsupported_leg_counts(self) -> None:
-        case = self.fixture["broadcast_rfq"]
-        leg = _rfq_leg(case["legs"][0])
-
-        def request(leg_count: int) -> RfqRequest:
-            return RfqRequest.new(
-                RequestId.from_string(case["request_id"]),
-                UserId.from_string(case["taker_id"]),
-                Amount.from_micro(case["wager_micros"]),
-                OrderType(case["order_type"]),
-                Odds(case["min_odds"]),
-                None,
-                [leg] * leg_count,
-            )
-
-        with self.assertRaisesRegex(RfqRequestError, "at least one leg"):
-            request(0)
-        with self.assertRaisesRegex(RfqRequestError, "RFQ legs exceed MAX_RFQ_LEGS"):
-            request(MAX_RFQ_LEGS + 1)
 
     def test_rfq_leg_builder_rejects_boolean_enum_inputs(self) -> None:
         with self.assertRaisesRegex(ValueError, "asset must fit in u8"):
@@ -578,71 +553,6 @@ class ProtocolFixtureTests(unittest.TestCase):
         self.assertEqual(str(Timestamp.from_millis(123)), "123ms")
         self.assertEqual(Amount.from_micro(U64_MAX) + Amount.from_micro(1), Amount.from_micro(U64_MAX))
         self.assertEqual(Amount.from_micro(10) - Amount.from_micro(100), Amount.ZERO)
-
-    def test_rfq_helpers_match_rust_semantics(self) -> None:
-        case = self.fixture["broadcast_rfq"]
-        legs = [_rfq_leg(row) for row in case["legs"]]
-        request = RfqRequest(
-            request_id=RequestId.from_string(case["request_id"]),
-            taker_id=UserId.from_string(case["taker_id"]),
-            wager_micros=case["wager_micros"],
-            expires_at_ms=case["expires_at_ms"],
-            taker_metadata=TakerMetadata.new(
-                UserTier(case["taker_metadata"]["tier"]),
-                Address.from_hex(case["taker_metadata"]["address"]),
-            ),
-            min_odds=case["min_odds"],
-            order_type=OrderType(case["order_type"]),
-            legs=legs,
-        )
-
-        self.assertEqual(request.wager(), Amount.from_micro(case["wager_micros"]))
-        self.assertEqual(request.request_id(), RequestId.from_string(case["request_id"]))
-        self.assertEqual(request.taker_id(), UserId.from_string(case["taker_id"]))
-        self.assertEqual(request.expires_at(), Timestamp.from_millis(case["expires_at_ms"]))
-        self.assertEqual(request.order_type(), OrderType(case["order_type"]))
-        self.assertEqual(request.order_type_value(), OrderType(case["order_type"]))
-        self.assertEqual(request.min_odds(), Odds(case["min_odds"]))
-        self.assertEqual(request.min_odds_value(), Odds(case["min_odds"]))
-        self.assertEqual(request.leg(0).price_asset(), Asset(case["legs"][0]["asset"]))
-        self.assertEqual(request.leg(0).price_window_secs(), case["legs"][0]["price_window_secs"])
-        self.assertIsNone(request.leg(MAX_RFQ_LEGS - 1).price_window_secs())
-        self.assertEqual(
-            request.leg(0).price_window_seconds(),
-            case["legs"][0]["price_window_secs"],
-        )
-        self.assertTrue(request.leg(MAX_RFQ_LEGS - 1).leg_type().is_binary_event())
-        self.assertEqual(request.active_legs(), request.legs)
-        self.assertEqual(list(request.iter_legs()), request.legs)
-        self.assertEqual(request.taker_tier(), UserTier(case["taker_metadata"]["tier"]))
-        self.assertEqual(request.taker_address(), Address.from_hex(case["taker_metadata"]["address"]))
-        with_expiry = request.with_expires_at_ms(case["expires_at_ms"] + 1)
-        self.assertEqual(with_expiry.expires_at_ms, case["expires_at_ms"] + 1)
-        self.assertEqual(request.expires_at_ms, case["expires_at_ms"])
-
-        self.assertIsNone(request.set_expires_at_ms(case["expires_at_ms"] + 10))
-        self.assertEqual(request.expires_at_ms, case["expires_at_ms"] + 10)
-        self.assertIsNone(request.clamp_expires_at_ms(case["expires_at_ms"] - 1))
-        self.assertEqual(request.expires_at_ms, case["expires_at_ms"] - 1)
-        request.clamp_expires_at_ms(case["expires_at_ms"] - 2)
-        self.assertEqual(request.expires_at_ms, case["expires_at_ms"] - 2)
-        request.clamp_expires_at_ms(case["expires_at_ms"])
-        self.assertEqual(request.expires_at_ms, case["expires_at_ms"] - 2)
-
-        decoded = decode_broadcast_rfq(case["base64"])
-        self.assertEqual(decoded.wager(), Amount.from_micro(case["wager_micros"]))
-        self.assertEqual(decoded.request_id(), RequestId.from_string(case["request_id"]))
-        self.assertEqual(decoded.expires_at(), Timestamp.from_millis(case["expires_at_ms"]))
-        self.assertEqual(decoded.order_type(), OrderType(case["order_type"]))
-        self.assertEqual(decoded.order_type_value(), OrderType(case["order_type"]))
-        self.assertEqual(decoded.leg(0), request.leg(0))
-        self.assertEqual(decoded.leg_wire(0).to_leg(), request.leg(0))
-        self.assertEqual(len(decoded.active_leg_wires()), MAX_RFQ_LEGS)
-        self.assertEqual(len(list(decoded.iter_leg_wires())), MAX_RFQ_LEGS)
-        self.assertEqual(list(decoded.iter_legs()), request.legs)
-        self.assertEqual(decoded.taker_tier(), UserTier(case["taker_metadata"]["tier"]))
-        self.assertEqual(decoded.taker_address(), Address.from_hex(case["taker_metadata"]["address"]))
-
 
 if __name__ == "__main__":
     unittest.main()

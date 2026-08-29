@@ -9,7 +9,6 @@ import {
   checkU8,
   readU32Le,
   readU64Le,
-  U64_MAX,
   writeU32Le,
   writeU64Le,
 } from "./bytes.js";
@@ -24,14 +23,11 @@ import {
   OrderType,
   RequestId,
   Timestamp,
-  UserId,
   UserTier,
 } from "./types.js";
 
 /** Maximum RFQ legs supported by the current protocol. */
 export const MAX_RFQ_LEGS = 9;
-export const RFQ_TIMEOUT_MS = 500;
-export const PROCESSING_BUFFER_MS = 100;
 export const RFQ_PROTOCOL_VERSION = 2;
 export const RFQ_LEG_TYPE_PRICE_STRIKE_TAG = 0;
 // Tag 1 is retired so a v1 client cannot silently decode a binary event as Politics.
@@ -46,13 +42,6 @@ export class RfqLegWireDecodeError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "RfqLegWireDecodeError";
-  }
-}
-
-export class RfqRequestError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "RfqRequestError";
   }
 }
 
@@ -361,171 +350,6 @@ export class TakerMetadata {
       return undefined;
     }
     return new TakerMetadata(bytes[1], bytes.slice(4, 24));
-  }
-}
-
-export interface RfqRequestInput {
-  requestId?: RequestId | string;
-  request_id?: RequestId | string;
-  takerId?: UserId | string;
-  taker_id?: UserId | string;
-  wagerMicros?: number | bigint | string;
-  wager_micros?: number | bigint | string;
-  expiresAtMs?: number | bigint | string;
-  expires_at_ms?: number | bigint | string;
-  takerMetadata?: TakerMetadata | null;
-  taker_metadata?: TakerMetadata | null;
-  minOdds?: Odds | number;
-  min_odds?: Odds | number;
-  orderType?: OrderType | number;
-  order_type?: OrderType | number;
-  legs?: RfqLeg[];
-}
-
-function validateRfqLegCount(legCount: number): void {
-  if (legCount === 0) {
-    throw new RfqRequestError("RFQ must include at least one leg");
-  }
-  if (legCount > MAX_RFQ_LEGS) {
-    throw new RfqRequestError("RFQ legs exceed MAX_RFQ_LEGS");
-  }
-}
-
-export class RfqRequest {
-  readonly requestId: RequestId;
-  readonly takerId: UserId;
-  wagerMicros: bigint;
-  expiresAtMs: bigint;
-  takerMetadata?: TakerMetadata;
-  minOddsRaw: number;
-  orderTypeRaw: number;
-  readonly legs: RfqLeg[];
-
-  constructor(input: RfqRequestInput) {
-    this.requestId =
-      input.requestId instanceof RequestId
-        ? input.requestId
-        : RequestId.fromString(String(input.requestId ?? input.request_id));
-    this.takerId =
-      input.takerId instanceof UserId
-        ? input.takerId
-        : UserId.fromString(String(input.takerId ?? input.taker_id));
-    this.wagerMicros = checkU64(input.wagerMicros ?? input.wager_micros ?? 0, "wager_micros");
-    this.expiresAtMs = checkU64(input.expiresAtMs ?? input.expires_at_ms ?? 0, "expires_at_ms");
-    this.takerMetadata = input.takerMetadata ?? input.taker_metadata ?? undefined;
-    const minOdds = input.minOdds ?? input.min_odds ?? Odds.EVEN;
-    this.minOddsRaw = minOdds instanceof Odds ? minOdds.value : checkU32(minOdds, "min_odds");
-    this.orderTypeRaw = checkU8(input.orderType ?? input.order_type ?? 0, "order_type");
-    this.legs = input.legs ?? [];
-    validateRfqLegCount(this.legs.length);
-  }
-
-  static new(
-    requestId: RequestId,
-    takerId: UserId,
-    wager: Amount,
-    orderType: OrderType,
-    minOdds: Odds,
-    takerMetadata: TakerMetadata | undefined,
-    legs: RfqLeg[],
-  ): RfqRequest {
-    // Match Rust's constructor fallback if the checked timestamp addition
-    // reaches the u64 boundary instead of exposing an impossible expiry.
-    const expiresAt =
-      Timestamp.now().addMillis(RFQ_TIMEOUT_MS) ?? Timestamp.fromMillis(U64_MAX);
-    return new RfqRequest({
-      requestId,
-      takerId,
-      wagerMicros: wager.asMicros(),
-      expiresAtMs: expiresAt.asMillis(),
-      takerMetadata,
-      minOdds,
-      orderType,
-      legs,
-    });
-  }
-
-  wager(): Amount {
-    return Amount.fromMicro(this.wagerMicros);
-  }
-
-  expiresAt(): Timestamp {
-    return Timestamp.fromMillis(this.expiresAtMs);
-  }
-
-  setExpiresAtMs(ms: number | bigint | string): void {
-    this.expiresAtMs = checkU64(ms, "expires_at_ms");
-  }
-
-  clampExpiresAtMs(maxMs: number | bigint | string): void {
-    const max = checkU64(maxMs, "max_ms");
-    if (this.expiresAtMs > max) {
-      this.expiresAtMs = max;
-    }
-  }
-
-  orderType(): OrderType | undefined {
-    return OrderType.fromU8(this.orderTypeRaw);
-  }
-
-  isExpired(): boolean {
-    return Timestamp.now().asMillis() > this.expiresAtMs;
-  }
-
-  activeLegs(): RfqLeg[] {
-    return this.legs.slice(0, MAX_RFQ_LEGS);
-  }
-
-  leg(index: number): RfqLeg | undefined {
-    return index >= 0 && index < Math.min(this.legs.length, MAX_RFQ_LEGS)
-      ? this.legs[index]
-      : undefined;
-  }
-
-  iterLegs(): IterableIterator<RfqLeg> {
-    return this.legs.slice(0, MAX_RFQ_LEGS)[Symbol.iterator]();
-  }
-
-  remainingMs(): bigint {
-    const now = Timestamp.now().asMillis();
-    return this.expiresAtMs > now ? this.expiresAtMs - now : 0n;
-  }
-
-  getTakerMetadata(): TakerMetadata | undefined {
-    return this.takerMetadata;
-  }
-
-  minOdds(): Odds {
-    return new Odds(this.minOddsRaw);
-  }
-
-  takerTier(): UserTier | undefined {
-    return this.takerMetadata === undefined
-      ? undefined
-      : UserTier.fromU8(Number(this.takerMetadata.tier));
-  }
-
-  takerAddress(): Address | undefined {
-    return this.takerMetadata?.address;
-  }
-
-  toBroadcastBytes(): Uint8Array {
-    validateRfqLegCount(this.legs.length);
-    const bytes = new Uint8Array(BROADCAST_RFQ_REQUEST_SIZE);
-    const view = new DataView(bytes.buffer);
-    bytes.set(this.requestId.asBytes(), 0);
-    writeU64Le(view, 16, this.wagerMicros);
-    writeU64Le(view, 24, this.expiresAtMs);
-    if (this.takerMetadata !== undefined) {
-      bytes.set(this.takerMetadata.toWireBytes(), 32);
-    }
-    bytes[56] = this.orderTypeRaw;
-    bytes[57] = this.legs.length;
-    bytes[58] = RFQ_PROTOCOL_VERSION;
-    for (let index = 0; index < this.legs.length; index += 1) {
-      bytes.set(this.legs[index].toWireBytes(), 64 + index * RFQ_LEG_WIRE_SIZE);
-    }
-    return bytes;
   }
 }
 

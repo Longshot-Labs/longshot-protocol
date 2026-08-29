@@ -22,8 +22,6 @@ import {
   RfqLeg,
   RfqLegWire,
   RfqLegWireDecodeError,
-  RfqRequest,
-  RfqRequestError,
   RfqSubscription,
   RFQ_PROTOCOL_VERSION,
   SerdeDecodeError,
@@ -32,7 +30,6 @@ import {
   TakerMetadata,
   Timestamp,
   U64_MAX,
-  UserId,
   UserTier,
   authResponseMessage,
   buildAuthMessage,
@@ -80,10 +77,6 @@ const fixture = JSON.parse(
 ) as any;
 function requestId(): RequestId {
   return RequestId.fromString("00112233-4455-6677-8899-aabbccddeeff") as RequestId;
-}
-
-function takerId(): UserId {
-  return UserId.fromString("ffeeddcc-bbaa-9988-7766-554433221100") as UserId;
 }
 
 test("public JSON boundary preserves unsafe API integers", () => {
@@ -138,14 +131,8 @@ test("client query DTOs enforce required semantic route values", () => {
     "ChatMentionCandidatesQuery",
     "MarketLookupQuery",
     "MarketCurrentQuery",
-    "TopOfBookHistoryQuery",
     "PositionsByMarketsQuery",
     "ConfirmPositionQuery",
-    "VaultIdQuery",
-    "VaultPnlHistoryQuery",
-    "VaultPositionsQuery",
-    "VaultEventsQuery",
-    "VaultContributorsQuery",
   ]) {
     assert.throws(() => decodeApiJson("{}", schema), SerdeDecodeError);
   }
@@ -447,8 +434,6 @@ test("RFQ leg builder rejects boolean enum inputs", () => {
 });
 
 test("RFQ constructors reject coerced byte-sized enum inputs", () => {
-  const leg = RfqLeg.binaryEvent(1, 0, Direction.Up, 0);
-
   for (const invalid of [true, "1"]) {
     const direction = invalid as unknown as Direction;
     const tier = invalid as unknown as UserTier;
@@ -461,16 +446,6 @@ test("RFQ constructors reject coerced byte-sized enum inputs", () => {
     assert.throws(
       () => new TakerMetadata(tier, fixture.mm_signing.wallet_address),
       /tier must be an unsigned integer/,
-    );
-    assert.throws(
-      () =>
-        new RfqRequest({
-          requestId: requestId(),
-          takerId: takerId(),
-          orderType,
-          legs: [leg],
-        }),
-      /order_type must be an unsigned integer/,
     );
     assert.throws(
       () =>
@@ -733,28 +708,21 @@ test("timestamp arithmetic matches Rust checked u64 boundaries", () => {
 test("broadcast RFQ matches shared fixture", () => {
   const row = fixture.broadcast_rfq;
   const legs = (row.legs as FixtureRfqLeg[]).map(fixtureRfqLeg);
-  const request = RfqRequest.new(
-    requestId(),
-    takerId(),
-    Amount.fromMicro(row.wager_micros),
-    OrderType.IOC,
-    new Odds(row.min_odds),
-    TakerMetadata.new(UserTier.Gold, Address.fromHex(row.taker_metadata.address)),
-    legs,
-  );
-  request.setExpiresAtMs(row.expires_at_ms);
-
-  const bytes = request.toBroadcastBytes();
+  const bytes = decodeBase64NoPad(row.base64);
   const decoded = decodeBroadcastRfq(row.base64);
 
   assert.equal(bytesToHex(bytes), row.bytes_hex);
   assert.equal(encodeBase64NoPad(bytes), row.base64);
   assert.deepEqual(decoded.toBytes(), bytes);
-  assert.deepEqual(request.activeLegs(), legs);
+  assert.equal(decoded.wager().asMicros(), BigInt(row.wager_micros));
+  assert.equal(decoded.expiresAt().asMillis(), BigInt(row.expires_at_ms));
+  assert.equal(decoded.orderType(), OrderType.IOC);
   assert.equal(decoded.legCount, MAX_RFQ_LEGS);
   assert.equal(decoded.activeLegWires().length, MAX_RFQ_LEGS);
   assert.deepEqual(decoded.leg(MAX_RFQ_LEGS - 1), legs[MAX_RFQ_LEGS - 1]);
   assert.equal(decoded.legWire(MAX_RFQ_LEGS), undefined);
+  assert.equal(decoded.takerTier(), UserTier.Gold);
+  assert.equal(decoded.takerAddress()?.hex(), row.taker_metadata.address);
 });
 
 test("broadcast RFQ preserves taker metadata wire bytes", () => {
@@ -819,24 +787,6 @@ test("market-maker decoder rejects RFQ protocol version one", () => {
       error.expected === RFQ_PROTOCOL_VERSION &&
       error.actual === 1,
   );
-});
-
-test("RFQ request rejects unsupported leg counts", () => {
-  const row = fixture.broadcast_rfq;
-  const leg = fixtureRfqLeg(row.legs[0] as FixtureRfqLeg);
-  const request = (legCount: number) =>
-    RfqRequest.new(
-      requestId(),
-      takerId(),
-      Amount.fromMicro(row.wager_micros),
-      OrderType.IOC,
-      new Odds(row.min_odds),
-      undefined,
-      Array.from({ length: legCount }, () => leg),
-    );
-
-  assert.throws(() => request(0), /at least one leg/);
-  assert.throws(() => request(MAX_RFQ_LEGS + 1), RfqRequestError);
 });
 
 test("market-maker signing matches shared fixture", async () => {

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import List, Optional, Union
 
 from ._serde_metadata import (
@@ -11,8 +10,8 @@ from ._serde_metadata import (
     STRUCT_REQUIRED_FIELDS,
     TAGGED_UNION_FIELDS,
 )
-from .model import LongshotModel, RustStringEnum, RustTaggedUnion, _install_serde_metadata
-from .types import Asset, MarketId, MarketType, RequestId
+from .model import RustStringEnum, RustTaggedUnion, _install_serde_metadata
+from .types import Asset, RequestId
 
 
 class QuoteResultStatus(RustStringEnum):
@@ -94,39 +93,12 @@ class ClientMessage(RustTaggedUnion):
         )
 
 
-class MarketFairValueDecayType(RustStringEnum):
-    Linear = "linear"
-    Curved = "curved"
-
-
-@dataclass
-class MarketFairValueDecay(LongshotModel):
-    start_ms: int
-    start_odds_bps: int
-    end_ms: int
-    end_odds_bps: int
-    decay_type: MarketFairValueDecayType
-
-
-@dataclass
-class MarketFairValue(LongshotModel):
-    market_id: MarketId
-    yes_fair_value_bps: int
-    spread_cents: int
-    market_type: MarketType
-    resolution_time_ms: int
-    revision: int
-    updated_at_ms: int
-    decay: Optional[MarketFairValueDecay] = None
-
-
 class ServerMessage(RustTaggedUnion):
     __serde_tag__ = "type"
     __serde_variants__ = {
         "AuthChallenge": "auth_challenge",
         "AuthResult": "auth_result",
         "Rfq": "rfq",
-        "MarketFairValues": "market_fair_values",
         "Subscribed": "subscribed",
         "QuoteAck": "quote_ack",
         "QuoteResult": "quote_result",
@@ -152,10 +124,6 @@ class ServerMessage(RustTaggedUnion):
     @classmethod
     def rfq(cls, data: str) -> ServerMessage:
         return cls("Rfq", data=data)
-
-    @classmethod
-    def market_fair_values(cls, values: List[MarketFairValue]) -> ServerMessage:
-        return cls("MarketFairValues", values=values)
 
     @classmethod
     def subscribed(cls, protocol_version: int) -> ServerMessage:

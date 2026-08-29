@@ -8,8 +8,7 @@ use longshot_protocol::mm::{
 use longshot_protocol::taker::{sign_order, signed_order, OrderLeg, SignedOrder, SignedOrderError};
 use longshot_protocol::types::{
     Address, Amount, Asset, Direction, Duration, MarketId, Odds, OrderType, QuoteResponse,
-    RequestId, RfqLeg, RfqRequest, TakerMetadata, UserId, UserTier, MAX_RFQ_LEGS,
-    RFQ_PROTOCOL_VERSION,
+    RequestId, RfqLeg, MAX_RFQ_LEGS, RFQ_PROTOCOL_VERSION,
 };
 use longshot_protocol::ws::{ClientMessage, QuoteDeclineReason};
 use serde_json::Value;
@@ -28,10 +27,6 @@ fn fixture() -> Value {
 
 fn request_id() -> RequestId {
     RequestId::from_uuid(Uuid::parse_str("00112233-4455-6677-8899-aabbccddeeff").unwrap())
-}
-
-fn taker_id() -> UserId {
-    UserId::from_uuid(Uuid::parse_str("ffeeddcc-bbaa-9988-7766-554433221100").unwrap())
 }
 
 fn rfq_leg(row: &Value) -> RfqLeg {
@@ -312,37 +307,46 @@ fn quote_response_matches_shared_fixture() {
 fn broadcast_rfq_matches_shared_fixture() {
     let fixture = fixture();
     let case = &fixture["broadcast_rfq"];
-    let address = Address::from_slice(&[0x22; 20]);
     let legs: Vec<_> = case["legs"]
         .as_array()
         .unwrap()
         .iter()
         .map(rfq_leg)
         .collect();
-    let mut request = RfqRequest::new(
-        request_id(),
-        taker_id(),
-        Amount::from_micro(case["wager_micros"].as_u64().unwrap()),
-        OrderType::IOC,
-        Odds(case["min_odds"].as_u64().unwrap() as u32),
-        Some(TakerMetadata::new(UserTier::Gold, address)),
-        &legs,
-    )
-    .unwrap();
-    request.set_expires_at_ms(case["expires_at_ms"].as_u64().unwrap());
+    let bytes = hex::decode(case["bytes_hex"].as_str().unwrap()).unwrap();
+    let decoded = decode_broadcast_rfq(case["base64"].as_str().unwrap()).unwrap();
 
-    let bytes = request.to_broadcast_bytes();
-
-    assert_eq!(hex::encode(bytes), case["bytes_hex"].as_str().unwrap());
+    assert_eq!(decoded.to_bytes().as_slice(), bytes.as_slice());
     assert_eq!(
-        STANDARD_NO_PAD.encode(bytes),
+        STANDARD_NO_PAD.encode(decoded.to_bytes()),
         case["base64"].as_str().unwrap()
     );
-
-    let decoded = decode_broadcast_rfq(case["base64"].as_str().unwrap()).unwrap();
+    assert_eq!(decoded.request_id(), request_id());
+    assert_eq!(
+        decoded.wager(),
+        Amount::from_micro(case["wager_micros"].as_u64().unwrap())
+    );
+    assert_eq!(
+        decoded.expires_at().as_millis(),
+        case["expires_at_ms"].as_u64().unwrap()
+    );
+    assert_eq!(decoded.order_type(), Some(OrderType::IOC));
     assert_eq!(decoded.protocol_version, RFQ_PROTOCOL_VERSION);
     assert_eq!(decoded.leg_count as usize, MAX_RFQ_LEGS);
     assert_eq!(decoded.active_leg_wires().len(), MAX_RFQ_LEGS);
     assert_eq!(decoded.leg(MAX_RFQ_LEGS - 1).unwrap().unwrap(), legs[8]);
     assert!(decoded.leg(MAX_RFQ_LEGS).is_none());
+    let metadata = decoded.get_taker_metadata().unwrap();
+    assert_eq!(
+        metadata.tier as u64,
+        case["taker_metadata"]["tier"].as_u64().unwrap()
+    );
+    assert_eq!(
+        metadata.address,
+        case["taker_metadata"]["address"]
+            .as_str()
+            .unwrap()
+            .parse::<Address>()
+            .unwrap()
+    );
 }

@@ -21,7 +21,6 @@ pub use primitives::{
 };
 pub use rfq::{
     BroadcastRfqRequest, QuoteResponse, RfqLeg, RfqLegType, RfqLegWire, RfqLegWireDecodeError,
-    RfqRequest, RfqRequestError, TakerMetadata, MAX_RFQ_LEGS, PROCESSING_BUFFER_MS,
-    RFQ_LEG_TYPE_BINARY_EVENT_TAG, RFQ_LEG_TYPE_PRICE_STRIKE_TAG, RFQ_PROTOCOL_VERSION,
-    RFQ_TIMEOUT_MS,
+    TakerMetadata, MAX_RFQ_LEGS, RFQ_LEG_TYPE_BINARY_EVENT_TAG, RFQ_LEG_TYPE_PRICE_STRIKE_TAG,
+    RFQ_PROTOCOL_VERSION,
 };

@@ -20,8 +20,6 @@ from .types import (
     OrderType,
     RequestId,
     Timestamp,
-    U64_MAX,
-    UserId,
     UserTier,
     _check_u8,
     _check_u32,
@@ -29,8 +27,6 @@ from .types import (
 )
 
 MAX_RFQ_LEGS = 9
-RFQ_TIMEOUT_MS = 500
-PROCESSING_BUFFER_MS = 100
 RFQ_PROTOCOL_VERSION = 2
 RFQ_LEG_TYPE_PRICE_STRIKE_TAG = 0
 # Tag 1 is retired so a v1 client cannot silently decode a binary event as Politics.
@@ -72,17 +68,6 @@ class _CallablePriceWindowSecs(int):
 
 class RfqLegWireDecodeError(ValueError):
     pass
-
-
-class RfqRequestError(ValueError):
-    pass
-
-
-def _validate_rfq_leg_count(leg_count: int) -> None:
-    if leg_count == 0:
-        raise RfqRequestError("RFQ must include at least one leg")
-    if leg_count > MAX_RFQ_LEGS:
-        raise RfqRequestError("RFQ legs exceed MAX_RFQ_LEGS")
 
 
 @dataclass(frozen=True)
@@ -407,137 +392,6 @@ class TakerMetadata:
         if option == 0:
             return None
         return cls(tier=tier, address=Address(address))
-
-
-@dataclass(frozen=True)
-class RfqRequest:
-    request_id: RequestId
-    taker_id: UserId
-    wager_micros: int
-    expires_at_ms: int
-    taker_metadata: Optional[TakerMetadata]
-    min_odds: int
-    order_type: Union[OrderType, int]
-    legs: List[RfqLeg] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        _validate_rfq_leg_count(len(self.legs))
-        object.__setattr__(self, "min_odds", _CallableOdds(self.min_odds))
-        object.__setattr__(self, "order_type", _CallableOrderType(int(self.order_type)))
-
-    @classmethod
-    def new(
-        cls,
-        request_id: RequestId,
-        taker_id: UserId,
-        wager: Amount,
-        order_type: Union[OrderType, int],
-        min_odds: Odds,
-        taker_metadata: Optional[TakerMetadata],
-        legs: List[RfqLeg],
-    ) -> RfqRequest:
-        expires_at = Timestamp.now().add_millis(RFQ_TIMEOUT_MS)
-        # Match Rust's constructor fallback if the checked timestamp addition
-        # reaches the u64 boundary instead of exposing an impossible expiry.
-        if expires_at is None:
-            expires_at = Timestamp.from_millis(U64_MAX)
-        return cls(
-            request_id=request_id,
-            taker_id=taker_id,
-            wager_micros=wager.as_micros(),
-            expires_at_ms=expires_at.as_millis(),
-            taker_metadata=taker_metadata,
-            min_odds=min_odds.value,
-            order_type=order_type,
-            legs=legs,
-        )
-
-    def with_expires_at_ms(self, expires_at_ms: int) -> RfqRequest:
-        return RfqRequest(
-            request_id=self.request_id,
-            taker_id=self.taker_id,
-            wager_micros=self.wager_micros,
-            expires_at_ms=expires_at_ms,
-            taker_metadata=self.taker_metadata,
-            min_odds=self.min_odds,
-            order_type=self.order_type,
-            legs=list(self.legs),
-        )
-
-    def wager(self) -> Amount:
-        return Amount.from_micro(self.wager_micros)
-
-    def expires_at(self) -> Timestamp:
-        return Timestamp.from_millis(self.expires_at_ms)
-
-    def set_expires_at_ms(self, expires_at_ms: int) -> None:
-        object.__setattr__(self, "expires_at_ms", _check_u64(expires_at_ms, "expires_at_ms"))
-
-    def clamp_expires_at_ms(self, max_ms: int) -> None:
-        max_ms = _check_u64(max_ms, "max_ms")
-        if self.expires_at_ms > max_ms:
-            object.__setattr__(self, "expires_at_ms", max_ms)
-
-    def order_type_value(self) -> Optional[OrderType]:
-        return OrderType.from_u8(int(self.order_type))
-
-    def is_expired(self) -> bool:
-        return Timestamp.now().as_millis() > self.expires_at_ms
-
-    def active_legs(self) -> List[RfqLeg]:
-        return list(self.legs[:MAX_RFQ_LEGS])
-
-    def leg(self, index: int) -> Optional[RfqLeg]:
-        leg_count = min(len(self.legs), MAX_RFQ_LEGS)
-        return self.legs[index] if 0 <= index < leg_count else None
-
-    def iter_legs(self) -> Iterator[RfqLeg]:
-        return iter(self.legs[:MAX_RFQ_LEGS])
-
-    def remaining_ms(self) -> int:
-        return max(0, self.expires_at_ms - Timestamp.now().as_millis())
-
-    def get_taker_metadata(self) -> Optional[TakerMetadata]:
-        return self.taker_metadata
-
-    def min_odds_value(self) -> Odds:
-        return Odds(self.min_odds)
-
-    def taker_tier(self) -> Optional[UserTier]:
-        if self.taker_metadata is None:
-            return None
-        return UserTier.from_u8(int(self.taker_metadata.tier))
-
-    def taker_address(self) -> Optional[Address]:
-        if self.taker_metadata is None:
-            return None
-        address = self.taker_metadata.address
-        return address if isinstance(address, Address) else Address(address)
-
-    def to_broadcast_bytes(self) -> bytes:
-        _validate_rfq_leg_count(len(self.legs))
-        _check_u64(self.wager_micros, "wager_micros")
-        _check_u64(self.expires_at_ms, "expires_at_ms")
-        _check_u32(self.min_odds, "min_odds")
-
-        result = bytearray()
-        result.extend(self.request_id.bytes)
-        result.extend(pack("<Q", self.wager_micros))
-        result.extend(pack("<Q", self.expires_at_ms))
-        if self.taker_metadata is None:
-            result.extend(bytes(TAKER_METADATA_WIRE_SIZE))
-        else:
-            result.extend(self.taker_metadata.to_wire_bytes())
-        result.append(int(self.order_type))
-        result.append(len(self.legs))
-        result.append(RFQ_PROTOCOL_VERSION)
-        result.extend(bytes(5))
-        for leg in self.legs:
-            result.extend(leg.to_wire_bytes())
-        result.extend(bytes(RFQ_LEG_WIRE_SIZE * (MAX_RFQ_LEGS - len(self.legs))))
-        if len(result) != BROADCAST_RFQ_REQUEST_SIZE:
-            raise AssertionError("encoded broadcast RFQ size mismatch")
-        return bytes(result)
 
 
 @dataclass(frozen=True)

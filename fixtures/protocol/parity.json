@@ -99,11 +99,9 @@
         "type_tag": 2
       }
     ],
-    "min_odds": 25000,
     "order_type": 1,
     "protocol_version": 2,
     "request_id": "00112233-4455-6677-8899-aabbccddeeff",
-    "taker_id": "ffeeddcc-bbaa-9988-7766-554433221100",
     "taker_metadata": {
       "address": "0x2222222222222222222222222222222222222222",
       "tier": 2
