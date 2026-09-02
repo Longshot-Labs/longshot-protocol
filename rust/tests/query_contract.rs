@@ -1,6 +1,6 @@
 use longshot_protocol::api::{
-    ChatMentionCandidatesQuery, ConfirmPositionQuery, MarketCurrentQuery, MarketLookupQuery,
-    PnlHistoryScopedQuery, PositionsByMarketsQuery, UserTransactionsRawQuery,
+    ConfirmPositionQuery, MarketCurrentQuery, MarketLookupQuery, PnlHistoryScopedQuery,
+    PositionsByMarketsQuery, UserTransactionsRawQuery,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -30,13 +30,11 @@ where
 
 #[test]
 fn client_query_contracts_require_route_required_fields() {
-    assert_missing_required::<ChatMentionCandidatesQuery>();
     assert_missing_required::<MarketLookupQuery>();
     assert_missing_required::<MarketCurrentQuery>();
     assert_missing_required::<PositionsByMarketsQuery>();
     assert_missing_required::<ConfirmPositionQuery>();
 
-    assert_accepts::<ChatMentionCandidatesQuery>(json!({"chat_id": "room-id"}));
     assert_accepts::<MarketLookupQuery>(
         json!({"asset": "BTC", "duration_secs": 300, "window_start_ms": 1}),
     );

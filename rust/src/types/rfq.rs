@@ -390,6 +390,44 @@ fn decode_taker_metadata(wire: WireTakerMetadata) -> Option<TakerMetadata> {
 impl BroadcastRfqRequest {
     pub const SIZE: usize = 64 + (MAX_RFQ_LEGS * RfqLegWire::SIZE);
 
+    /// Builds the fixed-size market-maker transport from already validated
+    /// request parts.
+    pub fn from_parts(
+        request_id: [u8; 16],
+        wager_micros: u64,
+        expires_at_ms: u64,
+        taker_metadata: Option<TakerMetadata>,
+        order_type: u8,
+        leg_count: u8,
+        legs: [RfqLegWire; MAX_RFQ_LEGS],
+    ) -> Self {
+        let taker_metadata = match taker_metadata {
+            Some(metadata) => WireTakerMetadata {
+                option: 1,
+                tier: metadata.tier,
+                _reserved: [0; 2],
+                address: metadata.address.into_array(),
+            },
+            None => WireTakerMetadata {
+                option: 0,
+                tier: 0,
+                _reserved: [0; 2],
+                address: [0; 20],
+            },
+        };
+        Self {
+            request_id,
+            wager_micros,
+            expires_at_ms,
+            taker_metadata,
+            order_type,
+            leg_count,
+            protocol_version: RFQ_PROTOCOL_VERSION,
+            _reserved: [0; 5],
+            legs,
+        }
+    }
+
     #[inline]
     pub fn request_id(&self) -> RequestId {
         RequestId::from_bytes(self.request_id)

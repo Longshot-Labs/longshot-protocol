@@ -25,20 +25,3 @@ pub struct ConfirmPositionQuery {
     pub position_id: String,
     pub accept: bool,
 }
-
-/// Query params for `GET /v1/user/referrals`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct ReferralsListRawQuery {
-    pub page: Option<u32>,
-    pub limit: Option<u32>,
-}
-
-/// Query params for `GET /v1/user/referral_stats`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct UserReferralStatsRawQuery {
-    pub window: Option<String>,
-}

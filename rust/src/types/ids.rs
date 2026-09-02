@@ -128,8 +128,6 @@ define_uuid_id_type!(
 );
 define_uuid_id_type!(PositionId, "Unique identifier for a filled position.");
 define_uuid_id_type!(ContestId, "Unique identifier for a contest.");
-define_uuid_id_type!(ChatId, "Unique identifier for a chat.");
-define_uuid_id_type!(MessageId, "Unique identifier for a chat message.");
 
 #[cfg(test)]
 mod tests {
@@ -143,8 +141,6 @@ mod tests {
         assert!(ClientQuoteId::default().is_nil());
         assert!(PositionId::default().is_nil());
         assert!(ContestId::default().is_nil());
-        assert!(ChatId::default().is_nil());
-        assert!(MessageId::default().is_nil());
     }
 
     #[test]

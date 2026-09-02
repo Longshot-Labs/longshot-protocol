@@ -1,16 +1,12 @@
 #![cfg(feature = "openapi")]
 
 use longshot_protocol::api::{
-    AcknowledgeReferralPromptRequest, ClaimReferralPromptResponse, LeaderboardPnlCaller,
-    LeaderboardPnlEntry, PortfolioSummaryResponse, PublicProfileStreakHistoryResponse,
-    PublicProfileStreakPicksResponse, PublicProfileSummaryResponse,
-    PublicReferralDepositMatchOffer, QueuedWithdrawalResponse, RfqEstimateResponse, ShareImageRef,
-    StreakHistoryResponse, StreakLeaderboardResponse, StreakLeaderboardRowResponse,
-    StreakMarketResponse, StreakPickHistoryItemResponse, StreakPicksResponse,
-    StreakPopularMarketResponse, StreakPopularTodayResponse, StreakRunResponse,
-    StreakRunTierPayoutResponse, UserAvailableBalanceResponse, UserTransactionCategory,
-    UserTransactionResponse, UserTransactionStatus, UserTransactionUnit, UserTransactionsResponse,
+    PositionDetailResponse, PositionSummary, ProfitCapConfigResponse, ProfitCapOverrideResponse,
+    PublicReferralDepositMatchOffer, QueuedWithdrawalResponse, RfqEstimateResponse,
+    UserAvailableBalanceResponse, UserTransactionCategory, UserTransactionResponse,
+    UserTransactionStatus, UserTransactionUnit, UserTransactionsResponse,
 };
+use longshot_protocol::types::MarketType;
 use serde_json::Value;
 use utoipa::ToSchema;
 
@@ -38,6 +34,29 @@ where
     }
 }
 
+fn assert_required_nullable_string_properties<T>(field_names: &[&str])
+where
+    T: for<'schema> ToSchema<'schema>,
+{
+    let schema = serde_json::to_value(T::schema().1).expect("schema should serialize");
+    let required = schema["required"]
+        .as_array()
+        .expect("struct schema should contain required fields");
+
+    assert_string_properties::<T>(field_names);
+    for field_name in field_names {
+        assert!(
+            required.iter().any(|value| value == *field_name),
+            "{field_name} must be required because the wire key is always present"
+        );
+        assert_eq!(
+            schema["properties"][*field_name].get("nullable"),
+            Some(&Value::Bool(true)),
+            "{field_name} must allow null until the position resolves"
+        );
+    }
+}
+
 fn assert_uuid_property<T>(field_name: &str)
 where
     T: for<'schema> ToSchema<'schema>,
@@ -50,26 +69,6 @@ where
     assert_eq!(property.get("$ref"), None, "{field_name} must be inline");
     assert_eq!(property.get("type"), Some(&Value::String("string".into())));
     assert_eq!(property.get("format"), Some(&Value::String("uuid".into())));
-}
-
-fn assert_required_properties<T>(field_names: &[&str])
-where
-    T: for<'schema> ToSchema<'schema>,
-{
-    let schema = serde_json::to_value(T::schema().1).expect("schema should serialize");
-    let required = schema
-        .get("required")
-        .and_then(Value::as_array)
-        .expect("struct schema should contain required properties");
-
-    for field_name in field_names {
-        assert!(
-            required
-                .iter()
-                .any(|value| value.as_str() == Some(field_name)),
-            "{field_name} must be required"
-        );
-    }
 }
 
 #[test]
@@ -85,18 +84,6 @@ fn wire_integer_openapi_fields_are_decimal_strings() {
     let wire = serde_json::to_value(balance).expect("balance should serialize");
     assert_eq!(wire["available_micros"], "9007199254740993");
 
-    assert_string_properties::<LeaderboardPnlEntry>(&["pnl_micros"]);
-    assert_string_properties::<LeaderboardPnlCaller>(&["pnl_micros"]);
-    assert_string_properties::<PortfolioSummaryResponse>(&[
-        "potential_payout_micros",
-        "realized_pnl_micros",
-        "biggest_win_micros",
-    ]);
-    assert_string_properties::<PublicProfileSummaryResponse>(&[
-        "potential_payout_micros",
-        "realized_pnl_micros",
-        "biggest_win_micros",
-    ]);
     assert_string_properties::<UserAvailableBalanceResponse>(&[
         "available_micros",
         "pending_custodial_deposit_micros",
@@ -105,10 +92,46 @@ fn wire_integer_openapi_fields_are_decimal_strings() {
     ]);
     assert_string_properties::<QueuedWithdrawalResponse>(&["amount_micros"]);
     assert_string_properties::<PublicReferralDepositMatchOffer>(&["match_limit_micros"]);
-    assert_string_properties::<ClaimReferralPromptResponse>(&["amount_micros"]);
-    assert_string_properties::<StreakRunTierPayoutResponse>(&["payout_micros"]);
-    assert_string_properties::<StreakRunResponse>(&["cash_payout_micros"]);
     assert_string_properties::<UserTransactionResponse>(&["amount_micros"]);
+}
+
+#[test]
+fn position_outcome_fields_are_required_and_nullable() {
+    let fields = [
+        "refunded_app_token_micros",
+        "net_payout_micros",
+        "pnl_micros",
+    ];
+
+    // Serde requires these keys even though their values remain null until the
+    // corresponding outcome exists. Keep OpenAPI aligned with that wire shape.
+    assert_required_nullable_string_properties::<PositionSummary>(&fields);
+    assert_required_nullable_string_properties::<PositionDetailResponse>(&fields);
+}
+
+#[test]
+fn public_profit_cap_contract_is_exported() {
+    let document: Value = serde_json::from_str(include_str!("../../fixtures/api/openapi.json"))
+        .expect("public OpenAPI fixture should parse");
+
+    assert!(document["paths"]["/v1/mm/profit_caps"]["get"].is_object());
+    for schema in ["ProfitCapConfigResponse", "ProfitCapOverrideResponse"] {
+        assert!(
+            document["components"]["schemas"][schema].is_object(),
+            "{schema} must remain public"
+        );
+    }
+
+    let response = ProfitCapConfigResponse {
+        default_max_profit_micros: 9_007_199_254_740_993,
+        overrides: vec![ProfitCapOverrideResponse {
+            market_type: MarketType::from(MarketType::SPORTS),
+            max_profit_micros: u64::MAX,
+        }],
+    };
+    let wire = serde_json::to_value(response).expect("profit caps should serialize");
+    assert_eq!(wire["default_max_profit_micros"], 9_007_199_254_740_993_u64);
+    assert_eq!(wire["overrides"][0]["max_profit_micros"], u64::MAX);
 }
 
 #[test]
@@ -145,59 +168,6 @@ fn user_transactions_preserve_wire_amounts_and_omit_optional_details() {
 
 #[test]
 fn uuid_openapi_fields_are_inline_string_formats() {
-    assert_uuid_property::<AcknowledgeReferralPromptRequest>("claim_token");
     assert_uuid_property::<RfqEstimateResponse>("request_id");
     assert_uuid_property::<QueuedWithdrawalResponse>("operation_id");
-    assert_uuid_property::<ClaimReferralPromptResponse>("claim_token");
-
-    let schema = serde_json::to_value(ShareImageRef::schema().1).expect("schema should serialize");
-    let pool_image_id = &schema["oneOf"][0]["properties"]["pool_image_id"];
-    assert_eq!(
-        pool_image_id.get("$ref"),
-        None,
-        "pool_image_id must be inline"
-    );
-    assert_eq!(
-        pool_image_id.get("type"),
-        Some(&Value::String("string".into()))
-    );
-    assert_eq!(
-        pool_image_id.get("format"),
-        Some(&Value::String("uuid".into()))
-    );
-}
-
-#[test]
-fn streak_nullable_present_fields_remain_required_in_openapi() {
-    // These Option fields serialize as explicit null when empty. They are
-    // nullable values, not omittable properties, unless serde says otherwise.
-    assert_required_properties::<StreakMarketResponse>(&[
-        "outcome",
-        "source",
-        "resolution_time_ms",
-        "betting_closes_at_ms",
-    ]);
-    assert_required_properties::<StreakPickHistoryItemResponse>(&[
-        "market_outcome",
-        "betting_closes_at_ms",
-        "resolved_at_ms",
-    ]);
-    assert_required_properties::<StreakPicksResponse>(&["contest_id", "next_cursor"]);
-    assert_required_properties::<PublicProfileStreakPicksResponse>(&["contest_id", "next_cursor"]);
-    assert_required_properties::<StreakRunResponse>(&[
-        "end_game_index",
-        "ended_at_ms",
-        "failed_pick_number",
-        "failed_pick",
-    ]);
-    assert_required_properties::<StreakHistoryResponse>(&["next_cursor"]);
-    assert_required_properties::<PublicProfileStreakHistoryResponse>(&["next_cursor"]);
-    assert_required_properties::<StreakPopularMarketResponse>(&["betting_closes_at_ms"]);
-    assert_required_properties::<StreakPopularTodayResponse>(&["contest_id", "game_index"]);
-    assert_required_properties::<StreakLeaderboardRowResponse>(&[
-        "x_handle",
-        "x_avatar_url",
-        "current_pick",
-    ]);
-    assert_required_properties::<StreakLeaderboardResponse>(&["contest_id", "current_game_index"]);
 }

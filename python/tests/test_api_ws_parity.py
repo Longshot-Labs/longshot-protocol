@@ -5,7 +5,6 @@ import json
 import keyword
 import re
 import runpy
-import sys
 import unittest
 from base64 import b64encode
 from dataclasses import fields, is_dataclass
@@ -24,24 +23,21 @@ from longshot_protocol import (
     MarketId,
     MarketStatus,
     MarketType,
-    NotificationPayload,
-    NotificationResponse,
     OrderLeg,
     OrderLegJson,
     OrderType,
     Odds,
-    PriceShareCard,
-    QuoteDeclineReason,
+    Outcome,
+    ProfitCapConfigResponse,
+    ProfitCapOverrideResponse,
     QuoteResultStatus,
     RequestId,
     RfqSubscription,
     ServerMessage,
-    ShareCardFooter,
-    ShareCardSnapshot,
-    ShareStat,
     SignedOrder,
     SignedOrderJson,
     Timestamp,
+    TradingChannel,
     UserTier,
 )
 import longshot_protocol
@@ -196,13 +192,6 @@ def rust_api_struct_field_annotations() -> dict[str, dict[str, str]]:
             stripped = lines[index].strip()
             tuple_match = re.match(r"pub struct ([A-Za-z0-9_]+)\(pub\s+(.+)\);", stripped)
             if tuple_match:
-                if (
-                    tuple_match.group(1) == "PoolImageRawBytes"
-                    and tuple_match.group(2) == "Vec<u8>"
-                ):
-                    struct_fields[tuple_match.group(1)] = {"value": "bytes"}
-                    index += 1
-                    continue
                 struct_fields[tuple_match.group(1)] = {
                     "value": _rust_type_to_python_annotation(tuple_match.group(2))
                 }
@@ -840,13 +829,25 @@ def rust_top_level_public_type_declarations() -> set[str]:
         REPO_ROOT / "rust" / "src" / "types" / "rfq.rs",
     ]:
         declarations.update(rust_public_type_declarations(path.read_text()))
-    declarations.update(
-        {"RequestId", "UserId", "QuoteId", "PositionId", "ContestId", "ChatId", "MessageId"}
-    )
+    declarations.update({"RequestId", "UserId", "QuoteId", "PositionId", "ContestId"})
     return declarations
 
 
 class ApiParityTests(unittest.TestCase):
+    def test_sensitive_request_reprs_redact_credentials(self) -> None:
+        secret = "identity-token-that-must-not-be-logged"
+        values = [
+            api.WalletAuthRequest(signature=secret),
+            api.CreateUnsignedRfqRequest(privy_token=secret),
+            api.WithdrawalAuthorization.privy_token(token=secret),
+        ]
+
+        for value in values:
+            with self.subTest(value=type(value).__name__):
+                rendered = repr(value)
+                self.assertNotIn(secret, rendered)
+                self.assertIn("<redacted>", rendered)
+
     def test_market_type_preserves_unknown_category_slugs(self) -> None:
         self.assertEqual(
             [
@@ -909,10 +910,6 @@ class ApiParityTests(unittest.TestCase):
             api.PublicMarketsRawQuery.from_dict({"statuses": ["PENDING", "OPEN"]})
         with self.assertRaises(ValueError):
             api.PublicMarketsRawQuery.from_dict({"statuses": "PENDING,UNKNOWN"})
-
-    def test_contest_entry_index_remains_optional_and_stable(self) -> None:
-        self.assertIsNone(api.PlaceContestBetRequest().entry_index)
-        self.assertEqual(api.PlaceContestBetRequest(entry_index=1).entry_index, 1)
 
     def test_top_level_exports_every_public_rust_protocol_type(self) -> None:
         expected = (
@@ -1097,32 +1094,6 @@ class ApiParityTests(unittest.TestCase):
             python_api_required_nullable_fields(),
             rust_api_required_nullable_fields(),
         )
-        self.assertEqual(
-            sum(map(len, rust_api_required_nullable_fields().values())), 20
-        )
-
-    def test_required_nullable_wire_field_distinguishes_missing_from_null(self) -> None:
-        payload = {
-            "scope": "all",
-            "active_count": 0,
-            "potential_payout_micros": "0",
-            "realized_pnl_micros": "0",
-        }
-
-        with self.assertRaisesRegex(ValueError, "biggest_win_micros"):
-            api.PortfolioSummaryResponse.from_dict(payload)
-
-        decoded_null = api.PortfolioSummaryResponse.from_dict(
-            {**payload, "biggest_win_micros": None}
-        )
-        self.assertIsNone(decoded_null.biggest_win_micros)
-        self.assertEqual(decoded_null.to_dict()["biggest_win_micros"], None)
-
-        decoded_value = api.PortfolioSummaryResponse.from_dict(
-            {**payload, "biggest_win_micros": "1250000"}
-        )
-        self.assertEqual(decoded_value.biggest_win_micros, 1_250_000)
-        self.assertEqual(decoded_value.to_dict()["biggest_win_micros"], "1250000")
 
     def test_user_transactions_preserve_wire_amounts_and_query_strictness(self) -> None:
         payload = {
@@ -1298,7 +1269,7 @@ class ApiParityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid signature format"):
             SignedOrderJson.from_dict(noncanonical_wire).to_signed_order()
 
-    def test_rfq_order_conversion_rejects_non_boolean_shield(self) -> None:
+    def test_signed_rfq_order_conversion_rejects_non_boolean_shield(self) -> None:
         for invalid_shield in (None, 0, 1, "false"):
             with self.subTest(shield_on=invalid_shield):
                 signed = SignedOrderJson(
@@ -1312,21 +1283,10 @@ class ApiParityTests(unittest.TestCase):
                     shield_on=invalid_shield,
                     signature=b64encode(bytes(65)).decode("ascii"),
                 )
-                unsigned = api.UnsignedRfqOrderRequest(
-                    wager_micros=1_000_000,
-                    min_odds=2.5,
-                    legs=[OrderLegJson(market_id=42, direction="up")],
-                    order_type=2,
-                    shield_on=invalid_shield,
-                    idempotency_key="00112233-4455-6677-8899-aabbccddeeff",
-                )
-
                 with self.assertRaisesRegex(ValueError, "shield_on must be bool"):
                     signed.to_signed_order()
-                with self.assertRaisesRegex(ValueError, "shield_on must be bool"):
-                    unsigned.into_signed_order_for_session(Address.ZERO, nonce=123, expires_at_ms=456)
 
-    def test_rfq_order_conversion_rejects_non_integer_scalars(self) -> None:
+    def test_signed_rfq_order_and_leg_conversion_reject_non_integer_scalars(self) -> None:
         invalid_values = (True, 1.5, "1")
         for field in ("wager_micros", "nonce", "expires_at_ms"):
             for invalid_value in invalid_values:
@@ -1352,70 +1312,19 @@ class ApiParityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "market_id must fit in u64"):
                     OrderLegJson(market_id=invalid_value, direction="up").parse()
 
-            for payload in ("signed", "unsigned"):
-                with self.subTest(payload=payload, field="order_type", value=invalid_value):
-                    if payload == "signed":
-                        order = SignedOrderJson(
-                            user=Address.ZERO.to_checksum(),
-                            wager_micros=1_000_000,
-                            min_odds=2.5,
-                            legs=[OrderLegJson(market_id=42, direction="up")],
-                            nonce=123,
-                            expires_at_ms=456,
-                            order_type=invalid_value,
-                            shield_on=False,
-                            signature=b64encode(bytes(65)).decode("ascii"),
-                        )
-                        convert = order.to_signed_order
-                    else:
-                        order = api.UnsignedRfqOrderRequest(
-                            wager_micros=1_000_000,
-                            min_odds=2.5,
-                            legs=[OrderLegJson(market_id=42, direction="up")],
-                            order_type=invalid_value,
-                            shield_on=False,
-                            idempotency_key="00112233-4455-6677-8899-aabbccddeeff",
-                        )
-                        convert = lambda: order.into_signed_order_for_session(
-                            Address.ZERO, nonce=123, expires_at_ms=456
-                        )
-
-                    with self.assertRaisesRegex(ValueError, "order_type must be int"):
-                        convert()
-
-        for invalid_value in invalid_values:
-            with self.subTest(payload="unsigned", field="wager_micros", value=invalid_value):
-                unsigned = api.UnsignedRfqOrderRequest(
-                    wager_micros=invalid_value,
-                    min_odds=2.5,
-                    legs=[OrderLegJson(market_id=42, direction="up")],
-                    order_type=2,
-                    shield_on=False,
-                    idempotency_key="00112233-4455-6677-8899-aabbccddeeff",
-                )
-
-                with self.assertRaisesRegex(ValueError, "wager_micros must fit in u64"):
-                    unsigned.into_signed_order_for_session(
-                        Address.ZERO, nonce=123, expires_at_ms=456
-                    )
-
-            for field in ("nonce", "expires_at_ms"):
-                with self.subTest(payload="unsigned", field=field, value=invalid_value):
-                    nonce = invalid_value if field == "nonce" else 123
-                    expires_at_ms = invalid_value if field == "expires_at_ms" else 456
-                    with self.assertRaisesRegex(ValueError, f"{field} must fit in u64"):
-                        api.UnsignedRfqOrderRequest(
-                            wager_micros=1_000_000,
-                            min_odds=2.5,
-                            legs=[OrderLegJson(market_id=42, direction="up")],
-                            order_type=2,
-                            shield_on=False,
-                            idempotency_key="00112233-4455-6677-8899-aabbccddeeff",
-                        ).into_signed_order_for_session(
-                            Address.ZERO,
-                            nonce=nonce,
-                            expires_at_ms=expires_at_ms,
-                        )
+            order = SignedOrderJson(
+                user=Address.ZERO.to_checksum(),
+                wager_micros=1_000_000,
+                min_odds=2.5,
+                legs=[OrderLegJson(market_id=42, direction="up")],
+                nonce=123,
+                expires_at_ms=456,
+                order_type=invalid_value,
+                shield_on=False,
+                signature=b64encode(bytes(65)).decode("ascii"),
+            )
+            with self.assertRaisesRegex(ValueError, "order_type must be int"):
+                order.to_signed_order()
 
     def test_order_leg_json_validation_matches_rust_helper(self) -> None:
         parsed = OrderLegJson(market_id=42, direction="Down").parse()
@@ -1455,178 +1364,6 @@ class ApiParityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "expected <class 'int'>"):
                     payload_type.from_dict(payload)
 
-    def test_api_tagged_unions_emit_serde_tags(self) -> None:
-        notification = NotificationPayload.binary_event_start_soon(
-            market_title="BTC higher", source="kalshi", event_id="evt", starts_at_ms=1
-        )
-        self.assertEqual(
-            notification.to_dict(),
-            {
-                "type": "binary_event_start_soon",
-                "market_title": "BTC higher",
-                "source": "kalshi",
-                "event_id": "evt",
-                "starts_at_ms": 1,
-            },
-        )
-
-        snapshot = ShareCardSnapshot.price(
-            PriceShareCard(
-                contest_id="contest",
-                entry_index=0,
-                state="live",
-                question="BTC?",
-                prediction=100.0,
-                current_price=101.0,
-                chart_prices=[100.0, 101.0],
-                footer=ShareCardFooter(handle="alice"),
-            )
-        )
-        self.assertEqual(snapshot.to_dict()["type"], "price")
-        self.assertEqual(snapshot.to_dict()["footer"], {"handle": "alice"})
-
-    def test_survivor_hidden_picks_require_null_and_portfolio_state_survives_decode(self) -> None:
-        hidden = api.SurvivorRoundPicksResponse.from_dict(
-            {"visibility": "hidden", "picks": None}
-        )
-        self.assertEqual(hidden.to_dict(), {"visibility": "hidden", "picks": None})
-        with self.assertRaisesRegex(ValueError, "NoneType"):
-            api.SurvivorRoundPicksResponse.from_dict(
-                {"visibility": "hidden", "picks": []}
-            )
-
-        entry = api.PortfolioFantasyEntryResponse.from_dict(
-            {
-                "contest_id": "11111111-1111-1111-1111-111111111111",
-                "title": "Survivor",
-                "category": "crypto",
-                "status": "open",
-                "game_type": "survivor",
-                "current_game_index": 0,
-                "bet_amount_micros": "1000000",
-                "protocol_prize_pool_micros": "0",
-                "total_pot_micros": "1000000",
-                "entries_filled": 1,
-                "entry_cap": 5,
-                "betting_closes_ms": 2,
-                "joined_at_ms": 1,
-                "entry_index": 0,
-                "open_leg_count": 1,
-                "resolved_win_count": 0,
-                "payout_micros": None,
-                "net_payout_micros": None,
-                "pnl_micros": None,
-                "selection_count": 1,
-                "survivor": {
-                    "status": "alive",
-                    "eligible_for_current_game": True,
-                    "rounds": [],
-                },
-            }
-        )
-        self.assertEqual(entry.game_type, api.ContestGameTypeResponse.Survivor)
-        self.assertEqual(entry.current_game_index, 0)
-        self.assertEqual(entry.survivor.variant, "Alive")
-
-    def test_fantasy_result_notification_uses_aggregate_wire_contract(self) -> None:
-        notification = NotificationPayload.fantasy_result(
-            contest_id="contest-outcast",
-            game_index=2,
-            game_type=api.FantasyResultGameType.Outcast,
-            contest_title="Stay With The Pack",
-            contest_terminal=True,
-            contest_refunded=True,
-            entry_count=3,
-            successful_entry_count=2,
-            held_entry_count=1,
-            credited_payout_micros=7_500_000,
-            held_payout_micros=2_500_000,
-            best_entry=api.FantasyResultBestEntry(
-                entry_index=1,
-                rank=3,
-                correct_count=5,
-                selection_count=6,
-            ),
-            tiebreaker_result=42,
-        )
-        encoded = {
-            "type": "fantasy_result",
-            "contest_id": "contest-outcast",
-            "game_index": 2,
-            "game_type": "outcast",
-            "contest_title": "Stay With The Pack",
-            "contest_terminal": True,
-            "contest_refunded": True,
-            "entry_count": 3,
-            "successful_entry_count": 2,
-            "held_entry_count": 1,
-            "credited_payout_micros": 7_500_000,
-            "held_payout_micros": 2_500_000,
-            "best_entry": {
-                "entry_index": 1,
-                "rank": 3,
-                "correct_count": 5,
-                "selection_count": 6,
-            },
-            "tiebreaker_result": 42,
-        }
-
-        self.assertEqual(notification.to_dict(), encoded)
-        decoded = NotificationPayload.from_dict(encoded)
-        self.assertIsInstance(decoded.payload, api.FantasyResultNotificationPayload)
-        self.assertEqual(decoded.to_dict(), encoded)
-
-    def test_chat_mention_notification_round_trips_room_destination(self) -> None:
-        encoded = {
-            "type": "chat_mention",
-            "chat_id": "55555555-5555-4555-8555-555555555555",
-            "message_id": "66666666-6666-4666-8666-666666666666",
-        }
-
-        notification = NotificationPayload.chat_mention(
-            chat_id=encoded["chat_id"],
-            message_id=encoded["message_id"],
-        )
-        self.assertEqual(notification.to_dict(), encoded)
-        decoded = NotificationPayload.from_dict(encoded)
-        self.assertIsInstance(decoded.payload, api.ChatMentionNotificationPayload)
-        self.assertEqual(decoded.to_dict(), encoded)
-
-        legacy = NotificationPayload.chat_mention(
-            chat_id="9187ca06-569d-5bc7-8aa1-cb4dd2da71ac",
-            chat_context=api.ChatMentionContext.CryptoMarket,
-            message_id="77777777-7777-4777-8777-777777777777",
-        )
-        self.assertEqual(legacy.to_dict()["chat_context"], "crypto_market")
-        self.assertNotIn("contest_id", legacy.to_dict())
-
-    def test_fantasy_refund_defaults_and_legacy_variants(self) -> None:
-        encoded = {
-            "entry_index": 0,
-            "created_at_ms": 1,
-            "picks": [],
-            "open_leg_count": 0,
-            "resolved_win_count": 0,
-        }
-
-        self.assertFalse(api.ContestUserEntryResponse.from_dict(encoded).refunded)
-        self.assertTrue(
-            api.ContestUserEntryResponse.from_dict({**encoded, "refunded": True}).refunded
-        )
-
-        for removed_tag in ("fantasy_win", "fantasy_settled"):
-            with self.assertRaisesRegex(ValueError, "unknown NotificationPayload variant"):
-                NotificationPayload.from_dict({"type": removed_tag})
-
-        for removed_name in (
-            "FantasyWinNotificationPayload",
-            "FantasySettledNotificationPayload",
-            "FantasySettledOutcome",
-        ):
-            self.assertNotIn(removed_name, api.__all__)
-            self.assertFalse(hasattr(api, removed_name))
-            self.assertFalse(hasattr(longshot_protocol, removed_name))
-
     def test_active_position_hydrates_typed_fields(self) -> None:
         raw = {
             "position_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -1644,72 +1381,6 @@ class ApiParityTests(unittest.TestCase):
             Address.from_hex("0x1111111111111111111111111111111111111111"),
         )
         self.assertEqual(position.to_dict(), raw)
-
-        self.assertFalse(hasattr(NotificationPayload, "fantasy_win"))
-        self.assertFalse(hasattr(NotificationPayload, "fantasy_settled"))
-
-    def test_api_inline_tagged_fields_match_serde(self) -> None:
-        avatar = api.ChatUserAvatarResponse.from_dict(
-            {"type": "x_avatar_url", "url": "https://example.test/a", "ignored": True}
-        )
-        self.assertEqual(
-            avatar.to_dict(),
-            {"type": "x_avatar_url", "url": "https://example.test/a"},
-        )
-        for payload in (
-            {"type": "x_avatar_url"},
-            {"type": "x_avatar_url", "url": 1},
-            {"type": "seed", "seed": 1 << 31},
-        ):
-            with self.subTest(payload=payload), self.assertRaises(ValueError):
-                api.ChatUserAvatarResponse.from_dict(payload)
-
-    def test_api_struct_serde_renames_and_enum_values(self) -> None:
-        response = NotificationResponse(
-            seq=1,
-            id="n1",
-            notification_type="binary_event",
-            category="positions",
-            title="title",
-            body="body",
-            icon="bell",
-            payload=NotificationPayload.unknown(),
-            created_at_ms=2,
-            read_at_ms=None,
-        )
-
-        encoded = response.to_dict()
-        self.assertEqual(encoded["type"], "binary_event")
-        self.assertNotIn("read_at_ms", encoded)
-
-    def test_api_from_dict_hydrates_nested_notification_payload(self) -> None:
-        response = api.NotificationResponse.from_dict(
-            {
-                "seq": 1,
-                "id": "n1",
-                "type": "binary_event",
-                "category": "positions",
-                "title": "title",
-                "body": "body",
-                "icon": "bell",
-                "payload": {
-                    "type": "binary_event_start_soon",
-                    "source": "kalshi",
-                    "event_id": "evt",
-                    "market_title": "BTC higher",
-                    "starts_at_ms": 123,
-                },
-                "created_at_ms": 2,
-            }
-        )
-
-        self.assertIsInstance(response.payload, api.NotificationPayload)
-        self.assertEqual(response.payload.variant, "BinaryEventStartSoon")
-        self.assertIsInstance(
-            response.payload.payload,
-            api.BinaryEventStartSoonNotificationPayload,
-        )
-        self.assertEqual(response.payload.payload.market_title, "BTC higher")
 
     def test_api_from_dict_hydrates_nested_rfq_request_and_rejects_unknowns(self) -> None:
         payload = {
@@ -1804,91 +1475,40 @@ class ApiParityTests(unittest.TestCase):
         self.assertEqual(_check_u8(OrderType.FOK, "value"), OrderType.FOK)
 
     def test_integer_width_boundaries_match_rust_serde(self) -> None:
-        cases = [
-            (
-                api.UserDepositWalletResponse,
-                "token_decimals",
-                0,
-                (1 << 8) - 1,
-                {"address": "0x0", "token_symbol": "USDC"},
-            ),
-            (api.ListContestsQuery, "limit", 0, (1 << 32) - 1, {}),
-            (
-                api.StreakTierResponse,
-                "payout_micros",
-                0,
-                (1 << 64) - 1,
-                {"streak": 0, "has_app_token": False},
-            ),
-        ]
-        for payload_type, field, minimum, maximum, required in cases:
-            for value in (minimum, maximum):
-                with self.subTest(payload_type=payload_type, field=field, value=value):
-                    decoded = payload_type.from_dict({**required, field: value})
-                    self.assertEqual(getattr(decoded, field), value)
-            for value in (minimum - 1, maximum + 1):
-                with self.subTest(payload_type=payload_type, field=field, value=value):
-                    with self.assertRaises(ValueError):
-                        payload_type.from_dict({**required, field: value})
+        wallet = {"address": "0x0", "chain_id": 8453, "token_symbol": "USDC"}
+        for value in (0, (1 << 8) - 1):
+            self.assertEqual(
+                api.UserDepositWalletResponse.from_dict(
+                    {**wallet, "token_decimals": value}
+                ).token_decimals,
+                value,
+            )
+        for value in (-1, 1 << 8):
+            with self.assertRaises(ValueError):
+                api.UserDepositWalletResponse.from_dict(
+                    {**wallet, "token_decimals": value}
+                )
 
         max_u64 = (1 << 64) - 1
-        balance = api.AvailableBalanceResponse.from_dict(
-            {"available_micros": str(max_u64)}
+        balance = api.UserAvailableBalanceResponse.from_dict(
+            {
+                "available_micros": str(max_u64),
+                "pending_custodial_deposit_micros": "0",
+                "credited_custodial_deposit_micros": "0",
+                "deposit_withdrawal_min_micros": "0",
+            }
         )
         self.assertEqual(balance.available_micros, max_u64)
         for invalid_balance in ("-0", "-1", str(1 << 64)):
             with self.assertRaises(ValueError):
-                api.AvailableBalanceResponse.from_dict(
-                    {"available_micros": invalid_balance}
+                api.UserAvailableBalanceResponse.from_dict(
+                    {
+                        "available_micros": invalid_balance,
+                        "pending_custodial_deposit_micros": "0",
+                        "credited_custodial_deposit_micros": "0",
+                        "deposit_withdrawal_min_micros": "0",
+                    }
                 )
-        notification = {
-            "position_id": "position",
-            "net_payout_micros": 0,
-            "multiplier_bps": 0,
-            "leg_summary": "legs",
-            "is_multi_asset": False,
-            "duration_secs": [(1 << 31) - 1],
-        }
-        api.PriceStrikeParlayWinNotificationPayload.from_dict(notification)
-        notification["duration_secs"] = [1 << 31]
-        with self.assertRaises(ValueError):
-            api.PriceStrikeParlayWinNotificationPayload.from_dict(notification)
-
-        emoji = api.ChatEmojiResponse(
-            code="party",
-            display=api.ChatEmojiDisplayResponse.unicode(value="🎉"),
-        )
-        outbound_cases = [
-            (api.ListContestsQuery(limit=(1 << 32) - 1), False),
-            (api.ListContestsQuery(limit=True), True),
-            (api.ListContestsQuery(limit="1"), True),
-            (api.ListContestsQuery(limit=1 << 32), True),
-            (
-                api.PriceStrikeParlayWinNotificationPayload(
-                    **{**notification, "duration_secs": [(1 << 31) - 1]}
-                ),
-                False,
-            ),
-            (api.PriceStrikeParlayWinNotificationPayload(**notification), True),
-            (api.ChatEmojisResponse(emojis=[emoji]), False),
-            (api.ChatEmojisResponse(emojis=["party"]), True),
-        ]
-        for payload, invalid in outbound_cases:
-            with self.subTest(payload=payload, invalid=invalid):
-                if invalid:
-                    with self.assertRaises(ValueError):
-                        payload.to_dict()
-                else:
-                    self.assertIsInstance(payload.to_dict(), dict)
-
-        bet_type = api.ContestBetTypeResponse.from_dict(
-            {"type": "num_bets", "value": (sys.maxsize << 1) + 1}
-        )
-        self.assertEqual(bet_type.payload, (sys.maxsize << 1) + 1)
-        with self.assertRaises(ValueError):
-            api.ContestBetTypeResponse.from_dict(
-                {"type": "num_bets", "value": (sys.maxsize + 1) << 1}
-            )
         for spec, minimum, maximum in (
             ("u128", 0, (1 << 128) - 1),
             ("i128", -(1 << 127), (1 << 127) - 1),
@@ -1902,7 +1522,7 @@ class ApiParityTests(unittest.TestCase):
         price_market = api.PriceStrikeMarket(
             id=MarketId(42),
             market_type=MarketType.Crypto,
-            trading_channels=[api.TradingChannel.Rfq],
+            trading_channels=[TradingChannel.Rfq],
             name="BTC up",
             description="desc",
             status=MarketStatus.Open,
@@ -1984,7 +1604,7 @@ class ApiParityTests(unittest.TestCase):
         self.assertEqual(market.market.payload.id, MarketId(42))
         self.assertEqual(market.market.payload.market_type, "new-category")
         self.assertIs(market.market.payload.status, MarketStatus.Open)
-        self.assertIs(market.market.payload.resolved_outcome, api.Outcome.Yes)
+        self.assertIs(market.market.payload.resolved_outcome, Outcome.Yes)
         self.assertIsInstance(response.request_id, UUID)
         self.assertIs(response.status, api.RfqStatus.Completed)
         self.assertEqual(
@@ -2016,7 +1636,6 @@ class ApiParityTests(unittest.TestCase):
 
     def test_client_query_contracts_require_semantic_route_values(self) -> None:
         cases = [
-            (api.ChatMentionCandidatesQuery, {"chat_id": "room-id"}),
             (
                 api.MarketLookupQuery,
                 {"asset": "BTC", "duration_secs": 300, "window_start_ms": 1},
@@ -2079,6 +1698,26 @@ class ApiParityTests(unittest.TestCase):
         self.assertNotIn("destination_address", encoded)
         self.assertEqual(api.UserWithdrawResponse.from_dict(encoded).amount_micros, 1_000_000)
 
+    def test_profit_cap_contract_round_trips_nested_wide_integers(self) -> None:
+        response = ProfitCapConfigResponse.from_dict(
+            {
+                "default_max_profit_micros": 9_007_199_254_740_993,
+                "overrides": [
+                    {
+                        "market_type": "sports",
+                        "max_profit_micros": (1 << 64) - 1,
+                    }
+                ],
+            }
+        )
+
+        self.assertIsInstance(response.overrides[0], ProfitCapOverrideResponse)
+        self.assertEqual(response.overrides[0].market_type, MarketType.Sports)
+        self.assertEqual(
+            response.to_dict()["overrides"][0]["max_profit_micros"],
+            (1 << 64) - 1,
+        )
+
     def test_rfq_response_omits_non_finite_odds_and_stringifies_payout(self) -> None:
         encoded = api.RfqResponse(
             request_id="00112233-4455-6677-8899-aabbccddeeff",
@@ -2094,7 +1733,7 @@ class ApiParityTests(unittest.TestCase):
         self.assertEqual(encoded["payout_micros"], "250000000")
         self.assertEqual(api.RfqResponse.from_dict(encoded).payout_micros, 250_000_000)
 
-    def test_defaulted_api_fields_match_rust_deserialization(self) -> None:
+    def test_public_models_apply_defaults_and_ignore_unpublished_fields(self) -> None:
         signed = api.SignedOrderJson.from_dict(
             {
                 "user": "0x1111111111111111111111111111111111111111",
@@ -2119,163 +1758,40 @@ class ApiParityTests(unittest.TestCase):
 
         self.assertEqual(signed.order_type, 2)
         self.assertEqual(unsigned.order_type, 2)
-        market_source_a = api.EventMarketSource.from_dict(
-            {"source": "kalshi", "source_market_ids": ["KX-1"]}
-        )
-        market_source_b = api.EventMarketSource.from_dict(
-            {"source": "kalshi", "source_market_ids": ["KX-2"]}
-        )
-        self.assertEqual(market_source_a.attributes, {})
-        self.assertEqual(market_source_b.to_dict()["attributes"], {})
-        market_source_a.attributes["series"] = "KX"
-        self.assertEqual(market_source_b.attributes, {})
-        with self.assertRaisesRegex(ValueError, "attributes"):
-            api.EventMarketSource.from_dict(
-                {
-                    "source": "kalshi",
-                    "source_market_ids": ["KX-3"],
-                    "attributes": None,
-                }
-            )
-
         event_market_wire = {
             "id": 42,
             "market_type": "culture",
             "trading_channels": ["rfq"],
-            "chat_id": "culture-event",
             "name": "Culture event",
             "status": "OPEN",
             "tradeable": True,
             "category_tags": ["culture"],
+            "opens_at_ms": None,
             "betting_closes_at_ms": 1_000,
             "resolution_time_ms": 2_000,
             "created_at_ms": 500,
-            "source": {"source": "kalshi", "source_market_ids": ["KX-1"]},
+            "display_probability_bps": 6_250,
+            "server_only": {"ignored": True},
         }
-        event_market = api.EventMarket.from_dict(event_market_wire)
+        event_union = api.PublicMarket.from_dict(event_market_wire)
+        self.assertEqual(event_union.variant, "Event")
+        event_market = event_union.payload
         self.assertEqual(event_market.resolution_rules, "")
-        self.assertEqual(event_market.to_dict()["resolution_rules"], "")
+        self.assertEqual(event_market.display_probability_bps, 6_250)
+        self.assertFalse(hasattr(event_market, "server_only"))
+        event_market_encoded = event_market.to_dict()
+        self.assertEqual(event_market_encoded["resolution_rules"], "")
+        self.assertNotIn("server_only", event_market_encoded)
         with self.assertRaisesRegex(ValueError, "resolution_rules"):
             api.EventMarket.from_dict(
                 {**event_market_wire, "resolution_rules": None}
             )
 
-        share_card_cases = [
-            (
-                {
-                    "type": "markets",
-                    "position_id": "00000000-0000-0000-0000-000000000001",
-                    "footer": {"handle": "alice"},
-                },
-                {
-                    "type": "markets",
-                    "position_id": "00000000-0000-0000-0000-000000000001",
-                    "state": "pre",
-                    "multi_asset": False,
-                    "assets": [],
-                    "windows": [],
-                    "date_label": "",
-                    "wager_label": "",
-                    "multiplier_label": "",
-                    "payout_label": "",
-                    "footer": {"handle": "alice"},
-                },
-            ),
-            (
-                {
-                    "type": "survivor",
-                    "contest_id": "00000000-0000-0000-0000-000000000002",
-                    "entry_index": 0,
-                    "footer": {"handle": "alice"},
-                },
-                {
-                    "type": "survivor",
-                    "contest_id": "00000000-0000-0000-0000-000000000002",
-                    "entry_index": 0,
-                    "state": "pre",
-                    "contest_type": "free",
-                    "presentation": "daily",
-                    "title": "",
-                    "rounds": [],
-                    "footer": {"handle": "alice"},
-                },
-            ),
-            (
-                {
-                    "type": "event_position",
-                    "position_id": "00000000-0000-0000-0000-000000000003",
-                    "footer": {"handle": "alice"},
-                },
-                {
-                    "type": "event_position",
-                    "position_id": "00000000-0000-0000-0000-000000000003",
-                    "state": "active",
-                    "title": "",
-                    "picks": [],
-                    "wager_label": "",
-                    "multiplier_label": "",
-                    "footer": {"handle": "alice"},
-                },
-            ),
-        ]
-        for skeleton, expected_wire in share_card_cases:
-            with self.subTest(card_type=skeleton["type"]):
-                snapshot = ShareCardSnapshot.from_dict(skeleton)
-                self.assertEqual(snapshot.to_dict(), expected_wire)
-                with self.assertRaisesRegex(ValueError, "state"):
-                    ShareCardSnapshot.from_dict({**skeleton, "state": None})
-        self.assertEqual(
-            api.PriceShareCard.from_dict(
-                {
-                    "contest_id": "contest",
-                    "entry_index": 0,
-                    "state": "live",
-                    "question": "BTC?",
-                    "prediction": 100.0,
-                    "current_price": 101.0,
-                    "chart_prices": [100.0, 101.0],
-                    "footer": {"handle": "alice"},
-                }
-            ).summary,
-            [],
+        positions = api.PositionsListResponse.from_dict(
+            {"positions": [], "partial": False, "errors": [{"index": 0}]}
         )
-        self.assertEqual(
-            api.QuestionsShareCard.from_dict(
-                {
-                    "contest_id": "contest",
-                    "entry_index": 0,
-                    "state": "live",
-                    "contest_type": "free",
-                    "question": "Who wins?",
-                    "legs": [],
-                    "footer": {"handle": "alice"},
-                }
-            ).summary,
-            [],
-        )
-
-    def test_feed_event_defaults_omitted_legs_to_empty_list(self) -> None:
-        payload = {
-            "event_type": "place_bet",
-            "position_id": "00000000-0000-0000-0000-000000000001",
-            "market": "test",
-            "legs_count": 1,
-            "user_display_name": "Anonymous",
-            "user_avatar_seed": 0,
-            "wager_micros": "500000",
-            "multiplier_bps": 20_000,
-            "payout_micros": "1000000",
-            "event_at_ms": 1,
-            "primary_asset": None,
-            "has_binary_event_leg": False,
-        }
-
-        decoded = api.FeedEventWithLegsResponse.from_dict(payload)
-
-        self.assertEqual(decoded.legs, [])
-        self.assertIsNone(decoded.primary_asset)
-        self.assertFalse(decoded.has_binary_event_leg)
-        self.assertNotIn("legs", decoded.to_dict())
+        self.assertFalse(hasattr(positions, "errors"))
+        self.assertNotIn("errors", positions.to_dict())
 
     def test_required_api_fields_reject_missing_and_null_values(self) -> None:
         with self.assertRaisesRegex(ValueError, "order"):
@@ -2300,7 +1816,7 @@ class ApiParityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "user"):
             api.SignedOrderJson.from_dict({"user": None})
 
-    def test_rfq_min_odds_rounds_half_bps_like_rust(self) -> None:
+    def test_signed_rfq_min_odds_rounds_half_bps_like_rust(self) -> None:
         signed = api.SignedOrderJson.from_dict(
             {
                 "user": "0x1111111111111111111111111111111111111111",
@@ -2313,18 +1829,7 @@ class ApiParityTests(unittest.TestCase):
                 "signature": b64encode(bytes(65)).decode("ascii"),
             }
         ).to_signed_order()
-        unsigned = api.UnsignedRfqOrderRequest.from_dict(
-            {
-                "wager_micros": 100_000_000,
-                "min_odds": 2.00005,
-                "legs": [{"market_id": 42, "direction": "up"}],
-                "shield_on": False,
-                "idempotency_key": "00112233-4455-6677-8899-aabbccddeeff",
-            }
-        ).into_signed_order_for_session(Address.ZERO, nonce=123, expires_at_ms=456)
-
         self.assertEqual(signed.min_odds_bps, 20_001)
-        self.assertEqual(unsigned.min_odds_bps, 20_001)
 
     def test_withdrawal_authorization_is_tagged_and_operation_responses_are_untagged(self) -> None:
         withdraw_params = {
@@ -2434,130 +1939,26 @@ class ApiParityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "65 bytes"):
             api.encode_wallet_signature(bytes(64))
 
-    def test_deny_unknown_models_reject_extra_wire_fields(self) -> None:
-        with self.assertRaises(ValueError):
-            api.FeedRawQuery.from_dict({"limit": 10, "unexpected": True})
-
-    def test_share_card_snapshot_helpers_match_rust_validation(self) -> None:
-        snapshot = ShareCardSnapshot.price(
-            PriceShareCard(
-                contest_id="00112233-4455-6677-8899-aabbccddeeff",
-                entry_index=0,
-                state="live",
-                question="BTC?",
-                prediction=100.0,
-                current_price=101.0,
-                chart_prices=[100.0, 101.0],
-                footer=ShareCardFooter(handle="alice"),
-                summary=[ShareStat(value="2.5x", label="Odds")],
-            )
-        )
-
-        self.assertEqual(snapshot.type_str(), "price")
-        self.assertIsNone(snapshot.validate())
-
-        invalid = ShareCardSnapshot.price(
-            PriceShareCard(
-                contest_id="not-a-uuid",
-                entry_index=0,
-                state="live",
-                question="BTC?",
-                prediction=100.0,
-                current_price=101.0,
-                chart_prices=[100.0],
-                footer=ShareCardFooter(handle="alice"),
-            )
-        )
-        with self.assertRaises(ValueError) as error:
-            invalid.validate()
-        self.assertEqual(error.exception.args[0], "contest_id")
-
-        survivor = ShareCardSnapshot.from_dict(
-            {
-                "type": "survivor",
-                "contest_id": "00112233-4455-6677-8899-aabbccddeeff",
-                "entry_index": 0,
-                "footer": {"handle": "alice"},
-            }
-        )
-        self.assertEqual(survivor.type_str(), "survivor")
-        self.assertEqual(survivor.payload.rounds, [])
-        self.assertIsNone(survivor.validate())
-
-        survivor.payload.rounds = [
-            api.SurvivorShareRound(
-                result=api.SurvivorEntryRoundResultResponse.Pending,
-                pick_count=api.MAX_SURVIVOR_SHARE_PICKS + 1,
-            )
-        ]
-        with self.assertRaisesRegex(ValueError, "rounds.pick_count"):
-            survivor.validate()
-
-    def test_flattened_models_emit_rust_wire_shape(self) -> None:
-        summary = api.PublicContestSummaryResponse(
-            contest_id="contest-1",
-            category="mentions",
-            status="open",
-            game_type="lineups",
-            survivor_current_game_index=0,
-            title="Contest",
-            bet_amount_micros=1,
-            protocol_prize_pool_micros=3,
-            total_pot_micros=4,
-            entries_filled=5,
-            entry_cap=6,
-            entry_opens_at_ms=7,
-            betting_closes_ms=8,
-            live_ends_at_ms=None,
-            resolved_at_ms=None,
-            created_at_ms=9,
-            image_url=None,
-        )
-        wrapped = api.CallerContestSummaryResponse(summary, caller=None)
-
-        encoded = wrapped.to_dict()
-
-        self.assertIn("contest_id", encoded)
-        self.assertEqual(encoded["survivor_current_game_index"], 0)
-        self.assertNotIn("contest", encoded)
-        self.assertEqual(api.CallerContestSummaryResponse.from_dict(encoded).to_dict(), encoded)
-
-        legacy_lobby = api.ContestLobbySummaryResponse.from_dict(
-            {
-                **encoded,
-                "caller": {"joined": True},
-                "protocol_prize_pool_pays_app_tokens": False,
-            }
-        )
-        self.assertIsNone(legacy_lobby.description)
-        self.assertEqual(legacy_lobby.max_entries_per_player, 1)
-        self.assertEqual(legacy_lobby.summary.caller.entry_count, 0)
-
-    def test_pool_image_raw_bytes_matches_rust_binary_wrapper(self) -> None:
-        raw = api.PoolImageRawBytes(bytearray(b"image-bytes"))
-
-        self.assertEqual(raw.as_bytes(), b"image-bytes")
-        self.assertEqual(bytes(raw), b"image-bytes")
-        self.assertFalse(isinstance(raw, LongshotModel))
-
 
 class WsParityTests(unittest.TestCase):
+    def test_websocket_reprs_redact_credentials(self) -> None:
+        client = ClientMessage.auth_response(
+            "0xabc", "signature-that-must-not-be-logged"
+        )
+        server = ServerMessage.auth_result(
+            True, session_token="session-token-that-must-not-be-logged"
+        )
+
+        self.assertNotIn("signature-that-must-not-be-logged", repr(client))
+        self.assertIn("<redacted>", repr(client))
+        self.assertNotIn("session-token-that-must-not-be-logged", repr(server))
+        self.assertIn("<redacted>", repr(server))
+
     def test_client_message_shapes_match_rust_tags(self) -> None:
         self.assertEqual(ClientMessage.auth().to_dict(), {"type": "auth"})
         self.assertEqual(
             ClientMessage.auth_response("0xabc", "sig").to_dict(),
             {"type": "auth_response", "wallet_address": "0xabc", "signature": "sig"},
-        )
-        self.assertEqual(
-            ClientMessage.quote_decline(
-                RequestId(UUID("00112233-4455-6677-8899-aabbccddeeff")),
-                QuoteDeclineReason.SportsCombinationUnsupported,
-            ).to_dict(),
-            {
-                "type": "quote_decline",
-                "request_id": "00112233-4455-6677-8899-aabbccddeeff",
-                "reason": "sports_combination_unsupported",
-            },
         )
         self.assertEqual(ClientMessage.pong().to_dict(), {"type": "pong"})
 
@@ -2648,22 +2049,5 @@ class WsParityTests(unittest.TestCase):
             }
         )
         self.assertIs(subscription.payload["subscriptions"][0].payload, Asset.BTC)
-        decline = ClientMessage.from_dict(
-            {
-                "type": "quote_decline",
-                "request_id": "00112233-4455-6677-8899-aabbccddeeff",
-                "reason": "sports_combination_unsupported",
-            }
-        )
-        self.assertEqual(
-            decline.payload["request_id"],
-            RequestId(UUID("00112233-4455-6677-8899-aabbccddeeff")),
-        )
-        self.assertIs(
-            decline.payload["reason"],
-            QuoteDeclineReason.SportsCombinationUnsupported,
-        )
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,7 @@ from ._serde_metadata import (
     TAGGED_UNION_FIELDS,
 )
 from .model import RustStringEnum, RustTaggedUnion, _install_serde_metadata
-from .types import Asset, RequestId
+from .types import Asset
 
 
 class QuoteResultStatus(RustStringEnum):
@@ -19,10 +19,6 @@ class QuoteResultStatus(RustStringEnum):
     NotFilled = "not_filled"
     Rejected = "rejected"
     SelectedFailed = "selected_failed"
-
-
-class QuoteDeclineReason(RustStringEnum):
-    SportsCombinationUnsupported = "sports_combination_unsupported"
 
 
 class RfqSubscription(RustTaggedUnion):
@@ -53,10 +49,10 @@ class ClientMessage(RustTaggedUnion):
         "Auth": "auth",
         "AuthResponse": "auth_response",
         "Quote": "quote",
-        "QuoteDecline": "quote_decline",
         "Pong": "pong",
         "Subscribe": "subscribe",
     }
+    __repr_redacted_fields__ = {"signature"}
 
     @classmethod
     def auth(cls) -> ClientMessage:
@@ -69,14 +65,6 @@ class ClientMessage(RustTaggedUnion):
     @classmethod
     def quote(cls, data: str) -> ClientMessage:
         return cls("Quote", data=data)
-
-    @classmethod
-    def quote_decline(
-        cls,
-        request_id: RequestId,
-        reason: Union[QuoteDeclineReason, str],
-    ) -> ClientMessage:
-        return cls("QuoteDecline", request_id=request_id, reason=reason)
 
     @classmethod
     def pong(cls) -> ClientMessage:
@@ -106,6 +94,7 @@ class ServerMessage(RustTaggedUnion):
         "Error": "error",
         "RateLimit": "rate_limit",
     }
+    __repr_redacted_fields__ = {"session_token"}
 
     @classmethod
     def auth_challenge(cls, challenge_id: str, timestamp_ms: int) -> ServerMessage:

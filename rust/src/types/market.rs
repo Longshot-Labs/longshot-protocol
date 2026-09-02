@@ -139,15 +139,6 @@ impl MarketStatus {
             Self::Voided => false,
         }
     }
-
-    /// Checks whether a trusted lifecycle update can move to `target`.
-    pub fn can_transition_to_worker_owned(&self, target: Self) -> bool {
-        self.can_transition_to(target)
-            || matches!(
-                (self, target),
-                (Self::Pending, Self::Frozen | Self::Resolved) | (Self::Open, Self::Resolved)
-            )
-    }
 }
 
 impl std::fmt::Display for MarketStatus {
@@ -234,29 +225,6 @@ mod tests {
         assert!(!MarketStatus::Voided.can_transition_to(MarketStatus::Voided));
         assert!(!MarketStatus::Pending.can_transition_to(MarketStatus::Resolved));
         assert!(!MarketStatus::Open.can_transition_to(MarketStatus::Pending));
-    }
-
-    #[test]
-    fn market_status_worker_owned_catch_up_transitions_are_explicit() {
-        assert!(MarketStatus::Pending.can_transition_to_worker_owned(MarketStatus::Open));
-        assert!(MarketStatus::Pending.can_transition_to_worker_owned(MarketStatus::Frozen));
-        assert!(MarketStatus::Pending.can_transition_to_worker_owned(MarketStatus::Resolved));
-        assert!(MarketStatus::Open.can_transition_to_worker_owned(MarketStatus::Frozen));
-        assert!(MarketStatus::Open.can_transition_to_worker_owned(MarketStatus::Resolved));
-        assert!(MarketStatus::Frozen.can_transition_to_worker_owned(MarketStatus::Resolved));
-    }
-
-    #[test]
-    fn market_status_worker_owned_transition_helper_still_rejects_invalid_targets() {
-        assert!(!MarketStatus::Pending.can_transition_to_worker_owned(MarketStatus::Pending));
-        assert!(
-            !MarketStatus::Pending.can_transition_to_worker_owned(MarketStatus::PendingResolution)
-        );
-        assert!(!MarketStatus::Open.can_transition_to_worker_owned(MarketStatus::PendingResolution));
-        assert!(!MarketStatus::Frozen.can_transition_to_worker_owned(MarketStatus::Open));
-        assert!(!MarketStatus::Resolved.can_transition_to_worker_owned(MarketStatus::Open));
-        assert!(!MarketStatus::Voided.can_transition_to_worker_owned(MarketStatus::Resolved));
-        assert!(!MarketStatus::Voided.can_transition_to_worker_owned(MarketStatus::Voided));
     }
 
     #[test]

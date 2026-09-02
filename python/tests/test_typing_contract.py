@@ -12,8 +12,10 @@ VALID_PROGRAM = """
 from longshot_protocol import (
     ConfirmPositionQuery,
     CreateRfqRequest,
-    CreateSessionRequest,
     MarketLookupQuery,
+    MarketType,
+    ProfitCapConfigResponse,
+    ProfitCapOverrideResponse,
     SignedOrderJson,
 )
 
@@ -30,17 +32,25 @@ order = SignedOrderJson(
 request = CreateRfqRequest(order=order, use_app_tokens=False)
 typed_order: SignedOrderJson = request.order
 typed_flag: bool = request.use_app_tokens
-CreateSessionRequest(privy_token="token")
 MarketLookupQuery(asset="BTC", duration_secs=300, window_start_ms=1)
 ConfirmPositionQuery(position_id="position", accept=True)
+ProfitCapConfigResponse(
+    default_max_profit_micros=75_000_000,
+    overrides=[
+        ProfitCapOverrideResponse(
+            market_type=MarketType.Sports,
+            max_profit_micros=500_000_000,
+        )
+    ],
+)
 """
 
 INVALID_PROGRAM = """
 from longshot_protocol import (
     ConfirmPositionQuery,
     CreateRfqRequest,
-    CreateSessionRequest,
     MarketLookupQuery,
+    ProfitCapConfigResponse,
     SignedOrderJson,
 )
 
@@ -58,10 +68,10 @@ CreateRfqRequest()
 CreateRfqRequest(order=order)
 CreateRfqRequest(use_app_tokens=False)
 CreateRfqRequest(order=None, use_app_tokens=False)
-CreateSessionRequest()
 MarketLookupQuery()
 MarketLookupQuery(asset="BTC", duration_secs="300", window_start_ms=1)
 ConfirmPositionQuery(position_id="position", accept="true")
+ProfitCapConfigResponse()
 """
 
 UUID_ID_FACTORY_PROGRAM = """
@@ -114,9 +124,6 @@ class TypingContractTests(unittest.TestCase):
             output,
         )
         self.assertIn(
-            'Missing named argument "privy_token" for "CreateSessionRequest"', output
-        )
-        self.assertIn(
             'Missing named argument "asset" for "MarketLookupQuery"', output
         )
         self.assertIn(
@@ -125,6 +132,10 @@ class TypingContractTests(unittest.TestCase):
         )
         self.assertIn(
             'Argument "accept" to "ConfirmPositionQuery" has incompatible type "str"',
+            output,
+        )
+        self.assertIn(
+            'Missing named argument "default_max_profit_micros" for "ProfitCapConfigResponse"',
             output,
         )
 

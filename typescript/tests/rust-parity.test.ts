@@ -90,11 +90,3 @@ test("api constants match Rust values", () => {
   }
   assert.deepEqual(mismatches, {});
 });
-
-test("aggregate fantasy notification replaces legacy variants", () => {
-  const union = TS_API.match(/export type NotificationPayload =([\s\S]*?);/)?.[1] ?? "";
-  assert.match(union, /type: 'fantasy_result'/);
-  assert.doesNotMatch(union, /type: 'fantasy_(?:win|settled)'/);
-  for (const name of ["FantasyWinNotificationPayload", "FantasySettledNotificationPayload", "FantasySettledOutcome"])
-    assert.equal(exportedTsNames(TS_API).has(name), false);
-});

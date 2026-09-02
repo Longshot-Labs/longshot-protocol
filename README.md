@@ -1,77 +1,39 @@
 # Longshot Protocol
 
-Private source mirror for the transport-neutral Longshot contracts and
-deterministic wire helpers for Rust, TypeScript, and Python.
+Transport-neutral Longshot contracts and deterministic wire helpers for Rust,
+TypeScript, and Python. This directory is the source of truth for the language
+packages.
 
-This repository includes protocol changes from
-[`Longshot-Labs/longshot#1595`](https://github.com/Longshot-Labs/longshot/pull/1595)
-at `31476976682a7603133c75898734425fe21cd3c8` and
-[`Longshot-Labs/longshot#1577`](https://github.com/Longshot-Labs/longshot/pull/1577)
-at `fe87ac255d233881e29017b0f1470bbd27434eba`. The `longshot` monorepo is the
-source of truth. Compatibility updates flow one way from its
-`longshot-protocol/` directory into this repository, with the registry-package
-exclusions documented below.
+Public package archives contain the runtime source, package README, custom client
+guide, and license. Fixtures, examples, tests, and generators are excluded.
 
-The initial protocol implementation was imported from
+The checked-in Rust and TypeScript manifests block direct publication from the
+monorepo. Use the release scripts with `--check` to build and inspect the
+registry archives without publishing them:
+
+- `bash scripts/publish-rust.sh --check`
+- `bash scripts/publish-typescript.sh --check`
+- `bash scripts/publish-python.sh --check`
+
+Release automation must pass the protected downstream gate before it uses the
+same scripts with `--publish`. TypeScript and Python publish the exact audited
+archives. Cargo rebuilds the Rust upload from the same isolated audited source.
+
+The initial implementation was imported from
 `Longshot-Labs/longshot-sdk@a3f049b20ad7c83bd60aa69b366f4016495900ff`.
-Supported external API DTOs are synchronized with the pinned
-`fixtures/api/openapi.json`. The full fixture remains private release input;
-first-party presentation routes and fields, market-data routes, Vault routes,
-privileged fair-value control snapshots, and the server's full in-memory RFQ
-model are excluded from registry packages. Shared fixtures under
-`fixtures/protocol` preserve binary and signing compatibility with the
-production-pinned SDK revision.
+Public API DTOs are synchronized with the public-pruned
+`fixtures/api/openapi.json`; the TypeScript serde generator rejects missing or
+drifted supported schemas and route-bound query DTOs that OpenAPI cannot name.
+Shared fixtures under
+`fixtures/protocol` continue to preserve binary and signing compatibility with
+the production-pinned SDK revision.
 
-Network clients are intentionally out of scope. The private SDK remains the
-transport owner for first-party services.
+Only supported external taker and market-maker contracts ship. Server and
+first-party contracts remain private. Tail and Fade attribution, signed taker
+orders, broadcast RFQs, quotes, and market-maker authentication remain public.
 
-See the [custom client protocol guide](CUSTOM_CLIENTS.md) for the supported
-JSON, signing, and binary-wire boundaries. Its TypeScript and Python examples
-are executed by the package test suites.
+Network clients are intentionally out of scope.
 
-## Layout
-
-- `rust/` contains the `longshot-protocol` crate.
-- `typescript/` contains the `longshot-protocol` package.
-- `python/` contains the `longshot-protocol` distribution, imported as
-  `longshot_protocol`.
-- `fixtures/` contains the pinned OpenAPI contract and cross-language protocol
-  parity vectors.
-
-## Install
-
-Version 0.2.0 is distributed through public package registries under the
-included proprietary license:
-
-```sh
-cargo add longshot-protocol@0.2.0
-python -m pip install longshot-protocol==0.2.0
-npm install longshot-protocol@0.2.0
-```
-
-Public package archives exclude repository-only guides, fixtures, examples,
-tests, and generators.
-
-The checked-in Rust manifest blocks direct publication because Cargo can add
-private repository metadata. Run `bash scripts/publish-rust.sh --check` to test
-the Git-free release path. Release operators use the same script with
-`--publish` only after review and approval.
-
-## Validation
-
-Run from the repository root:
-
-```sh
-cargo fmt --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-targets --all-features --locked
-
-python python/tools/generate_serde_metadata.py --check
-python python/tools/generate_api_stub.py --check
-python -m pip install -e "python[test]"
-python -m unittest discover -s python/tests
-
-npm --prefix typescript ci
-npm --prefix typescript test
-git diff --exit-code -- typescript/src/serde.generated.ts
-```
+See the [custom client protocol guide](CUSTOM_CLIENTS.md) for the supported JSON,
+signing, and binary-wire boundaries. Its TypeScript and Python examples are
+executed by the package test suites.

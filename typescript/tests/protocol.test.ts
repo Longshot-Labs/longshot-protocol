@@ -17,7 +17,6 @@ import {
   Odds,
   OrderType,
   QuoteResponse,
-  QuoteDeclineReason,
   RequestId,
   RfqLeg,
   RfqLegWire,
@@ -56,19 +55,13 @@ import {
   toSerdeValue,
   ClientMessage,
   type ConfirmPositionQuery,
-  type EventPositionShareCard,
-  type EventMarket,
-  type EventMarketSource,
-  type FeedEventWithLegsResponse,
   type MarketLookupQuery,
-  type MarketsShareCard,
-  type PortfolioSummaryResponse,
   type PositionSummary,
+  type ProfitCapConfigResponse,
+  type PublicMarket,
   type RecentResolutionEntry,
-  type SurvivorShareCard,
   type UserTransactionsRawQuery,
   type UserTransactionsResponse,
-  unsignedRfqOrderRequestToSignedOrderForSession,
 } from "../src/index.js";
 import { OrderLeg, signOrder, signedOrder } from "../src/taker.js";
 
@@ -87,6 +80,16 @@ test("public JSON boundary preserves unsafe API integers", () => {
   assert.equal(decoded.market_id, 9007199254740993n);
   assert.equal(stringifySerde(decoded), json);
   assert.throws(() => decodeApiJson("{}", "MissingSchema"), SerdeDecodeError);
+});
+
+test("profit-cap DTO preserves nested unsafe integers", () => {
+  const json =
+    '{"default_max_profit_micros":9007199254740993,"overrides":[{"market_type":"sports","max_profit_micros":18446744073709551615}]}';
+  const decoded = decodeApiJson<ProfitCapConfigResponse>(json, "ProfitCapConfigResponse");
+
+  assert.equal(decoded.default_max_profit_micros, 9_007_199_254_740_993n);
+  assert.equal(decoded.overrides[0]?.max_profit_micros, U64_MAX);
+  assert.equal(stringifySerde(decoded), json);
 });
 
 test("user transactions preserve wire amounts and query strictness", () => {
@@ -128,7 +131,6 @@ test("client query DTOs enforce required semantic route values", () => {
     decodeApiJson<ConfirmPositionQuery>(JSON.stringify(confirmation), "ConfirmPositionQuery"));
 
   for (const schema of [
-    "ChatMentionCandidatesQuery",
     "MarketLookupQuery",
     "MarketCurrentQuery",
     "PositionsByMarketsQuery",
@@ -175,12 +177,6 @@ test("API decoder rejects duplicate Rust struct fields before JSON collapse", ()
     () => decodeApiJson(duplicateAddress, "WalletAuthRequest"),
     /duplicate field address/u,
   );
-
-  const source = decodeApiJson<EventMarketSource>(
-    '{"source":"manual","source_market_ids":[],"attributes":{"rank":1,"rank":2}}',
-    "EventMarketSource",
-  );
-  assert.deepEqual(source.attributes, { rank: 2 });
 });
 
 test("RFQ subscription constructor emits only server-valid assets", () => {
@@ -203,57 +199,46 @@ test("RFQ subscription constructor emits only server-valid assets", () => {
   );
 });
 
-test("feed decoder defaults omitted legs to an empty array", () => {
-  const decoded = decodeApiJson<FeedEventWithLegsResponse>(
-    JSON.stringify({
-      event_type: "won",
-      position_id: "00000000-0000-0000-0000-000000000001",
-      market: "test",
-      legs_count: 0,
-      user_display_name: "Anonymous",
-      user_avatar_seed: 0,
-      wager_micros: "0",
-      multiplier_bps: 0,
-      payout_micros: "0",
-      event_at_ms: 1,
-      primary_asset: null,
-      has_binary_event_leg: false,
-    }),
-    "FeedEventWithLegsResponse",
-  );
-
-  assert.deepEqual(decoded.legs, []);
-  assert.equal(decoded.event.event_type, "won");
-  assert.equal(decoded.primary_asset, null);
-  assert.equal(decoded.has_binary_event_leg, false);
-});
-
-test("API decoder materializes Rust map, wire-integer, and enum defaults", () => {
-  const source = decodeApiJson<EventMarketSource>(
-    JSON.stringify({ source: "kalshi", source_market_ids: ["KX-1"] }),
-    "EventMarketSource",
-  );
-  assert.deepEqual(source.attributes, {});
-
+test("API decoder ignores private fields and materializes public defaults", () => {
   const eventMarketWire = {
     id: 42,
     market_type: "culture",
     trading_channels: ["rfq"],
-    chat_id: "culture-event",
     name: "Culture event",
     status: "OPEN",
     tradeable: true,
     category_tags: ["culture"],
+    opens_at_ms: null,
     betting_closes_at_ms: 1_000,
     resolution_time_ms: 2_000,
     created_at_ms: 500,
-    source: { source: "kalshi", source_market_ids: ["KX-1"] },
+    display_probability_bps: 6_500,
+    server_only: { ignored: true },
   };
-  const eventMarket = decodeApiJson<EventMarket>(
+  const eventMarket = decodeApiJson<PublicMarket>(
     JSON.stringify(eventMarketWire),
-    "EventMarket",
+    "PublicMarket",
   );
+  assert.ok("opens_at_ms" in eventMarket);
   assert.equal(eventMarket.resolution_rules, "");
+  assert.equal(eventMarket.display_probability_bps, 6_500);
+  assert.equal("server_only" in eventMarket, false);
+  assert.equal(stringifySerde(eventMarket).includes('"server_only"'), false);
+  assert.equal(eventMarket.opens_at_ms, null);
+
+  const priceMarket = decodeApiJson<PublicMarket>(JSON.stringify({
+    id: 43,
+    market_type: "crypto",
+    trading_channels: ["rfq"],
+    name: "BTC up",
+    status: "OPEN",
+    tradeable: true,
+    category_tags: [],
+    betting_closes_at_ms: 1_000,
+    resolution_time_ms: 2_000,
+    created_at_ms: 500,
+  }), "PublicMarket");
+  assert.equal("opens_at_ms" in priceMarket, false);
 
   const position = decodeApiJson<PositionSummary>(
     JSON.stringify({
@@ -273,68 +258,6 @@ test("API decoder materializes Rust map, wire-integer, and enum defaults", () =>
     "PositionSummary",
   );
   assert.equal(position.app_token_wager_micros, 0);
-
-  const footer = { handle: "alice" };
-  const markets = decodeApiJson<MarketsShareCard>(
-    JSON.stringify({ position_id: "position", footer }),
-    "MarketsShareCard",
-  );
-  assert.deepEqual(
-    {
-      state: markets.state,
-      assets: markets.assets,
-      windows: markets.windows,
-      chart: markets.chart,
-    },
-    { state: "pre", assets: [], windows: [], chart: [] },
-  );
-
-  const survivor = decodeApiJson<SurvivorShareCard>(
-    JSON.stringify({ contest_id: "contest", entry_index: 0, footer }),
-    "SurvivorShareCard",
-  );
-  assert.deepEqual(
-    {
-      state: survivor.state,
-      contest_type: survivor.contest_type,
-      presentation: survivor.presentation,
-    },
-    { state: "pre", contest_type: "free", presentation: "daily" },
-  );
-
-  const eventPosition = decodeApiJson<EventPositionShareCard>(
-    JSON.stringify({ position_id: "position", footer }),
-    "EventPositionShareCard",
-  );
-  assert.equal(eventPosition.state, "active");
-});
-
-test("API decoder requires nullable fields that Rust serde requires", () => {
-  const summary = {
-    scope: "all",
-    active_count: 0,
-    potential_payout_micros: "0",
-    realized_pnl_micros: "0",
-  };
-
-  assert.throws(
-    () => decodeApiJson(JSON.stringify(summary), "PortfolioSummaryResponse"),
-    /missing required field biggest_win_micros/u,
-  );
-  assert.equal(
-    decodeApiJson<PortfolioSummaryResponse>(
-      JSON.stringify({ ...summary, biggest_win_micros: null }),
-      "PortfolioSummaryResponse",
-    ).biggest_win_micros,
-    null,
-  );
-  assert.equal(
-    decodeApiJson<PortfolioSummaryResponse>(
-      JSON.stringify({ ...summary, biggest_win_micros: "1250000" }),
-      "PortfolioSummaryResponse",
-    ).biggest_win_micros,
-    "1250000",
-  );
 });
 
 test("schema decoder accepts Rust unit enums with explicit discriminants", () => {
@@ -359,21 +282,6 @@ test("schema decoder accepts Rust unit enums with explicit discriminants", () =>
     decodeApiJson<ClientMessage>(JSON.stringify(subscribe), "ClientMessage"),
     subscribe,
   );
-});
-
-test("quote decline preserves the typed request ID and closed reason", () => {
-  const decline = ClientMessage.quoteDecline(
-    requestId(),
-    QuoteDeclineReason.SportsCombinationUnsupported,
-  );
-  const wire = {
-    type: "quote_decline",
-    request_id: "00112233-4455-6677-8899-aabbccddeeff",
-    reason: "sports_combination_unsupported",
-  };
-
-  assert.deepEqual(decline, wire);
-  assert.deepEqual(decodeApiJson(JSON.stringify(wire), "ClientMessage"), wire);
 });
 
 type FixtureRfqLeg = {
@@ -951,7 +859,7 @@ test("signed order JSON parses back into signed order semantics", () => {
   assert.equal(bytesToHex(order.signature), "00".repeat(65));
 });
 
-test("unsigned RFQ request parses UUID and builds session signed order", () => {
+test("unsigned RFQ request parses UUID", () => {
   const request = {
     wager_micros: 1_500_000,
     min_odds: 1.75,
@@ -972,24 +880,6 @@ test("unsigned RFQ request parses UUID and builds session signed order", () => {
       canonicalId,
     );
   }
-
-  const order = unsignedRfqOrderRequestToSignedOrderForSession(
-    request,
-    Address.ZERO,
-    123n,
-    456n,
-  );
-
-  assert.equal(order.user.toChecksum(), Address.ZERO.toChecksum());
-  assert.equal(order.wagerMicros, request.wager_micros);
-  assert.equal(order.minOddsBps, 17_500);
-  assert.deepEqual(order.legs.map((leg) => leg.serdeValue()), [
-    { market_id: 7, direction: Direction.Down },
-  ]);
-  assert.equal(order.nonce, 123n);
-  assert.equal(order.expiresAtMs, 456n);
-  assert.equal(order.orderType, OrderType.FOK);
-  assert.equal(bytesToHex(order.signature), "00".repeat(65));
 });
 
 test("wallet withdrawal authorization message and signature encoding are canonical", () => {
@@ -1119,44 +1009,11 @@ test("RFQ JSON helpers reject invalid Rust parity cases", () => {
     () => signedOrderJsonToSignedOrder({ ...valid, order_type: nullOrderType }),
     /invalid order type/,
   );
-  assert.throws(
-    () =>
-      unsignedRfqOrderRequestToSignedOrderForSession(
-        {
-          wager_micros: 1,
-          min_odds: 2,
-          legs: [{ market_id: 1, direction: "up" }],
-          order_type: nullOrderType,
-          shield_on: false,
-          idempotency_key: "00112233-4455-6677-8899-aabbccddeeff",
-        },
-        Address.ZERO,
-        1,
-        2,
-      ),
-    /invalid order type/,
-  );
   assert.throws(() => signedOrderJsonToSignedOrder({ ...valid, signature: "not-base64" }), /base64/);
   for (const shieldOn of [undefined, null, "false"]) {
     const invalidShieldOn = shieldOn as unknown as boolean;
     assert.throws(
       () => signedOrderJsonToSignedOrder({ ...valid, shield_on: invalidShieldOn }),
-      /shield_on must be bool/,
-    );
-    assert.throws(
-      () =>
-        unsignedRfqOrderRequestToSignedOrderForSession(
-          {
-            wager_micros: 1,
-            min_odds: 2,
-            legs: [{ market_id: 1, direction: "up" }],
-            shield_on: invalidShieldOn,
-            idempotency_key: "00112233-4455-6677-8899-aabbccddeeff",
-          },
-          Address.ZERO,
-          1,
-          2,
-        ),
       /shield_on must be bool/,
     );
   }

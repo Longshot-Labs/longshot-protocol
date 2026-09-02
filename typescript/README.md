@@ -3,6 +3,9 @@
 TypeScript contracts and deterministic Longshot protocol helpers.
 The package contains no HTTP, SSE, or WebSocket transport client.
 
+See [CUSTOM_CLIENTS.md](CUSTOM_CLIENTS.md) for the production origins, HTTP
+request shapes, WebSocket flow, and signing boundaries.
+
 ```bash
 npm install longshot-protocol@0.2.0
 ```

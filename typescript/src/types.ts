@@ -194,8 +194,6 @@ export class QuoteId extends UuidId {}
 export class ClientQuoteId extends UuidId {}
 export class PositionId extends UuidId {}
 export class ContestId extends UuidId {}
-export class ChatId extends UuidId {}
-export class MessageId extends UuidId {}
 
 export const MathError = {
   Overflow: "Overflow",
@@ -277,18 +275,6 @@ export function marketStatusCanTransitionTo(status: MarketStatus, target: Market
     case MarketStatus.Voided:
       return false;
   }
-}
-
-export function marketStatusCanTransitionToWorkerOwned(
-  status: MarketStatus,
-  target: MarketStatus,
-): boolean {
-  return (
-    marketStatusCanTransitionTo(status, target) ||
-    (status === MarketStatus.Pending &&
-      (target === MarketStatus.Frozen || target === MarketStatus.Resolved)) ||
-    (status === MarketStatus.Open && target === MarketStatus.Resolved)
-  );
 }
 
 export const Outcome = {

@@ -3,11 +3,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use uuid::Uuid;
-
-use super::markets::EventMarketSource;
-use crate::types::{MarketStatus, MarketType, Outcome, TradingChannel};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -34,7 +30,7 @@ impl AccessResponse {
 #[derive(Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "openapi", schema(example = json!({
-    "session_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "session_token": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "address": "0x742d35cC6634C0532925A3B844Bc9e7595F8B2A1",
     "deposit_address": "0x742d35cC6634C0532925A3B844Bc9e7595F8B2A1",
     "deposit_chain_id": 84532,
@@ -90,11 +86,6 @@ pub struct SessionResponse {
     #[serde(default)]
     #[cfg_attr(feature = "openapi", schema(required, default = false))]
     pub account_created: bool,
-
-    /// Durable server-owned onboarding state used for client routing.
-    #[serde(default)]
-    #[cfg_attr(feature = "openapi", schema(required, default = false))]
-    pub onboarding_completed: bool,
 }
 
 impl fmt::Debug for SessionResponse {
@@ -108,28 +99,8 @@ impl fmt::Debug for SessionResponse {
             .field("user_id", &self.user_id)
             .field("expires_at", &self.expires_at)
             .field("account_created", &self.account_created)
-            .field("onboarding_completed", &self.onboarding_completed)
             .finish()
     }
-}
-
-/// Embedded-wallet provisioning state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum EmbeddedWalletEnsureStatus {
-    Ready,
-    Pending,
-    NotRequired,
-}
-
-/// Result of the side-effect-isolated embedded-wallet ensure endpoint.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct EmbeddedWalletEnsureResponse {
-    pub status: EmbeddedWalletEnsureStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wallet_address: Option<String>,
 }
 
 /// RFQ lifecycle status.
@@ -219,69 +190,44 @@ pub struct CancelResponse {
     pub message: String,
 }
 
-/// Live maker-pipeline estimate for a prospective RFQ.
+/// Current odds estimate for a prospective RFQ. The estimate reflects the odds
+/// the caller would receive by submitting the same order now; nothing is
+/// reserved or executed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct RfqEstimateResponse {
+    /// Server-generated estimate request ID (UUID).
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
     pub request_id: Uuid,
+    /// True when the collected quotes fully cover the requested wager.
     pub quotable: bool,
+    /// Estimated decimal odds multiplier (e.g. 2.5 = 2.5x). Present whenever
+    /// at least one quote was collected, even if the wager is only partially
+    /// fillable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub odds: Option<f64>,
+    /// Wager amount (micros) the collected quotes could fill.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fillable_micros: Option<u64>,
+    /// Number of maker quotes collected for this estimate.
     pub quotes_received: u32,
+    /// Wall-clock time (ms) the estimate completed.
     pub quoted_at_ms: u64,
+    /// Why the order is not (fully) quotable: `no_quotes`,
+    /// `insufficient_liquidity`, `profit_exceeds_maximum`, `no_valid_quotes`,
+    /// `estimate_timeout`, or `sports_combination_unsupported`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
-}
-
-/// Availability of one item in an indicative estimate batch.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum RfqEstimateBatchItemStatus {
-    Quoted,
-    Unavailable,
-}
-
-/// Correlated result for one independently priced contract.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct RfqEstimateBatchItemResponse {
-    pub key: String,
-    pub market_id: u64,
-    pub direction: String,
-    pub status: RfqEstimateBatchItemStatus,
-    #[cfg_attr(
-        feature = "openapi",
-        schema(value_type = Option<String>, format = "uuid", nullable = true)
-    )]
-    pub request_id: Option<Uuid>,
-    pub quotable: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub odds: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fillable_micros: Option<u64>,
-    pub quotes_received: u32,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub quoted_at_ms: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-}
-
-/// Results for a bounded batch of independent indicative estimates.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct RfqEstimateBatchResponse {
-    pub wager_micros: u64,
-    pub estimates: Vec<RfqEstimateBatchItemResponse>,
 }
 
 /// Minimal RFQ lifecycle response for authenticated market makers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct MmRfqStatusResponse {
+    /// RFQ request ID (UUID).
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
     pub request_id: String,
+    /// Current persisted RFQ lifecycle status.
     pub status: RfqStatus,
 }
 
@@ -356,10 +302,9 @@ pub struct UserDepositWalletResponse {
     )]
     pub address: String,
 
-    /// EVM chain ID for this deposit wallet, when configured.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// EVM chain ID for this deposit wallet.
     #[cfg_attr(feature = "openapi", schema(example = 84532))]
-    pub chain_id: Option<i64>,
+    pub chain_id: i64,
 
     /// Token users should send to this deposit wallet.
     #[cfg_attr(feature = "openapi", schema(example = "USDC"))]
@@ -440,7 +385,7 @@ pub struct BalanceOperationStatusResponse {
     pub wallet_address: Option<String>,
 }
 
-/// Delivery status returned when a newly submitted withdrawal is queued.
+/// Delivery status returned when a newly submitted withdrawal is queued onchain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
@@ -452,15 +397,20 @@ pub enum WithdrawalDeliveryStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct QueuedWithdrawalResponse {
+    /// Amount committed to the onchain withdrawal queue, in USDC micros.
     #[serde(with = "crate::api::wire_int::u64_string")]
     #[cfg_attr(
         feature = "openapi",
         schema(value_type = String, format = "int64", example = "1000000")
     )]
     pub amount_micros: u64,
+    /// Operation ID used for idempotency and recovery correlation.
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
     pub operation_id: Uuid,
+    /// EVM address that will receive the queued USDC.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destination_address: Option<String>,
+    /// Confirmed onchain delivery disposition for this submission attempt.
     pub delivery_status: WithdrawalDeliveryStatus,
 }
 
@@ -497,19 +447,6 @@ pub enum DepositOperationResponse {
 pub enum WithdrawOperationResponse {
     Completed(UserWithdrawResponse),
     OperationStatus(BalanceOperationStatusResponse),
-}
-
-/// Response containing the user's immediately available balance.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "available_micros": "1000000"
-})))]
-pub struct AvailableBalanceResponse {
-    /// Immediately available user balance in USDC micros.
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64", example = "1000000"))]
-    pub available_micros: u64,
 }
 
 /// Response containing the user's currently reserved balance.
@@ -573,6 +510,7 @@ pub enum UserTransactionFunding {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct UserTransactionResponse {
+    /// Stable opaque identifier for this user-visible transaction row.
     pub id: String,
     pub category: UserTransactionCategory,
     pub title: String,
@@ -580,6 +518,7 @@ pub struct UserTransactionResponse {
     pub detail: Option<String>,
     pub status: UserTransactionStatus,
     pub occurred_at_ms: i64,
+    /// Signed amount in micros: positive = money in, negative = money out.
     #[serde(with = "crate::api::wire_int::i64_string")]
     #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
     pub amount_micros: i64,
@@ -607,6 +546,9 @@ pub struct UserTransactionResponse {
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct UserTransactionsResponse {
     pub items: Vec<UserTransactionResponse>,
+    /// Opaque keyset cursor. Clients must key "done" off this being absent,
+    /// not off short pages: category filters can legitimately return fewer
+    /// than `limit` items while more pages remain.
     pub next_cursor: Option<String>,
 }
 
@@ -676,734 +618,6 @@ pub struct FeeScheduleResponse {
     pub tiers: Vec<TierFeeRate>,
 }
 
-/// User response after placing a contest bet.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct PlaceContestBetResponse {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub contest_id: String,
-    pub entry_index: u32,
-    #[serde(with = "crate::api::wire_int::u64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub reserved_micros: u64,
-}
-
-/// Category served by contest read endpoints.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum ContestCategoryResponse {
-    Mentions,
-    Sports,
-    Culture,
-}
-
-/// Contest lifecycle status exposed to clients.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum ContestStatusResponse {
-    Open,
-    Resolved,
-    Voided,
-}
-
-/// Contest bet-type payload echoed back on detail reads.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(tag = "type", content = "value", rename_all = "snake_case")]
-pub enum ContestBetTypeResponse {
-    NumBets(usize),
-    BetsPerCategory(usize),
-}
-
-/// Contest game-type payload echoed back on detail reads.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum ContestGameTypeResponse {
-    Lineups,
-    Survivor,
-    Streak,
-    Outcast,
-    Roster,
-}
-
-/// Direction payload echoed back on user-entry reads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum ContestDirectionResponse {
-    Up,
-    Down,
-}
-
-/// Leg-outcome payload echoed back on user-entry reads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum ContestLegOutcome {
-    Pending,
-    Won,
-    Lost,
-    Voided,
-}
-
-/// Server-authoritative Survivor surface lifecycle.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum SurvivorPhaseResponse {
-    /// The current round exists, but its pick window has not opened yet.
-    Scheduled,
-    PickOpen,
-    PickLocked,
-    Live,
-    RoundSettled,
-    /// Transitional gap before an ordinary successor or a same-index
-    /// replacement for a voided round is persisted.
-    AwaitingNextRound,
-    ContestSettled,
-    Voided,
-}
-
-/// Persisted round lifecycle used by the exact pick, live, and settled views.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum SurvivorRoundStatusResponse {
-    Scheduled,
-    PickOpen,
-    PickLocked,
-    Live,
-    Settled,
-    Voided,
-}
-
-/// Result of one entry in one Survivor round.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum SurvivorEntryRoundResultResponse {
-    Pending,
-    Won,
-    Lost,
-    Missed,
-    Voided,
-}
-
-/// Why an entry became terminal before contest settlement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum SurvivorEliminationReasonResponse {
-    IncorrectPick,
-    MissedDeadline,
-}
-
-/// Public Perfect Slate configuration and settled winner summary.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestPerfectSlateResponse {
-    /// Total cash pool split evenly among entries that win every selection and,
-    /// when configured, guess the tie-breaker result exactly.
-    pub payout_micros: u64,
-    /// Number of qualifying entries after contest settlement.
-    pub winner_count: u32,
-}
-
-/// Public contest summary fields visible without a session.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct PublicContestSummaryResponse {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub contest_id: String,
-    pub title: String,
-    pub category: ContestCategoryResponse,
-    pub status: ContestStatusResponse,
-    /// Game type is present on newly served lobby and detail responses. It is
-    /// optional so clients can read responses from an older API during an
-    /// additive rollout.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub game_type: Option<ContestGameTypeResponse>,
-    /// `true` only while an open Survivor contest has no persisted current
-    /// round because a voided round is awaiting same-index replacement.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub survivor_awaiting_replacement: Option<bool>,
-    /// Zero-based round cursor of a Survivor contest, and `None` for
-    /// every other game type. Survivor accepts new entrants only during round
-    /// zero, so a value above zero means entries are closed even while a later
-    /// round's pick window is open and `betting_closes_ms` is still ahead.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub survivor_current_game_index: Option<u32>,
-    pub bet_amount_micros: u64,
-    pub protocol_prize_pool_micros: u64,
-    pub total_pot_micros: u64,
-    /// Number of paid entries after which the next entry begins increasing the
-    /// displayed prize pool. Zero means the first paid entry increases it;
-    /// `None` means entries cannot grow this contest's prize pool.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub prize_pool_growth_starts_after_entries: Option<u32>,
-    /// Present when this Lineups contest offers a Perfect Slate bonus.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub perfect_slate: Option<ContestPerfectSlateResponse>,
-    /// Explicit contest-lobby placement while entries are open: 1 is the
-    /// left card and 2 is the right card.
-    #[cfg_attr(feature = "openapi", schema(required, minimum = 1, maximum = 2))]
-    pub featured_slot: Option<u8>,
-    pub entries_filled: u32,
-    pub entry_cap: u32,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub entry_opens_at_ms: Option<u64>,
-    pub betting_closes_ms: u64,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub live_ends_at_ms: Option<u64>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub resolved_at_ms: Option<u64>,
-    pub created_at_ms: u64,
-    /// Resolved contest image URL, if any.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub image_url: Option<String>,
-}
-
-/// Caller-scoped contest summary fields for optional-session reads.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestCallerSummaryResponse {
-    /// True when the authenticated caller has entered this contest.
-    pub joined: bool,
-    /// Number of entries owned by the authenticated caller.
-    #[serde(default)]
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub entry_count: u32,
-}
-
-/// Single row in the session-aware contest lobby list.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct CallerContestSummaryResponse {
-    #[serde(flatten)]
-    pub contest: PublicContestSummaryResponse,
-    /// Present only when the request includes a valid caller session.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub caller: Option<ContestCallerSummaryResponse>,
-}
-
-/// Contest-lobby row with list-only presentation and entry metadata.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestLobbySummaryResponse {
-    #[serde(flatten)]
-    #[cfg_attr(feature = "openapi", schema(inline))]
-    pub summary: CallerContestSummaryResponse,
-    /// Marker-free public display copy for lobby cards, capped at 160 characters.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub description: Option<String>,
-    /// Maximum entries one caller can submit to this contest.
-    #[serde(default = "default_contest_entry_count")]
-    #[cfg_attr(feature = "openapi", schema(required, minimum = 1, maximum = 5))]
-    pub max_entries_per_player: u32,
-    pub protocol_prize_pool_pays_app_tokens: bool,
-}
-
-/// Response for session-aware GET /v1/contests.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct CallerContestsListResponse {
-    pub contests: Vec<ContestLobbySummaryResponse>,
-    /// Opaque cursor to pass to the next request, if more rows remain.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub next_cursor: Option<String>,
-}
-
-/// Single market entry on a contest detail.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestMarketResponse {
-    pub market_id: u64,
-    /// Per-contest pick grouping. This never selects market behavior.
-    pub selection_group: String,
-    /// Open user-facing category slug.
-    pub market_type: MarketType,
-    /// Trading surfaces enabled on the canonical market.
-    pub trading_channels: Vec<TradingChannel>,
-    pub name: String,
-    /// Resolved event image for this market, when assigned.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub image_url: Option<String>,
-    /// Public rules text for this tournament child market. This is sourced
-    /// from the underlying market's Polymarket description so fantasy rule
-    /// panels do not need the public price-market detail endpoint.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub description: Option<String>,
-    /// Canonical event-market resolution rules. `None` for price markets.
-    #[serde(default)]
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub resolution_rules: Option<String>,
-    pub status: MarketStatus,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub outcome: Option<Outcome>,
-    /// Canonical source identity for source-backed event contracts.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub source: Option<EventMarketSource>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub betting_closes_at_ms: Option<u64>,
-    /// Scheduled event start. For Survivor this separates the immutable
-    /// pick-locked interval from the live interval.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub opens_at_ms: Option<u64>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub live_ends_at_ms: Option<u64>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub resolution_time_ms: Option<u64>,
-    /// Admin-provided live yes probability for manual fantasy markets.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub manual_probability_bps: Option<i32>,
-    /// Admin-provided live-state payload for manual fantasy markets.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub manual_live_state: Option<Value>,
-}
-
-/// Per-market pick on a user's contest entry.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestUserPickResponse {
-    pub market_id: u64,
-    pub direction: ContestDirectionResponse,
-    pub outcome: ContestLegOutcome,
-}
-
-/// A selection offered inside a roster contest tier.
-///
-/// Points are milli-points (17.34 points -> 17340) and can be negative.
-/// `live_state` and `metadata` are opaque engine-defined payloads (game
-/// schedule, quarter/clock, post counts, ...) rendered by the frontend.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestRosterSelectionResponse {
-    pub selection_index: u16,
-    pub name: String,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub image_url: Option<String>,
-    /// Average/projected points litmus shown in the UI.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub avg_points_milli: Option<i64>,
-    /// Current live points.
-    pub points_milli: i64,
-    /// Final points, set once the contest is finalized.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub final_points_milli: Option<i64>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub live_state: Option<Value>,
-    /// Static engine-defined metadata set at creation (team, position, ...),
-    /// rendered by the frontend alongside `live_state`.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub metadata: Option<Value>,
-    pub updated_at_ms: u64,
-}
-
-/// A named roster tier; entrants pick exactly one of its selections.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestRosterTierResponse {
-    pub tier_index: u16,
-    pub name: String,
-    pub selections: Vec<ContestRosterSelectionResponse>,
-}
-
-/// Roster contest structure attached to detail reads.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestRosterResponse {
-    pub tiers: Vec<ContestRosterTierResponse>,
-}
-
-/// A single roster pick on a user's entry or a leaderboard row.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestRosterPickResponse {
-    pub tier_index: u16,
-    pub selection_index: u16,
-}
-
-/// Reveal-safe picks for an entrant round. A hidden round structurally carries
-/// JSON `null`, so an API response cannot accidentally include rival picks.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(tag = "visibility", rename_all = "snake_case")]
-pub enum SurvivorRoundPicksResponse {
-    Hidden { picks: () },
-    Revealed { picks: Vec<ContestUserPickResponse> },
-}
-
-/// Reveal-safe direction counts for one market in a Survivor round.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct SurvivorMarketPickCountsResponse {
-    pub market_id: u64,
-    pub up_count: u32,
-    pub down_count: u32,
-}
-
-/// Aggregate Survivor participation for a locked round. The eligible count is
-/// fixed when the round opens. Submitted entries have an accepted submission
-/// by lock; all other eligible entries are explicitly missed, so submitted plus
-/// missed equals eligible. `markets` is bounded to the persisted round slate.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct SurvivorRoundBreakdownResponse {
-    pub eligible_entry_count: u32,
-    pub submitted_entry_count: u32,
-    pub missed_entry_count: u32,
-    pub markets: Vec<SurvivorMarketPickCountsResponse>,
-}
-
-/// One persisted round and its exact market slate.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct SurvivorRoundResponse {
-    pub game_index: u32,
-    pub status: SurvivorRoundStatusResponse,
-    pub required_pick_count: u32,
-    pub betting_opens_at_ms: u64,
-    pub betting_closes_at_ms: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub resolved_at_ms: Option<u64>,
-    pub markets: Vec<ContestMarketResponse>,
-    /// Reveal-safe aggregate counts. Absent until the round's picks lock.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub breakdown: Option<SurvivorRoundBreakdownResponse>,
-}
-
-/// One entry's result and reveal-safe picks for a persisted round.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct SurvivorEntryRoundResponse {
-    pub game_index: u32,
-    pub result: SurvivorEntryRoundResultResponse,
-    pub picks: SurvivorRoundPicksResponse,
-}
-
-/// Survivor-specific state attached only to a caller-owned entry or a
-/// leaderboard row. Identity, payout, and refund fields remain on the parent.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(tag = "status", rename_all = "snake_case")]
-pub enum SurvivorEntryStateResponse {
-    Alive {
-        eligible_for_current_game: bool,
-        /// Route-scoped cursor for the next older round page.
-        rounds_next_cursor: Option<u32>,
-        rounds: Vec<SurvivorEntryRoundResponse>,
-    },
-    Eliminated {
-        eliminated_game_index: u32,
-        elimination_reason: SurvivorEliminationReasonResponse,
-        /// Route-scoped cursor for the next older round page.
-        rounds_next_cursor: Option<u32>,
-        rounds: Vec<SurvivorEntryRoundResponse>,
-    },
-    Winner {
-        /// Route-scoped cursor for the next older round page.
-        rounds_next_cursor: Option<u32>,
-        rounds: Vec<SurvivorEntryRoundResponse>,
-    },
-    Voided {
-        /// Route-scoped cursor for the next older round page.
-        rounds_next_cursor: Option<u32>,
-        rounds: Vec<SurvivorEntryRoundResponse>,
-    },
-}
-
-/// Additive public Survivor state on a contest detail response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct SurvivorContestResponse {
-    pub version: u32,
-    /// Immutable number of rounds in this contest's Survivor schedule.
-    #[cfg_attr(feature = "openapi", schema(minimum = 1, maximum = 32767))]
-    pub round_count: u32,
-    pub phase: SurvivorPhaseResponse,
-    pub current_game_index: u32,
-    /// Present only during `awaiting_next_round`. This is
-    /// `current_game_index + 1` for an ordinary successor, or equals
-    /// `current_game_index` while a voided round awaits its replacement.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub next_game_index: Option<u32>,
-    /// Persisted rounds are sorted by their unique game indexes and ordinarily
-    /// form a contiguous prefix. During a same-index replacement, the current
-    /// index is the sole permitted hole; a pre-scheduled successor may remain.
-    /// A replacement gap at index zero may therefore have no persisted rounds.
-    pub rounds: Vec<SurvivorRoundResponse>,
-    /// Exclusive cursor for the next older contest-round page.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rounds_next_cursor: Option<u32>,
-    /// Game indexes whose entrant picks the server has made public.
-    pub revealed_game_indexes: Vec<u32>,
-    pub remaining_survivor_count: u32,
-}
-
-/// One team already used by a caller-owned Survivor entry.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct SurvivorTeamUsageResponse {
-    pub source_team_id: String,
-    pub used_game_index: u32,
-}
-
-/// A user's entry on a contest detail response.
-///
-/// This appears under a scoped parent such as `caller` or `profile_owner`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestUserEntryResponse {
-    pub entry_index: u32,
-    pub created_at_ms: u64,
-    pub picks: Vec<ContestUserPickResponse>,
-    pub open_leg_count: u32,
-    pub resolved_win_count: u32,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub payout_micros: Option<u64>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub net_payout_micros: Option<u64>,
-    /// Whether settlement returned this entry's stake without a win or loss.
-    #[serde(default)]
-    #[cfg_attr(feature = "openapi", schema(required, default = false))]
-    pub refunded: bool,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub rank: Option<u32>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub tiebreaker_guess: Option<i64>,
-    /// True after settlement when this entry earned the Perfect Slate bonus.
-    #[serde(default)]
-    pub perfect_slate_won: bool,
-    /// Perfect Slate portion of this entry's gross payout.
-    #[serde(default)]
-    pub perfect_slate_payout_micros: u64,
-    /// Roster contests only: this entry's picks, one per tier.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub roster_picks: Option<Vec<ContestRosterPickResponse>>,
-    /// Roster contests only: the entry's current (or final) points score.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub roster_points_milli: Option<i64>,
-    /// Present for Survivor entries on APIs that support round history.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub survivor: Option<SurvivorEntryStateResponse>,
-    /// Survivor only: teams already consumed by this entry.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub survivor_team_usage: Option<Vec<SurvivorTeamUsageResponse>>,
-}
-
-/// Public tie-breaker metadata for Lineups, Survivor, and Outcast contests.
-///
-/// For Lineups, closer guesses rank ahead among entries tied on score. For
-/// Survivor, a final-round guess is display-only and must not change the equal
-/// split among every entry still alive after the final round. For Outcast,
-/// among the lowest-scoring entries, the guess furthest from the result is the
-/// Outcast.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestTiebreakerResponse {
-    /// Whether the contest uses a tie-breaker.
-    pub enabled: bool,
-    /// Contest-specific tie-breaker prompt shown to entrants.
-    pub hint: String,
-    /// Actual value used to calculate absolute distance from each entrant's
-    /// guess. Exposed once entries lock or the contest resolves, if set.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub result: Option<i64>,
-}
-
-/// Public contest detail fields visible without a session.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct PublicContestDetailResponse {
-    #[serde(flatten)]
-    pub summary: PublicContestSummaryResponse,
-    #[serde(default = "default_contest_entry_count")]
-    #[cfg_attr(feature = "openapi", schema(required, default = 1, minimum = 1))]
-    pub max_entries_per_player: u32,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub description: Option<String>,
-    pub bet_type: ContestBetTypeResponse,
-    pub winning_split_bps: Vec<u64>,
-    pub protocol_winning_split_bps: Vec<u64>,
-    pub protocol_prize_pool_pays_app_tokens: bool,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub tiebreaker: Option<ContestTiebreakerResponse>,
-    pub markets: Vec<ContestMarketResponse>,
-    /// Tier/selection structure for roster contests; absent for every other
-    /// game type (roster contests carry no markets).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub roster: Option<ContestRosterResponse>,
-    /// Present only for Survivor contests on APIs that support the product.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub survivor: Option<SurvivorContestResponse>,
-}
-
-/// Caller-scoped contest detail fields for optional-session reads.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestCallerDetailResponse {
-    /// True when the authenticated caller has entered this contest.
-    pub joined: bool,
-    /// Entries for the authenticated caller.
-    pub entries: Vec<ContestUserEntryResponse>,
-}
-
-/// Response for session-aware GET /v1/contests/:id.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct CallerContestDetailResponse {
-    #[serde(flatten)]
-    pub contest: PublicContestDetailResponse,
-    /// Present only when the request includes a valid caller session.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub caller: Option<ContestCallerDetailResponse>,
-}
-
-fn default_contest_entry_count() -> u32 {
-    1
-}
-
-/// Single row in the contest leaderboard.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestLeaderboardRowResponse {
-    pub rank: u32,
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub user_id: String,
-    pub entry_index: u32,
-    #[serde(default = "default_contest_entry_count")]
-    #[cfg_attr(feature = "openapi", schema(required, default = 1, minimum = 1))]
-    pub user_entry_count: u32,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub handle: Option<String>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub x_handle: Option<String>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub x_avatar_url: Option<String>,
-    // i32 (not u32): avatar_seed is a signed hash that is often negative.
-    pub avatar_seed: i32,
-    pub resolved_win_count: u32,
-    pub open_leg_count: u32,
-    /// Entrant picks, populated only after entries lock. Always `None` for a
-    /// Survivor row; its per-round reveal-safe picks live under `survivor`.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub picks: Option<Vec<ContestUserPickResponse>>,
-    /// Entrant's tiebreaker guess. Populated once entries lock (guesses are
-    /// immutable from then on), enabling live closest-guess leaderboards.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub tiebreaker_guess: Option<i64>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub payout_micros: Option<u64>,
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub net_payout_micros: Option<u64>,
-    /// True after settlement when this entry earned the Perfect Slate bonus.
-    #[serde(default)]
-    pub perfect_slate_won: bool,
-    /// Perfect Slate portion of this entry's gross payout.
-    #[serde(default)]
-    pub perfect_slate_payout_micros: u64,
-    /// Whether settlement returned this entry's stake without a win or loss.
-    #[serde(default)]
-    #[cfg_attr(feature = "openapi", schema(required, default = false))]
-    pub refunded: bool,
-    /// Roster contests only: the row's picks, exposed once entries lock.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub roster_picks: Option<Vec<ContestRosterPickResponse>>,
-    /// Roster contests only: the row's points score (live while open, final
-    /// after settlement).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub roster_points_milli: Option<i64>,
-    /// Present for Survivor rows on APIs that support round history.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub survivor: Option<SurvivorEntryStateResponse>,
-}
-
-/// Public contest leaderboard fields visible without a session.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct PublicContestLeaderboardResponse {
-    pub total_entries: u32,
-    pub entries: Vec<ContestLeaderboardRowResponse>,
-    /// Opaque cursor for the next page; null when the listing is exhausted.
-    pub next_cursor: Option<String>,
-}
-
-/// Caller-scoped contest leaderboard fields for optional-session reads.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestCallerLeaderboardResponse {
-    /// Rows for the authenticated caller, present when they entered and fell
-    /// outside the top-N slice returned in `entries`.
-    pub rows: Vec<ContestLeaderboardRowResponse>,
-}
-
-/// Response for session-aware GET /v1/contests/:id/leaderboard.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct CallerContestLeaderboardResponse {
-    #[serde(flatten)]
-    pub leaderboard: PublicContestLeaderboardResponse,
-    /// Present only when the request includes a valid caller session.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub caller: Option<ContestCallerLeaderboardResponse>,
-}
-
-/// Single "Top Participant" row: an entrant of this contest ranked by
-/// their payout history across all contests over the specified window.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestTopParticipantRowResponse {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub user_id: String,
-    pub handle: Option<String>,
-    pub x_handle: Option<String>,
-    pub x_avatar_url: Option<String>,
-    // i32 (not u32): avatar_seed is a signed hash that is often negative.
-    pub avatar_seed: i32,
-    pub won_count: u32,
-    pub total_winnings_micros: u64,
-}
-
-/// Response for GET /v1/contests/:id/top-participants.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestTopParticipantsResponse {
-    pub window_ms: u64,
-    pub participants: Vec<ContestTopParticipantRowResponse>,
-}
-
-/// Per-market pick distribution for the "Most Popular Entry" card.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestPopularEntryMarketResponse {
-    pub market_id: u64,
-    pub yes_count: u32,
-    pub no_count: u32,
-}
-
-/// Response for GET /v1/contests/:id/popular-entry.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ContestPopularEntryResponse {
-    pub total_entries: u32,
-    pub markets: Vec<ContestPopularEntryMarketResponse>,
-}
-
-/// Response containing the authenticated user's referral code.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserReferralCodeResponse {
-    pub referral_code: String,
-    pub max_referrals: Option<u32>,
-    pub referrals_used: u32,
-    pub referrals_remaining: Option<u32>,
-    pub ever_had_referral_capacity: bool,
-    pub can_edit: bool,
-}
-
 /// Public status of a referral link.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -1423,16 +637,21 @@ pub struct PublicReferralInviterResponse {
     pub avatar_url: Option<String>,
 }
 
-/// Deposit-match offer attached to a valid referral link.
+/// Deposit-match offer configured for a referral link. The opportunity is
+/// granted only by atomic Privy signup with a linked X account; direct wallet
+/// signup and later referral attribution intentionally do not qualify.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct PublicReferralDepositMatchOffer {
+    /// Maximum matched amount in USD micros, as a decimal string.
     #[serde(with = "crate::api::wire_int::i64_string")]
     #[cfg_attr(
         feature = "openapi",
         schema(value_type = String, format = "int64", example = "10000000")
     )]
     pub match_limit_micros: i64,
+    /// Validity window of the granted opportunity in milliseconds.
+    #[cfg_attr(feature = "openapi", schema(example = 2592000000i64, minimum = 1))]
     pub duration_ms: i64,
 }
 
@@ -1445,111 +664,6 @@ pub struct PublicReferralCodeResponse {
     pub inviter: Option<PublicReferralInviterResponse>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deposit_match: Option<PublicReferralDepositMatchOffer>,
-}
-
-/// Result of leasing a referral prompt for presentation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ClaimReferralPromptResponse {
-    pub show: bool,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "crate::api::wire_int::option_i64_string"
-    )]
-    #[cfg_attr(
-        feature = "openapi",
-        schema(value_type = Option<String>, format = "int64")
-    )]
-    pub amount_micros: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub claim_token: Option<Uuid>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub retry_after_ms: Option<u32>,
-}
-
-/// Response after successfully setting the authenticated user's referrer.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserSetReferrerResponse {}
-
-/// Effective referral kickback rates for the authenticated user.
-/// Super-referrer status is hidden — users see whichever rates actually
-/// apply to them.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "primary_kickback_bps": 1500,
-    "secondary_kickback_bps": 250,
-})))]
-pub struct UserReferralRatesResponse {
-    /// Primary kickback rate (direct referrals) in basis points.
-    pub primary_kickback_bps: u32,
-    /// Secondary kickback rate (referrals of referrals) in basis points.
-    pub secondary_kickback_bps: u32,
-}
-
-/// Aggregated referral stats for the authenticated user.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "total_referred": 22,
-    "total_rewards_micros": "352220000",
-})))]
-pub struct UserReferralStatsResponse {
-    /// Number of users directly referred by this user.
-    pub total_referred: u32,
-    /// Total rewards earned from direct + indirect referrals on resolved
-    /// positions, in USDC micros.
-    #[serde(with = "crate::api::wire_int::i64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64", example = "352220000"))]
-    pub total_rewards_micros: i64,
-    pub has_settled_referral_trade: bool,
-}
-
-/// Referral chain level label used in the "my referrals" list.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "lowercase")]
-pub enum ReferralLevelLabel {
-    /// User referred this person directly.
-    First,
-    /// Referred by one of the user's direct referrals.
-    Second,
-}
-
-/// Single entry in the "my referrals" list.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserReferralEntryResponse {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub user_id: Uuid,
-    pub handle: String,
-    pub display_name: String,
-    pub avatar_seed: i32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub x_handle: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub x_avatar_url: Option<String>,
-    pub referred_at_ms: i64,
-    pub level: ReferralLevelLabel,
-    #[serde(with = "crate::api::wire_int::i64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub total_volume_micros: i64,
-    #[serde(with = "crate::api::wire_int::i64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub total_fees_paid_micros: i64,
-    #[serde(with = "crate::api::wire_int::i64_string")]
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
-    pub my_kickback_micros: i64,
-}
-
-/// Paginated list response for GET /v1/user/referrals.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserReferralsListResponse {
-    pub entries: Vec<UserReferralEntryResponse>,
-    pub total_count: i64,
 }
 
 /// Error response.
@@ -1591,41 +705,11 @@ impl ErrorResponse {
     }
 }
 
-/// Public logged-out observer-access policy.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct ObserverAccessResponse {
-    pub enabled: bool,
-}
-
-/// Public global visibility for fixed market-navigation categories.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct MarketCategoryVisibilityResponse {
-    pub crypto: bool,
-    pub mentions: bool,
-    pub nfl: bool,
-    pub culture: bool,
-}
-
-/// Legacy feature-access response retained for older clients.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct UserFeaturesResponse {
-    pub markets_access: bool,
-}
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
-    use super::{
-        AccessResponse, ContestGameTypeResponse, ContestLeaderboardRowResponse,
-        ContestUserEntryResponse, PublicContestDetailResponse, SessionResponse,
-        SurvivorContestResponse, SurvivorMarketPickCountsResponse, SurvivorPhaseResponse,
-        SurvivorRoundBreakdownResponse, SurvivorRoundPicksResponse, SurvivorRoundResponse,
-        SurvivorRoundStatusResponse,
-    };
+    use super::{AccessResponse, SessionResponse};
 
     #[test]
     fn access_response_new_accepts_borrowed_reason_code() {
@@ -1645,226 +729,10 @@ mod tests {
             "expires_at": 123
         }))
         .expect("deserialize compatible session response");
-        assert!(!compatible.account_created);
-        assert!(!compatible.onboarding_completed);
 
+        assert!(!compatible.account_created);
         let debug = format!("{compatible:?}");
         assert!(!debug.contains("compatible-token"));
         assert!(debug.contains("<redacted>"));
-    }
-
-    #[test]
-    fn contest_leaderboard_row_defaults_legacy_user_entry_count() {
-        let json = r#"{"rank":0,"user_id":"","entry_index":0,"avatar_seed":0,"resolved_win_count":0,"open_leg_count":0}"#;
-        let row: ContestLeaderboardRowResponse =
-            serde_json::from_str(json).expect("deserialize legacy leaderboard row");
-        assert_eq!(row.user_entry_count, 1);
-    }
-
-    #[test]
-    fn contest_detail_defaults_legacy_max_entries_per_player() {
-        let json = r#"{
-            "contest_id":"","title":"","category":"sports","status":"open",
-            "bet_amount_micros":0,"protocol_prize_pool_micros":0,"total_pot_micros":0,
-            "entries_filled":0,"entry_cap":0,"entry_opens_at_ms":null,
-            "betting_closes_ms":0,"live_ends_at_ms":null,"resolved_at_ms":null,
-            "created_at_ms":0,"description":null,"bet_type":{"type":"num_bets","value":1},
-            "game_type":"lineups","winning_split_bps":[],"protocol_winning_split_bps":[],
-            "protocol_prize_pool_pays_app_tokens":false,"tiebreaker":null,"markets":[]
-        }"#;
-        let detail: PublicContestDetailResponse =
-            serde_json::from_str(json).expect("deserialize legacy contest detail");
-        assert_eq!(detail.max_entries_per_player, 1);
-        assert_eq!(detail.summary.prize_pool_growth_starts_after_entries, None);
-        assert!(matches!(
-            detail.summary.game_type,
-            Some(ContestGameTypeResponse::Lineups)
-        ));
-    }
-
-    #[test]
-    fn contest_lobby_defaults_legacy_entry_progress() {
-        let json = r#"{
-            "contest_id":"","title":"","category":"sports","status":"open",
-            "bet_amount_micros":0,"protocol_prize_pool_micros":0,"total_pot_micros":0,
-            "entries_filled":1,"entry_cap":5,"entry_opens_at_ms":null,
-            "betting_closes_ms":0,"live_ends_at_ms":null,"resolved_at_ms":null,
-            "created_at_ms":0,"caller":{"joined":true},
-            "protocol_prize_pool_pays_app_tokens":false
-        }"#;
-        let summary: super::ContestLobbySummaryResponse =
-            serde_json::from_str(json).expect("deserialize legacy contest lobby summary");
-
-        assert_eq!(summary.max_entries_per_player, 1);
-        assert_eq!(summary.summary.caller.expect("caller").entry_count, 0);
-    }
-
-    #[test]
-    fn survivor_hidden_picks_serialize_as_explicit_null() {
-        let value = serde_json::to_value(SurvivorRoundPicksResponse::Hidden { picks: () })
-            .expect("serialize hidden picks");
-
-        assert_eq!(
-            value,
-            serde_json::json!({ "visibility": "hidden", "picks": null })
-        );
-    }
-
-    #[test]
-    fn contest_detail_round_trips_top_level_game_type() {
-        // `game_type` moved from the detail struct into the flattened summary;
-        // the detail wire JSON must stay byte-compatible: `game_type` remains a
-        // top-level key on both serialize and deserialize.
-        let json = r#"{
-            "contest_id":"c","title":"t","category":"sports","status":"open",
-            "game_type":"roster",
-            "bet_amount_micros":0,"protocol_prize_pool_micros":0,"total_pot_micros":0,
-            "perfect_slate":null,"featured_slot":null,
-            "entries_filled":0,"entry_cap":0,"entry_opens_at_ms":null,
-            "betting_closes_ms":0,"live_ends_at_ms":null,"resolved_at_ms":null,
-            "created_at_ms":0,"max_entries_per_player":1,"description":null,
-            "bet_type":{"type":"num_bets","value":1},
-            "winning_split_bps":[],"protocol_winning_split_bps":[],
-            "protocol_prize_pool_pays_app_tokens":false,"tiebreaker":null,"markets":[]
-        }"#;
-        let detail: PublicContestDetailResponse =
-            serde_json::from_str(json).expect("deserialize contest detail");
-        assert!(matches!(
-            detail.summary.game_type,
-            Some(super::ContestGameTypeResponse::Roster)
-        ));
-
-        let value = serde_json::to_value(&detail).expect("serialize contest detail");
-        assert_eq!(value["game_type"], "roster");
-        let round_tripped: PublicContestDetailResponse =
-            serde_json::from_value(value).expect("round-trip contest detail");
-        assert!(matches!(
-            round_tripped.summary.game_type,
-            Some(super::ContestGameTypeResponse::Roster)
-        ));
-    }
-
-    #[test]
-    fn contest_user_entry_refunded_defaults_false_and_preserves_true() {
-        let entry = json!({
-            "entry_index": 0,
-            "created_at_ms": 1,
-            "picks": [],
-            "open_leg_count": 0,
-            "resolved_win_count": 0
-        });
-
-        let defaulted: ContestUserEntryResponse = serde_json::from_value(entry.clone()).unwrap();
-        assert!(!defaulted.refunded);
-        assert_eq!(serde_json::to_value(defaulted).unwrap()["refunded"], false);
-
-        let mut refunded = entry;
-        refunded["refunded"] = json!(true);
-        let refunded: ContestUserEntryResponse = serde_json::from_value(refunded).unwrap();
-        assert!(refunded.refunded);
-    }
-
-    #[test]
-    fn survivor_round_breakdown_serializes_explicit_missed_entries() {
-        let value = serde_json::to_value(SurvivorRoundBreakdownResponse {
-            eligible_entry_count: 10,
-            submitted_entry_count: 8,
-            missed_entry_count: 2,
-            markets: vec![SurvivorMarketPickCountsResponse {
-                market_id: 42,
-                up_count: 5,
-                down_count: 3,
-            }],
-        })
-        .expect("serialize Survivor round breakdown");
-
-        assert_eq!(
-            value,
-            serde_json::json!({
-                "eligible_entry_count": 10,
-                "submitted_entry_count": 8,
-                "missed_entry_count": 2,
-                "markets": [{ "market_id": 42, "up_count": 5, "down_count": 3 }]
-            })
-        );
-    }
-
-    #[test]
-    fn survivor_round_omits_breakdown_before_lock() {
-        let value = serde_json::to_value(SurvivorRoundResponse {
-            game_index: 0,
-            status: SurvivorRoundStatusResponse::PickOpen,
-            required_pick_count: 1,
-            betting_opens_at_ms: 1,
-            betting_closes_at_ms: 2,
-            resolved_at_ms: None,
-            markets: vec![],
-            breakdown: None,
-        })
-        .expect("serialize open Survivor round");
-
-        assert!(value.get("breakdown").is_none());
-    }
-
-    #[test]
-    fn survivor_awaiting_next_round_accepts_successor_and_replacement_gaps() {
-        let round = |game_index, status| {
-            serde_json::json!({
-                "game_index": game_index,
-                "status": status,
-                "required_pick_count": 1,
-                "betting_opens_at_ms": 1,
-                "betting_closes_at_ms": 2,
-                "markets": []
-            })
-        };
-        let cases = [
-            (
-                "ordinary successor",
-                1,
-                serde_json::json!([round(0, "settled")]),
-                vec![0],
-            ),
-            (
-                "empty round-zero replacement",
-                0,
-                serde_json::json!([]),
-                vec![],
-            ),
-            (
-                "replacement with scheduled successor",
-                0,
-                serde_json::json!([round(1, "scheduled")]),
-                vec![1],
-            ),
-        ];
-
-        for (case, next_game_index, rounds, expected_game_indexes) in cases {
-            let response: SurvivorContestResponse = serde_json::from_value(serde_json::json!({
-                "version": 1,
-                "round_count": 7,
-                "phase": "awaiting_next_round",
-                "current_game_index": 0,
-                "next_game_index": next_game_index,
-                "rounds": rounds,
-                "revealed_game_indexes": [],
-                "remaining_survivor_count": 10
-            }))
-            .unwrap_or_else(|error| panic!("deserialize {case}: {error}"));
-
-            assert!(matches!(
-                response.phase,
-                SurvivorPhaseResponse::AwaitingNextRound
-            ));
-            assert_eq!(response.next_game_index, Some(next_game_index));
-            assert_eq!(
-                response
-                    .rounds
-                    .iter()
-                    .map(|round| round.game_index)
-                    .collect::<Vec<_>>(),
-                expected_game_indexes
-            );
-        }
     }
 }

@@ -1,8 +1,8 @@
 {
   "name": "longshot-protocol",
-  "version": "0.2.0",
+  "longshotReleaseVersion": "0.2.0",
   "description": "Transport-neutral TypeScript contracts and wire helpers for Longshot",
-  "private": false,
+  "private": true,
   "license": "SEE LICENSE IN LICENSE.txt",
   "type": "module",
   "main": "./dist/src/index.js",
@@ -38,19 +38,22 @@
     }
   },
   "files": [
-    "dist/src"
+    "dist/src",
+    "CUSTOM_CLIENTS.md"
   ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "node scripts/generate-serde.mjs && tsc -p tsconfig.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && node scripts/generate-serde.mjs && tsc -p tsconfig.json",
     "prepack": "npm run build",
+    "prepublishOnly": "node -e \"throw new Error('Direct publication is disabled. Use ../scripts/publish-typescript.sh --publish so npm receives the exact audited archive.')\"",
     "test": "npm run build && node --test dist/tests/*.test.js"
   },
   "dependencies": {
-    "viem": "2.52.0"
+    "viem": "2.55.19"
   },
   "devDependencies": {
     "@types/node": "25.9.4",

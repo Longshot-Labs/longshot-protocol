@@ -1,4 +1,4 @@
-import { Asset, RequestId } from "./types.js";
+import { Asset } from "./types.js";
 import type { WideInteger } from "./types.js";
 
 export const QuoteResultStatus = {
@@ -8,12 +8,6 @@ export const QuoteResultStatus = {
   SelectedFailed: "selected_failed",
 } as const;
 export type QuoteResultStatus = (typeof QuoteResultStatus)[keyof typeof QuoteResultStatus];
-
-export const QuoteDeclineReason = {
-  SportsCombinationUnsupported: "sports_combination_unsupported",
-} as const;
-export type QuoteDeclineReason =
-  (typeof QuoteDeclineReason)[keyof typeof QuoteDeclineReason];
 
 export type RfqSubscription =
   | { type: "all" }
@@ -45,7 +39,6 @@ export type ClientMessage =
   | { type: "auth" }
   | { type: "auth_response"; wallet_address: string; signature: string }
   | { type: "quote"; data: string }
-  | { type: "quote_decline"; request_id: string; reason: QuoteDeclineReason }
   | { type: "pong" }
   | { type: "subscribe"; protocol_version: number; subscriptions: RfqSubscription[] };
 
@@ -58,9 +51,6 @@ export const ClientMessage = {
   },
   quote(data: string): ClientMessage {
     return { type: "quote", data };
-  },
-  quoteDecline(requestId: RequestId, reason: QuoteDeclineReason): ClientMessage {
-    return { type: "quote_decline", request_id: requestId.serdeValue(), reason };
   },
   pong(): ClientMessage {
     return { type: "pong" };

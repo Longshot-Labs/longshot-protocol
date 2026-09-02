@@ -10,7 +10,7 @@ use longshot_protocol::types::{
     Address, Amount, Asset, Direction, Duration, MarketId, Odds, OrderType, QuoteResponse,
     RequestId, RfqLeg, MAX_RFQ_LEGS, RFQ_PROTOCOL_VERSION,
 };
-use longshot_protocol::ws::{ClientMessage, QuoteDeclineReason};
+use longshot_protocol::ws::{ClientMessage, ServerMessage};
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
@@ -50,28 +50,31 @@ fn rfq_leg(row: &Value) -> RfqLeg {
 }
 
 #[test]
-fn quote_decline_uses_typed_request_id_and_closed_reason() {
-    let message = ClientMessage::QuoteDecline {
-        request_id: request_id(),
-        reason: QuoteDeclineReason::SportsCombinationUnsupported,
-    };
-
-    let json = serde_json::to_value(&message).unwrap();
-    assert_eq!(
-        json,
-        serde_json::json!({
-            "type": "quote_decline",
-            "request_id": "00112233-4455-6677-8899-aabbccddeeff",
-            "reason": "sports_combination_unsupported",
-        })
+fn websocket_debug_redacts_auth_credentials() {
+    let signature = "client-signature-must-not-leak";
+    let client = format!(
+        "{:?}",
+        ClientMessage::AuthResponse {
+            wallet_address: "0x1234".to_owned(),
+            signature: signature.to_owned(),
+        }
     );
-    assert!(matches!(
-        serde_json::from_value::<ClientMessage>(json).unwrap(),
-        ClientMessage::QuoteDecline {
-            request_id: parsed_request_id,
-            reason: QuoteDeclineReason::SportsCombinationUnsupported,
-        } if parsed_request_id == request_id()
-    ));
+    assert!(client.contains("0x1234"));
+    assert!(client.contains("<redacted>"));
+    assert!(!client.contains(signature));
+
+    let session_token = "server-session-token-must-not-leak";
+    let server = format!(
+        "{:?}",
+        ServerMessage::AuthResult {
+            success: true,
+            error: None,
+            session_token: Some(session_token.to_owned()),
+        }
+    );
+    assert!(server.contains("success: true"));
+    assert!(server.contains("<redacted>"));
+    assert!(!server.contains(session_token));
 }
 
 #[test]

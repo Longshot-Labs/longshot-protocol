@@ -177,14 +177,6 @@ class ContestId(UuidId):
     pass
 
 
-class ChatId(UuidId):
-    pass
-
-
-class MessageId(UuidId):
-    pass
-
-
 class MathError(str, Enum):
     Overflow = "Overflow"
     Underflow = "Underflow"
@@ -269,13 +261,6 @@ class MarketStatus(str, Enum):
             MarketStatus.Voided: set(),
         }
         return target in transitions[self]
-
-    def can_transition_to_worker_owned(self, target: MarketStatus) -> bool:
-        return self.can_transition_to(target) or (
-            (self is MarketStatus.Pending and target in {MarketStatus.Frozen, MarketStatus.Resolved})
-            or (self is MarketStatus.Open and target is MarketStatus.Resolved)
-        )
-
 
 class Outcome(str, Enum):
     Yes = "YES"

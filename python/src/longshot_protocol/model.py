@@ -103,6 +103,7 @@ class LongshotModel:
     __serde_defaults__: ClassVar[Dict[str, Any]] = {}
     __serde_skip_non_finite__: ClassVar[Set[str]] = set()
     __serde_query_csv__: ClassVar[Set[str]] = set()
+    __repr_redacted_fields__: ClassVar[Set[str]] = set()
 
     @classmethod
     def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
@@ -224,6 +225,15 @@ class LongshotModel:
             result[self.__serde_renames__.get(field.name, field.name)] = value
         return result
 
+    def __repr__(self) -> str:
+        rendered_fields = []
+        for model_field in fields(self):
+            value = getattr(self, model_field.name)
+            if model_field.name in self.__repr_redacted_fields__ and value is not None:
+                value = "<redacted>"
+            rendered_fields.append(f"{model_field.name}={value!r}")
+        return f"{type(self).__name__}({', '.join(rendered_fields)})"
+
 
 class RustStringEnum(str, Enum):
     """String-valued enum matching Rust serde unit enum output."""
@@ -250,6 +260,7 @@ class RustTaggedUnion:
     __serde_variant_string_ints__: ClassVar[Dict[str, Set[str]]] = {}
     __serde_variant_fields__: ClassVar[Dict[str, Dict[str, str]]] = {}
     __serde_variant_deny_unknown__: ClassVar[bool] = False
+    __repr_redacted_fields__: ClassVar[Set[str]] = set()
 
     def __init__(self, variant: str, payload: Any = None, **fields: Any) -> None:
         if payload is not None and fields:
@@ -359,7 +370,15 @@ class RustTaggedUnion:
         return {self.__serde_tag__: self.tag_value, **payload_dict}
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.variant!r}, {self.payload!r})"
+        payload = self.payload
+        if isinstance(payload, dict):
+            payload = {
+                key: "<redacted>"
+                if key in self.__repr_redacted_fields__ and value is not None
+                else value
+                for key, value in payload.items()
+            }
+        return f"{type(self).__name__}({self.variant!r}, {payload!r})"
 
 
 def is_model_instance(value: Any) -> bool:

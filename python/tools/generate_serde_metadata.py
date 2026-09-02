@@ -115,7 +115,16 @@ def _field_spec(rust_type: str, attrs: List[str]) -> str:
         r"skip_serializing_if|skip)\b",
         serde_attrs,
     )
-    if unsupported and not (wire_int and unsupported.group(0) == "deserialize_with"):
+    required_nullable = bool(
+        re.search(
+            r'\bdeserialize_with\s*=\s*"deserialize_required_nullable_u64"',
+            serde_attrs,
+        )
+    )
+    if unsupported and not (
+        unsupported.group(0) == "deserialize_with"
+        and (wire_int or required_nullable)
+    ):
         raise ValueError(f"unsupported inline serde attribute: {unsupported.group(0)}")
     return flags + spec
 

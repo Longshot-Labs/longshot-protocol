@@ -6,6 +6,9 @@ The package exposes API and WebSocket contracts, fixed binary RFQ layouts,
 EVM address handling, and canonical order, authentication, and quote signing.
 It intentionally contains no HTTP, SSE, or WebSocket transport client.
 
+The installed `longshot_protocol` package includes `CUSTOM_CLIENTS.md` with the
+production origins, HTTP request shapes, WebSocket flow, and signing boundaries.
+
 ```bash
 python -m pip install longshot-protocol==0.2.0
 ```

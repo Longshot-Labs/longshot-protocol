@@ -8,73 +8,8 @@ use uuid::Uuid;
 use crate::taker::{OrderLeg, SignedOrder, SignedOrderError};
 use crate::types::{Address, Direction, MarketId, Odds, OrderType, PositionId};
 
-/// Request to create a session from Privy token.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct CreateSessionRequest {
-    /// Privy JWT supplied by the client.
-    pub privy_token: String,
-
-    /// Linked EVM wallet selected by the completed Privy authentication flow.
-    /// The server accepts this untrusted hint only when it matches the verified
-    /// identity token's linked-account claims.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub auth_wallet_address: Option<String>,
-
-    /// Referral slug used for signup attribution.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub referral_code: Option<String>,
-}
-
-/// Request to verify or idempotently start embedded-wallet provisioning.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct CreateEmbeddedWalletEnsureRequest {
-    pub privy_token: String,
-}
-
-/// Referral prompt whose eligibility should be leased or acknowledged.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum ReferralPromptRequest {
-    PostWin,
-    FirstPick,
-}
-
-/// Request a short lease for an eligible referral prompt.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct ClaimReferralPromptRequest {
-    pub prompt: ReferralPromptRequest,
-}
-
-/// Complete or release a leased referral prompt.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct AcknowledgeReferralPromptRequest {
-    pub prompt: ReferralPromptRequest,
-    pub claim_token: Uuid,
-    /// True after presentation; false releases an unshown lease for retry.
-    pub shown: bool,
-}
-
-/// Authenticated request to post a GIPHY GIF to chat.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct ChatPostGifRequest {
-    pub gif_id: String,
-    pub chat_id: Option<String>,
-    pub parent: Option<String>,
-}
-
 /// Request to authenticate with direct wallet signature.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "openapi", schema(example = json!({
     "address": "0x742d35cC6634C0532925A3B844Bc9e7595F8B2A1",
@@ -96,206 +31,41 @@ pub struct WalletAuthRequest {
     /// Unix timestamp in milliseconds bound into the signed message.
     pub signed_at_ms: u64,
 
-    /// Referral slug used for signup attribution.
+    /// Referral slug for new account attribution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub referral_code: Option<String>,
 }
 
-/// Prospective order priced by the live maker pipeline without execution.
+impl fmt::Debug for WalletAuthRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WalletAuthRequest")
+            .field("address", &self.address)
+            .field("signature", &"<redacted>")
+            .field("signed_at_ms", &self.signed_at_ms)
+            .field("referral_code", &self.referral_code)
+            .finish()
+    }
+}
+
+/// Request body for `POST /v1/rfq/estimate`: a prospective order to price
+/// without reserving or executing anything.
+///
+/// Estimates have no `min_odds`, `order_type`, or idempotency key because they
+/// do not execute an order.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(deny_unknown_fields)]
 pub struct RfqEstimateRequest {
-    /// Prospective wager size in micros.
+    /// Wager in micros (e.g., 100000000 = $100.00). Quotes are size-aware, so
+    /// this should be the real prospective wager.
+    #[cfg_attr(feature = "openapi", schema(example = 100000000, minimum = 500000))]
     pub wager_micros: u64,
-    /// Order legs to price.
+    /// Order legs (1-9 legs supported).
+    #[cfg_attr(feature = "openapi", schema(min_items = 1, max_items = 9))]
     pub legs: Vec<OrderLegJson>,
-    /// Price the order without sharing taker identity with makers.
+    /// If true, do not personalize the estimate to the taker's identity.
     #[serde(default)]
     pub shield_on: bool,
-}
-
-/// One correlated single-contract estimate in a bounded indicative batch.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct RfqEstimateBatchItemRequest {
-    /// Caller-defined correlation key, unique within the batch.
-    #[cfg_attr(feature = "openapi", schema(max_length = 80))]
-    pub key: String,
-    /// Exactly one market/direction contract to quote.
-    pub leg: OrderLegJson,
-}
-
-/// Bounded batch of independent single-leg indicative RFQ estimates.
-///
-/// Every item uses the same probe wager so both sides of several contracts can
-/// be compared consistently. The handler processes each item independently.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct RfqEstimateBatchRequest {
-    pub wager_micros: u64,
-    pub estimates: Vec<RfqEstimateBatchItemRequest>,
-    #[serde(default)]
-    pub shield_on: bool,
-}
-
-/// Authenticated request to post a chat message.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "body": "hello chat",
-    "chat_id": null,
-    "parent": null
-})))]
-#[serde(deny_unknown_fields)]
-pub struct ChatPostMessageRequest {
-    #[cfg_attr(feature = "openapi", schema(max_length = 500, example = "hello chat"))]
-    pub body: String,
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub chat_id: Option<String>,
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub parent: Option<String>,
-}
-
-/// Authenticated request to edit a chat message body.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "chat_id": null,
-    "message_id": "550e8400-e29b-41d4-a716-446655440000",
-    "body": "edited chat"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct ChatEditMessageRequest {
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub chat_id: Option<String>,
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub message_id: String,
-    #[cfg_attr(feature = "openapi", schema(max_length = 500, example = "edited chat"))]
-    pub body: String,
-}
-
-/// Authenticated request to add an emoji reaction to a chat message.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "chat_id": null,
-    "message_id": "550e8400-e29b-41d4-a716-446655440000",
-    "emoji_code": ":rocket:"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct ChatEmojiReactRequest {
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub chat_id: Option<String>,
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub message_id: String,
-    #[cfg_attr(feature = "openapi", schema(example = ":rocket:"))]
-    pub emoji_code: String,
-}
-
-/// Query parameters for the authenticated chat SSE stream.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct ChatStreamQuery {
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub chat_id: Option<String>,
-}
-
-/// Query parameters for `GET /v1/chat/mention_candidates`.
-///
-/// The SSE stream permits the main room by omitting `chat_id`, but mention
-/// candidates are always room-scoped. Keep this route-specific client contract
-/// required even though the server reuses a permissive raw extractor.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct ChatMentionCandidatesQuery {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub chat_id: String,
-}
-
-/// Query parameters for the authenticated recent chat messages endpoint.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct ChatRecentMessagesQuery {
-    #[cfg_attr(feature = "openapi", schema(value_type = Option<String>, format = "uuid", nullable = true))]
-    pub chat_id: Option<String>,
-    #[cfg_attr(feature = "openapi", schema(example = 100, minimum = 1))]
-    pub limit: Option<u32>,
-    #[cfg_attr(feature = "openapi", schema(example = "eyJiZWZvcmVfc2VxIjoxMjN9"))]
-    pub before: Option<String>,
-}
-
-/// Request to set the authenticated user's referrer by referral code.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "referral_code": "jyrtx2"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct UserSetReferrerRequest {
-    /// Vanity referral code of the referrer (lowercase alphanumeric, 4-16).
-    #[cfg_attr(feature = "openapi", schema(value_type = String, example = "jyrtx2"))]
-    pub referral_code: String,
-}
-
-/// Request for the authenticated user to create their own vanity referral code.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({ "code": "jyrtx2" })))]
-#[serde(deny_unknown_fields)]
-pub struct UserCreateReferralCodeRequest {
-    /// Desired referral code. Must be 4-16 lowercase alphanumeric chars.
-    /// Mixed-case input is normalized to lowercase.
-    #[cfg_attr(feature = "openapi", schema(value_type = String, example = "jyrtx2"))]
-    pub code: String,
-}
-
-/// User contest-bet selection entry.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct PlaceContestBetSelectionRequest {
-    pub market_id: u64,
-    #[cfg_attr(feature = "openapi", schema(example = "up"))]
-    pub direction: String,
-}
-
-/// User contest-bet request.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct PlaceContestBetRequest {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub contest_id: String,
-    /// If true, spend eligible app tokens before cash.
-    pub use_app_tokens: bool,
-    /// Stable zero-based entry slot. Optional for legacy single-entry and
-    /// non-Survivor requests. For a new opening-round entry in a multi-entry
-    /// Survivor contest, send the next contiguous index; reuse that same index
-    /// for void replacements and later rounds.
-    #[serde(default)]
-    pub entry_index: Option<u32>,
-    pub bets: Vec<PlaceContestBetSelectionRequest>,
-    /// Roster contests only: exactly one pick per tier. Mutually exclusive
-    /// with `bets` (which must be empty).
-    #[serde(default)]
-    pub roster_picks: Option<Vec<PlaceRosterPickRequest>>,
-    #[serde(default)]
-    pub tiebreaker_guess: Option<i64>,
-}
-
-/// A roster pick: one selection in one tier.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct PlaceRosterPickRequest {
-    pub tier_index: u16,
-    pub selection_index: u16,
 }
 
 /// Request to move funds from onchain settlement balance into the app balance.
@@ -343,7 +113,7 @@ pub struct UserWithdrawParams {
 }
 
 /// Fresh authorization supplied with a withdrawal request.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum WithdrawalAuthorization {
@@ -359,6 +129,22 @@ pub enum WithdrawalAuthorization {
         /// Unix timestamp in milliseconds bound into the signed message.
         signed_at_ms: u64,
     },
+}
+
+impl fmt::Debug for WithdrawalAuthorization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::PrivyToken { .. } => f
+                .debug_struct("PrivyToken")
+                .field("token", &"<redacted>")
+                .finish(),
+            Self::WalletSignature { signed_at_ms, .. } => f
+                .debug_struct("WalletSignature")
+                .field("signature", &"<redacted>")
+                .field("signed_at_ms", signed_at_ms)
+                .finish(),
+        }
+    }
 }
 
 /// Request to move funds from the app balance back into onchain settlement balance.
@@ -440,7 +226,7 @@ pub struct OrderLegJson {
 /// and [`crate::taker::sign_order`] for the protocol helper.
 /// Key conversions for signing:
 /// - `wager_micros` is encoded directly as micros
-/// - `min_odds` → `min_odds_bps` (multiply by 10,000)
+/// - `min_odds` → `min_odds_bps` (multiply by 10,000 and round)
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "openapi", schema(example = json!({
@@ -464,7 +250,7 @@ pub struct SignedOrderJson {
 
     /// Wager in micros (e.g., 100000000 = $100.00).
     #[serde(deserialize_with = "crate::api::wire_int::u64_string::deserialize")]
-    #[cfg_attr(feature = "openapi", schema(example = 100000000))]
+    #[cfg_attr(feature = "openapi", schema(example = 100000000, minimum = 500000))]
     pub wager_micros: u64,
 
     /// Minimum acceptable odds (e.g., 2.5 = 2.5x).
@@ -472,6 +258,7 @@ pub struct SignedOrderJson {
     pub min_odds: f64,
 
     /// Order legs (1-9 legs supported).
+    #[cfg_attr(feature = "openapi", schema(min_items = 1, max_items = 9))]
     pub legs: Vec<OrderLegJson>,
 
     /// Unique nonce (prevents replay attacks).
@@ -537,7 +324,7 @@ pub struct CreateRfqRequest {
     pub use_app_tokens: bool,
 }
 
-/// Unsigned RFQ order parameters, before adding the prepare token required for creation.
+/// Unsigned RFQ order parameters supplied with the authenticated identity proof.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "openapi", schema(example = json!({
@@ -551,7 +338,7 @@ pub struct CreateRfqRequest {
 #[serde(deny_unknown_fields)]
 pub struct UnsignedRfqOrderRequest {
     /// Wager in micros (e.g., 100000000 = $100.00).
-    #[cfg_attr(feature = "openapi", schema(example = 100000000))]
+    #[cfg_attr(feature = "openapi", schema(example = 100000000, minimum = 500000))]
     pub wager_micros: u64,
 
     /// Minimum acceptable odds (e.g., 2.5 = 2.5x).
@@ -559,6 +346,7 @@ pub struct UnsignedRfqOrderRequest {
     pub min_odds: f64,
 
     /// Order legs (1-9 legs supported).
+    #[cfg_attr(feature = "openapi", schema(min_items = 1, max_items = 9))]
     pub legs: Vec<OrderLegJson>,
 
     /// Order type: 1=IOC (Immediate-or-Cancel), 2=FOK (Fill-or-Kill, default).
@@ -576,7 +364,7 @@ pub struct UnsignedRfqOrderRequest {
 }
 
 /// Session-authenticated RFQ request that does not require a wallet signature.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "openapi", schema(example = json!({
     "privy_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -606,8 +394,19 @@ pub struct CreateUnsignedRfqRequest {
     pub community_pick: Option<CommunityPickRequest>,
 }
 
+impl fmt::Debug for CreateUnsignedRfqRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CreateUnsignedRfqRequest")
+            .field("privy_token", &"<redacted>")
+            .field("use_app_tokens", &self.use_app_tokens)
+            .field("rfq_params", &self.rfq_params)
+            .field("community_pick", &self.community_pick)
+            .finish()
+    }
+}
+
 /// Parsed leg values with validated enums.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ParsedOrderLeg {
     pub market_id: MarketId,
     pub direction: Direction,
@@ -823,30 +622,6 @@ impl UnsignedRfqOrderRequest {
         Uuid::parse_str(self.idempotency_key.trim())
             .map_err(|_| RfqOrderJsonError::InvalidIdempotencyKey)
     }
-
-    pub fn into_signed_order_for_session(
-        self,
-        user: Address,
-        nonce: u64,
-        expires_at_ms: u64,
-    ) -> Result<SignedOrder, RfqOrderJsonError> {
-        let min_odds_bps = parse_min_odds_bps(self.min_odds)?;
-        let legs = parse_order_legs(&self.legs)?;
-        let order_type = OrderType::from_u8(self.order_type)
-            .ok_or(RfqOrderJsonError::InvalidOrderType(self.order_type))?;
-
-        Ok(SignedOrder {
-            user,
-            wager_micros: self.wager_micros,
-            min_odds_bps,
-            legs,
-            nonce,
-            expires_at_ms,
-            order_type,
-            shield_on: self.shield_on,
-            signature: [0u8; 65],
-        })
-    }
 }
 
 #[cfg(test)]
@@ -941,6 +716,46 @@ mod tests {
     }
 
     #[test]
+    fn sensitive_request_debug_redacts_public_tokens() {
+        const SECRET: &str = "identity-token-that-must-not-be-logged";
+
+        let wallet_auth = WalletAuthRequest {
+            address: "0x0000000000000000000000000000000000000000".to_string(),
+            signature: SECRET.to_string(),
+            signed_at_ms: 1,
+            referral_code: None,
+        };
+        let withdrawal = WithdrawalAuthorization::PrivyToken {
+            token: SECRET.to_string(),
+        };
+        let unsigned_rfq = CreateUnsignedRfqRequest {
+            privy_token: SECRET.to_string(),
+            use_app_tokens: false,
+            rfq_params: UnsignedRfqOrderRequest {
+                wager_micros: 1_000_000,
+                min_odds: 2.0,
+                legs: vec![OrderLegJson {
+                    market_id: 42,
+                    direction: "up".to_string(),
+                }],
+                order_type: 2,
+                shield_on: false,
+                idempotency_key: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            },
+            community_pick: None,
+        };
+
+        for debug in [
+            format!("{wallet_auth:?}"),
+            format!("{withdrawal:?}"),
+            format!("{unsigned_rfq:?}"),
+        ] {
+            assert!(!debug.contains(SECRET));
+            assert!(debug.contains("<redacted>"));
+        }
+    }
+
+    #[test]
     fn signed_order_json_accepts_string_encoded_u64_fields() {
         let json = serde_json::json!({
             "user": "0x0000000000000000000000000000000000000000",
@@ -959,56 +774,5 @@ mod tests {
         assert_eq!(order.wager_micros, 9_007_199_254_740_993);
         assert_eq!(order.nonce, 9_007_199_254_740_994);
         assert_eq!(order.expires_at_ms, 9_007_199_254_740_995);
-    }
-
-    #[test]
-    fn contest_entry_index_remains_wire_optional() {
-        let request: PlaceContestBetRequest = serde_json::from_value(serde_json::json!({
-            "contest_id": "550e8400-e29b-41d4-a716-446655440000",
-            "use_app_tokens": false,
-            "bets": [{ "market_id": 42, "direction": "up" }]
-        }))
-        .unwrap();
-
-        assert_eq!(request.entry_index, None);
-    }
-
-    #[cfg(feature = "openapi")]
-    #[test]
-    fn contest_entry_index_openapi_documents_survivor_contract() {
-        use utoipa::ToSchema;
-
-        let (_, schema) = PlaceContestBetRequest::schema();
-        let schema = serde_json::to_value(schema).unwrap();
-        let description = schema["properties"]["entry_index"]["description"]
-            .as_str()
-            .unwrap();
-        assert!(description.contains("next contiguous index"));
-        assert!(description.contains("reuse that same index"));
-        assert!(!schema["required"]
-            .as_array()
-            .unwrap()
-            .contains(&serde_json::json!("entry_index")));
-    }
-
-    #[cfg(feature = "openapi")]
-    #[test]
-    fn chat_message_request_body_openapi_limits_match_server_limit() {
-        assert_body_max_length::<ChatPostMessageRequest>(500);
-        assert_body_max_length::<ChatEditMessageRequest>(500);
-    }
-
-    #[cfg(feature = "openapi")]
-    fn assert_body_max_length<T>(expected: u64)
-    where
-        T: utoipa::ToSchema<'static>,
-    {
-        let (_, schema) = T::schema();
-        let schema = serde_json::to_value(schema).unwrap();
-        let body_max_length = schema
-            .pointer("/properties/body/maxLength")
-            .and_then(serde_json::Value::as_u64);
-
-        assert_eq!(body_max_length, Some(expected));
     }
 }

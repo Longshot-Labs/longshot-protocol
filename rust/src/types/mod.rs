@@ -11,9 +11,7 @@ pub mod market;
 pub mod primitives;
 pub mod rfq;
 
-pub use ids::{
-    ChatId, ClientQuoteId, ContestId, MarketId, MessageId, PositionId, QuoteId, RequestId, UserId,
-};
+pub use ids::{ClientQuoteId, ContestId, MarketId, PositionId, QuoteId, RequestId, UserId};
 pub use market::{MarketStatus, MarketType, Outcome, TradingChannel};
 pub use primitives::{
     Amount, Asset, Direction, Duration, MathError, Odds, OrderType, Timestamp, UserTier,

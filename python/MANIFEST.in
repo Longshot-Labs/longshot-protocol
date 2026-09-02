@@ -1,7 +1,7 @@
 include LICENSE.txt
 include README.md
 include pyproject.toml
-recursive-include src/longshot_protocol *.py *.pyi py.typed
+recursive-include src/longshot_protocol *.py *.pyi *.md py.typed
 prune examples
 prune tests
 prune tools

@@ -1,8 +1,6 @@
 //! Public market API request and response contracts.
 
-use std::collections::BTreeMap;
-
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::types::{MarketId, MarketStatus, MarketType, Outcome, TradingChannel};
 
@@ -13,10 +11,6 @@ use crate::types::{MarketId, MarketStatus, MarketType, Outcome, TradingChannel};
 pub struct PublicMarketsRawQuery {
     /// Optional open category slug.
     pub market_type: Option<MarketType>,
-    /// Optional source-adapter filter.
-    pub source: Option<String>,
-    /// Exact event identity (`source.event_id`); combine with `source` to scope one adapter.
-    pub source_event_id: Option<String>,
     /// Optional trading-surface filter.
     pub trading_channel: Option<TradingChannel>,
     #[cfg_attr(feature = "openapi", schema(minimum = 1, maximum = 500))]
@@ -73,22 +67,6 @@ mod status_list_query {
     }
 }
 
-/// Canonical source identity and adapter-owned attributes for an event contract.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-pub struct EventMarketSource {
-    /// Adapter identity such as `kalshi` or `manual`.
-    pub source: String,
-    /// Provider event identity, when the source groups contracts into events.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub event_id: Option<String>,
-    /// Provider market identities that resolve this canonical Longshot market.
-    pub source_market_ids: Vec<String>,
-    /// Source-specific metadata that cannot affect contract behavior.
-    #[serde(default)]
-    pub attributes: BTreeMap<String, serde_json::Value>,
-}
-
 /// Price-strike market returned by unified market reads.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -124,13 +102,10 @@ pub struct PriceStrikeMarket {
 /// Event market returned by unified market reads.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
 pub struct EventMarket {
     pub id: MarketId,
     pub market_type: MarketType,
     pub trading_channels: Vec<TradingChannel>,
-    /// Stable chat room for the source event shared by every market in that event.
-    pub chat_id: String,
     pub name: String,
     #[cfg_attr(feature = "openapi", schema(required))]
     pub description: Option<String>,
@@ -141,10 +116,12 @@ pub struct EventMarket {
     pub status: MarketStatus,
     pub tradeable: bool,
     pub category_tags: Vec<String>,
-    /// Scheduled time trading may open. This is distinct from actual lifecycle `opened_at_ms`.
+    /// Scheduled opening time, distinct from actual lifecycle `opened_at_ms`.
+    /// This required-nullable key distinguishes event from price-strike markets.
+    #[serde(deserialize_with = "deserialize_required_nullable_u64")]
     #[cfg_attr(feature = "openapi", schema(required))]
     pub opens_at_ms: Option<u64>,
-    /// Provider event start. This preserves source chronology and is distinct from Longshot's
+    /// Original event start. This preserves event chronology and is distinct from Longshot's
     /// lifecycle `opens_at_ms`.
     #[cfg_attr(feature = "openapi", schema(required))]
     pub source_starts_at_ms: Option<u64>,
@@ -162,10 +139,8 @@ pub struct EventMarket {
     pub opened_at_ms: Option<u64>,
     #[cfg_attr(feature = "openapi", schema(required))]
     pub resolved_at_ms: Option<u64>,
-    pub source: EventMarketSource,
-    /// Configured live probability for manual event markets, in basis points.
-    #[cfg_attr(feature = "openapi", schema(required))]
-    pub manual_probability_bps: Option<i32>,
+    /// Indicative display probability, in basis points. This is not an executable quote.
+    pub display_probability_bps: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_url: Option<String>,
 }
@@ -175,10 +150,16 @@ pub struct EventMarket {
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(untagged)]
 pub enum PublicMarket {
-    // Event must remain first: its required `source` field is the structural
-    // selector used by generated clients for this untagged union.
+    // Event is first because its required `opens_at_ms` key selects this variant.
     Event(EventMarket),
     PriceStrike(PriceStrikeMarket),
+}
+
+fn deserialize_required_nullable_u64<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<u64>::deserialize(deserializer)
 }
 
 impl PublicMarket {
@@ -257,7 +238,6 @@ mod tests {
             "id": 42,
             "market_type": market_type,
             "trading_channels": ["rfq", "contest"],
-            "chat_id": "9187ca06-569d-5bc7-8aa1-cb4dd2da71ac",
             "name": "Lakers vs Celtics",
             "description": null,
             "status": "OPEN",
@@ -272,13 +252,8 @@ mod tests {
             "created_at_ms": 1_699_999_000_000u64,
             "opened_at_ms": 1_699_999_100_000u64,
             "resolved_at_ms": null,
-            "source": {
-                "source": "kalshi",
-                "event_id": "KXNBAGAME-26OCT20LALBOS",
-                "source_market_ids": ["KXNBAGAME-26OCT20LALBOS-LAL"],
-                "attributes": {"sport": "basketball", "league": "nba"}
-            },
-            "manual_probability_bps": null
+            "server_only": {"ignored": true},
+            "display_probability_bps": 6250
         })
     }
 
@@ -299,7 +274,9 @@ mod tests {
             market.trading_channels,
             vec![TradingChannel::Rfq, TradingChannel::Contest]
         );
-        assert_eq!(market.chat_id, "9187ca06-569d-5bc7-8aa1-cb4dd2da71ac");
+        assert_eq!(market.display_probability_bps, Some(6_250));
+        let encoded = serde_json::to_value(market).unwrap();
+        assert_eq!(encoded["display_probability_bps"], 6_250);
     }
 
     #[test]
@@ -313,11 +290,29 @@ mod tests {
     }
 
     #[test]
+    fn price_strike_decodes_without_event_discriminator() {
+        let price = serde_json::json!({
+            "id": 42,
+            "market_type": "crypto",
+            "trading_channels": ["rfq"],
+            "name": "BTC up",
+            "status": "OPEN",
+            "tradeable": true,
+            "category_tags": ["crypto"],
+            "betting_closes_at_ms": 1_700_000_000_000u64,
+            "resolution_time_ms": 1_700_000_300_000u64,
+            "created_at_ms": 1_699_999_000_000u64
+        });
+        assert!(matches!(
+            serde_json::from_value(price),
+            Ok(PublicMarket::PriceStrike(_))
+        ));
+    }
+
+    #[test]
     fn public_markets_query_statuses_round_trip_as_csv() {
         let query = PublicMarketsRawQuery {
             market_type: Some(MarketType::from("sports")),
-            source: Some("kalshi".to_string()),
-            source_event_id: Some("KXGAME-1".to_string()),
             trading_channel: Some(TradingChannel::Rfq),
             limit: Some(100),
             cursor: None,
@@ -331,5 +326,17 @@ mod tests {
             Some("sports")
         );
         assert_eq!(parsed.statuses, query.statuses);
+    }
+
+    #[test]
+    fn event_market_ignores_server_private_fields() {
+        let PublicMarket::Event(market) =
+            serde_json::from_value(event_json("mentions")).expect("event market")
+        else {
+            panic!("expected event market");
+        };
+        let serialized = serde_json::to_value(market).expect("serialize public market");
+        assert!(serialized.get("server_only").is_none());
+        assert_eq!(serialized["source_starts_at_ms"], 1_700_000_500_000_u64);
     }
 }

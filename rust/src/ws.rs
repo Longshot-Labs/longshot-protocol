@@ -1,9 +1,10 @@
 //! Market-maker WebSocket protocol messages.
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::sync::Arc;
 
-use crate::types::{Asset, RequestId};
+use crate::types::Asset;
 
 /// Terminal quote-result status sent to market makers over the WebSocket.
 ///
@@ -19,15 +20,6 @@ pub enum QuoteResultStatus {
     NotFilled,
     Rejected,
     SelectedFailed,
-}
-
-/// A closed reason reported when a market maker intentionally declines an RFQ.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum QuoteDeclineReason {
-    /// The sports provider does not support pricing this leg combination.
-    SportsCombinationUnsupported,
 }
 
 /// RFQ subscription filter for a market-maker WebSocket connection.
@@ -47,7 +39,7 @@ pub enum RfqSubscription {
 }
 
 /// Client-to-server WebSocket messages used by market makers.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(tag = "type")]
 pub enum ClientMessage {
@@ -68,14 +60,6 @@ pub enum ClientMessage {
         /// Quote data (binary, base64 encoded).
         data: String,
     },
-    /// Explicitly decline an RFQ without fabricating a quote.
-    #[serde(rename = "quote_decline")]
-    QuoteDecline {
-        /// RFQ request being declined.
-        request_id: RequestId,
-        /// Machine-readable decline reason.
-        reason: QuoteDeclineReason,
-    },
     /// Pong response to a server heartbeat.
     #[serde(rename = "pong")]
     Pong,
@@ -89,8 +73,31 @@ pub enum ClientMessage {
     },
 }
 
+impl fmt::Debug for ClientMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Auth => f.write_str("Auth"),
+            Self::AuthResponse { wallet_address, .. } => f
+                .debug_struct("AuthResponse")
+                .field("wallet_address", wallet_address)
+                .field("signature", &"<redacted>")
+                .finish(),
+            Self::Quote { data } => f.debug_struct("Quote").field("data", data).finish(),
+            Self::Pong => f.write_str("Pong"),
+            Self::Subscribe {
+                protocol_version,
+                subscriptions,
+            } => f
+                .debug_struct("Subscribe")
+                .field("protocol_version", protocol_version)
+                .field("subscriptions", subscriptions)
+                .finish(),
+        }
+    }
+}
+
 /// Server-to-client WebSocket messages used by market makers.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(tag = "type")]
 pub enum ServerMessage {
@@ -180,4 +187,79 @@ pub enum ServerMessage {
         /// Retry after (ms).
         retry_after_ms: u64,
     },
+}
+
+impl fmt::Debug for ServerMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AuthChallenge {
+                challenge_id,
+                timestamp_ms,
+            } => f
+                .debug_struct("AuthChallenge")
+                .field("challenge_id", challenge_id)
+                .field("timestamp_ms", timestamp_ms)
+                .finish(),
+            Self::AuthResult { success, error, .. } => f
+                .debug_struct("AuthResult")
+                .field("success", success)
+                .field("error", error)
+                .field("session_token", &"<redacted>")
+                .finish(),
+            Self::Rfq { data } => f.debug_struct("Rfq").field("data", data).finish(),
+            Self::Subscribed { protocol_version } => f
+                .debug_struct("Subscribed")
+                .field("protocol_version", protocol_version)
+                .finish(),
+            Self::QuoteAck {
+                request_id,
+                quote_id,
+                client_quote_id,
+                accepted,
+                error,
+            } => f
+                .debug_struct("QuoteAck")
+                .field("request_id", request_id)
+                .field("quote_id", quote_id)
+                .field("client_quote_id", client_quote_id)
+                .field("accepted", accepted)
+                .field("error", error)
+                .finish(),
+            Self::QuoteResult {
+                request_id,
+                quote_id,
+                client_quote_id,
+                status,
+                position_id,
+                fill_amount,
+                fill_odds,
+                filled_at_ms,
+                reason,
+            } => f
+                .debug_struct("QuoteResult")
+                .field("request_id", request_id)
+                .field("quote_id", quote_id)
+                .field("client_quote_id", client_quote_id)
+                .field("status", status)
+                .field("position_id", position_id)
+                .field("fill_amount", fill_amount)
+                .field("fill_odds", fill_odds)
+                .field("filled_at_ms", filled_at_ms)
+                .field("reason", reason)
+                .finish(),
+            Self::Ping { timestamp } => f
+                .debug_struct("Ping")
+                .field("timestamp", timestamp)
+                .finish(),
+            Self::Error { code, message } => f
+                .debug_struct("Error")
+                .field("code", code)
+                .field("message", message)
+                .finish(),
+            Self::RateLimit { retry_after_ms } => f
+                .debug_struct("RateLimit")
+                .field("retry_after_ms", retry_after_ms)
+                .finish(),
+        }
+    }
 }

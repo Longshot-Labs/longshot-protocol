@@ -14,3 +14,6 @@ longshot-protocol = "0.2"
 ```rust
 use longshot_protocol::types::{Amount, Odds, RequestId};
 ```
+
+See [CUSTOM_CLIENTS.md](CUSTOM_CLIENTS.md) for the production origins, HTTP
+request shapes, WebSocket flow, and signing boundaries.
