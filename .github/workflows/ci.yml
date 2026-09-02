@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Reject repository-root scripts
+        run: test ! -e scripts
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-targets --all-features --locked
@@ -45,6 +47,5 @@ jobs:
           cache: npm
           cache-dependency-path: typescript/package-lock.json
       - run: npm ci
-      - run: bash ../scripts/publish-rust.sh --check
       - run: npm test
       - run: git diff --exit-code -- src/serde.generated.ts

@@ -7,17 +7,9 @@ packages.
 Public package archives contain the runtime source, package README, custom client
 guide, and license. Fixtures, examples, tests, and generators are excluded.
 
-The checked-in Rust and TypeScript manifests block direct publication from the
-monorepo. Use the release scripts with `--check` to build and inspect the
-registry archives without publishing them:
-
-- `bash scripts/publish-rust.sh --check`
-- `bash scripts/publish-typescript.sh --check`
-- `bash scripts/publish-python.sh --check`
-
-Release automation must pass the protected downstream gate before it uses the
-same scripts with `--publish`. TypeScript and Python publish the exact audited
-archives. Cargo rebuilds the Rust upload from the same isolated audited source.
+The checked-in Rust and TypeScript manifests block direct publication from this
+repository. Package release tooling is intentionally maintained outside this
+repository.
 
 The initial implementation was imported from
 `Longshot-Labs/longshot-sdk@a3f049b20ad7c83bd60aa69b366f4016495900ff`.
