@@ -392,6 +392,10 @@ impl BroadcastRfqRequest {
 
     /// Builds the fixed-size market-maker transport from already validated
     /// request parts.
+    /// Server-side producer used by the Longshot RFQ engine to encode a
+    /// broadcast frame. External market makers decode frames with
+    /// [`BroadcastRfqRequest::from_bytes`] and never need to build one.
+    #[doc(hidden)]
     pub fn from_parts(
         request_id: [u8; 16],
         wager_micros: u64,

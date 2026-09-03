@@ -55,13 +55,16 @@ import {
   toSerdeValue,
   ClientMessage,
   type ConfirmPositionQuery,
+  type QueuedWithdrawalResponse,
   type MarketLookupQuery,
   type PositionSummary,
   type ProfitCapConfigResponse,
   type PublicMarket,
   type RecentResolutionEntry,
+  type UserAvailableBalanceResponse,
   type UserTransactionsRawQuery,
   type UserTransactionsResponse,
+  type UserWithdrawalStateResponse,
 } from "../src/index.js";
 import { OrderLeg, signOrder, signedOrder } from "../src/taker.js";
 
@@ -113,6 +116,52 @@ test("user transactions preserve wire amounts and query strictness", () => {
   );
   assert.throws(
     () => decodeApiJson('{"limit":25,"unexpected":true}', "UserTransactionsRawQuery"),
+    SerdeDecodeError,
+  );
+});
+
+test("withdrawal lifecycle DTOs decode server policy, queue, and history metadata", () => {
+  const balance = decodeApiJson<UserAvailableBalanceResponse>(
+    '{"available_micros":"9007199254740993","pending_custodial_deposit_micros":"0","credited_custodial_deposit_micros":"0","deposit_withdrawal_min_micros":"1000000","withdrawal_max_micros":"10000000000"}',
+    "UserAvailableBalanceResponse",
+  );
+  assert.equal(balance.available_micros, "9007199254740993");
+  assert.equal(balance.withdrawal_max_micros, "10000000000");
+
+  const state = decodeApiJson<UserWithdrawalStateResponse>(
+    '{"withdrawals_available":true,"hold_trigger_amount_micros":"1000000","hold_threshold_micros":"50000000000","hold_window_ms":86400000,"hold_duration_ms":600000,"active_withdrawals":[{"operation_id":"00112233-4455-6677-8899-aabbccddeeff","amount_micros":"10000000000","destination_address":"0x0000000000000000000000000000000000000001","withdrawal_stage":"onchain_queued","created_at_ms":1700000000000,"available_at_ms":1700000600000,"submission_tx_hash":"0xqueue"}]}',
+    "UserWithdrawalStateResponse",
+  );
+  assert.equal(state.hold_threshold_micros, "50000000000");
+  assert.equal(state.active_withdrawals[0]?.withdrawal_stage, "onchain_queued");
+  assert.equal(state.active_withdrawals[0]?.submission_tx_hash, "0xqueue");
+
+  const queued = decodeApiJson<QueuedWithdrawalResponse>(
+    '{"amount_micros":"10000000000","operation_id":"00112233-4455-6677-8899-aabbccddeeff","destination_address":"0x0000000000000000000000000000000000000001","delivery_status":"queued","withdrawal_stage":"onchain_queued","available_at_ms":1700000600000,"submission_tx_hash":"0xqueue"}',
+    "QueuedWithdrawalResponse",
+  );
+  assert.equal(queued.delivery_status, "queued");
+  assert.equal(queued.submission_tx_hash, "0xqueue");
+
+  const history = decodeApiJson<UserTransactionsResponse>(
+    '{"items":[{"id":"withdrawal","category":"withdrawal","title":"Withdrawal","status":"pending","occurred_at_ms":1700000000000,"amount_micros":"-10000000000","unit":"usdc","withdrawal_stage":"onchain_queued","available_at_ms":1700000600000,"submission_tx_hash":"0xqueue"}],"next_cursor":null}',
+    "UserTransactionsResponse",
+  );
+  assert.equal(history.items[0]?.withdrawal_stage, "onchain_queued");
+  assert.equal(history.items[0]?.tx_hash, undefined);
+
+  assert.throws(
+    () => decodeApiJson(
+      '{"withdrawals_available":true,"hold_trigger_amount_micros":"1","hold_threshold_micros":"50000000000","hold_window_ms":86400000,"hold_duration_ms":600000,"active_withdrawals":[{"operation_id":"00112233-4455-6677-8899-aabbccddeeff","amount_micros":"1","withdrawal_stage":"delivered","created_at_ms":1700000000000}]}',
+      "UserWithdrawalStateResponse",
+    ),
+    SerdeDecodeError,
+  );
+  assert.throws(
+    () => decodeApiJson(
+      '{"available_micros":"1","pending_custodial_deposit_micros":"0","credited_custodial_deposit_micros":"0","deposit_withdrawal_min_micros":"1000000"}',
+      "UserAvailableBalanceResponse",
+    ),
     SerdeDecodeError,
   );
 });

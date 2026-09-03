@@ -1,9 +1,10 @@
 """Generated Rust serde runtime metadata. Do not edit by hand."""
 
-# 115 integer fields; 34 tagged-union payload fields.
+# 127 integer fields; 34 tagged-union payload fields.
 STRUCT_INTEGER_FIELDS = {
     "ActivePosition": "#u64:app_token_wager_micros,payout_micros,wager_micros",
-    "BalanceOperationStatusResponse": "#u64:amount_micros",
+    "ActiveWithdrawalResponse": "#u64:amount_micros;i64:available_at_ms,created_at_ms",
+    "BalanceOperationStatusResponse": "#u64:amount_micros;i64:available_at_ms",
     "EventMarket": "i32:display_probability_bps;u64:betting_closes_at_ms,created_at_ms,live_ends_at_ms,opened_at_ms,opens_at_ms,resolution_time_ms,resolved_at_ms,source_starts_at_ms",
     "FeeScheduleResponse": "u32:bonding_spot_fee_bps,parlay_fee_bps,shield_fee_multiplier,spot_fee_bps",
     "LegDetail": "i16:leg_index;i32:duration_secs;i64:window_start_ms;u64:market_id,resolution_time_ms",
@@ -26,7 +27,7 @@ STRUCT_INTEGER_FIELDS = {
     "PublicMarketsRawQuery": "u32:limit",
     "PublicReferralDepositMatchOffer": "#i64:match_limit_micros;i64:duration_ms",
     "PublicReferralInviterResponse": "i32:avatar_seed",
-    "QueuedWithdrawalResponse": "#u64:amount_micros",
+    "QueuedWithdrawalResponse": "#u64:amount_micros;i64:available_at_ms",
     "RecentResolutionEntry": "i64:resolved_at_ms,window_start_ms;u64:market_id",
     "RecentResolutionsQuery": "u32:duration_secs,limit",
     "RecentResolutionsResponse": "u32:duration_secs",
@@ -38,14 +39,15 @@ STRUCT_INTEGER_FIELDS = {
     "SignedOrderJson": "u8:order_type;~u64:expires_at_ms,nonce,wager_micros",
     "TierFeeRate": "u32:parlay_fee_bps",
     "UnsignedRfqOrderRequest": "u64:wager_micros;u8:order_type",
-    "UserAvailableBalanceResponse": "#u64:available_micros,credited_custodial_deposit_micros,deposit_withdrawal_min_micros,pending_custodial_deposit_micros",
+    "UserAvailableBalanceResponse": "#u64:available_micros,credited_custodial_deposit_micros,deposit_withdrawal_min_micros,pending_custodial_deposit_micros,withdrawal_max_micros",
     "UserDepositRequest": "u64:amount_micros",
     "UserDepositResponse": "#u64:amount_micros",
     "UserDepositWalletResponse": "i64:chain_id;u8:token_decimals",
-    "UserTransactionResponse": "#i64:amount_micros;i64:expires_at_ms,occurred_at_ms",
+    "UserTransactionResponse": "#i64:amount_micros;i64:available_at_ms,expires_at_ms,occurred_at_ms",
     "UserTransactionsRawQuery": "u32:limit",
     "UserWithdrawParams": "u64:amount_micros",
-    "UserWithdrawResponse": "#u64:amount_micros",
+    "UserWithdrawResponse": "#u64:amount_micros;i64:available_at_ms",
+    "UserWithdrawalStateResponse": "#u64:hold_threshold_micros,hold_trigger_amount_micros;i64:hold_duration_ms,hold_window_ms",
     "WalletAuthRequest": "u64:signed_at_ms",
 }
 
@@ -53,6 +55,7 @@ STRUCT_REQUIRED_FIELDS = {
     "AccessResponse": "position_opening_allowed",
     "ActivePosition": "legs,payout_micros,position_id,role,status,wager_micros",
     "ActivePositionsResponse": "positions",
+    "ActiveWithdrawalResponse": "amount_micros,created_at_ms,operation_id,withdrawal_stage",
     "BalanceOperationStatusResponse": "amount_micros,operation_id,status",
     "CancelResponse": "cancelled,message,request_id",
     "CheckHandleQuery": "handle",
@@ -90,7 +93,7 @@ STRUCT_REQUIRED_FIELDS = {
     "PublicReferralCodeResponse": "status",
     "PublicReferralDepositMatchOffer": "duration_ms,match_limit_micros",
     "PublicReferralInviterResponse": "avatar_seed,display_name",
-    "QueuedWithdrawalResponse": "amount_micros,delivery_status,operation_id",
+    "QueuedWithdrawalResponse": "amount_micros,available_at_ms,delivery_status,operation_id,submission_tx_hash,withdrawal_stage",
     "RecentResolutionEntry": "market_id,outcome,resolved_at_ms,window_start_ms",
     "RecentResolutionsQuery": "asset,duration_secs",
     "RecentResolutionsResponse": "asset,duration_secs,resolutions",
@@ -102,7 +105,7 @@ STRUCT_REQUIRED_FIELDS = {
     "SignedOrderJson": "expires_at_ms,legs,min_odds,nonce,shield_on,signature,user,wager_micros",
     "TierFeeRate": "parlay_fee_bps,tier",
     "UnsignedRfqOrderRequest": "idempotency_key,legs,min_odds,shield_on,wager_micros",
-    "UserAvailableBalanceResponse": "available_micros,credited_custodial_deposit_micros,deposit_withdrawal_min_micros,pending_custodial_deposit_micros",
+    "UserAvailableBalanceResponse": "available_micros,credited_custodial_deposit_micros,deposit_withdrawal_min_micros,pending_custodial_deposit_micros,withdrawal_max_micros",
     "UserDepositRequest": "amount_micros,idempotency_key",
     "UserDepositResponse": "amount_micros,operation_id,tx_hash",
     "UserDepositWalletResponse": "address,chain_id,token_decimals,token_symbol",
@@ -111,6 +114,7 @@ STRUCT_REQUIRED_FIELDS = {
     "UserWithdrawParams": "amount_micros,idempotency_key",
     "UserWithdrawRequest": "authorization,withdraw_params",
     "UserWithdrawResponse": "amount_micros,operation_id,tx_hash",
+    "UserWithdrawalStateResponse": "active_withdrawals,hold_duration_ms,hold_threshold_micros,hold_trigger_amount_micros,hold_window_ms,withdrawals_available",
     "WalletAuthRequest": "address,signature,signed_at_ms",
 }
 

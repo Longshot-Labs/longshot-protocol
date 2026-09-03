@@ -504,12 +504,22 @@ class UserDepositWalletResponse(LongshotModel):
     token_decimals: int
     def __init__(self, *, address: str, chain_id: int, token_symbol: str, token_decimals: int) -> None: ...
 
+class WithdrawalStage(RustStringEnum):
+    Processing = 'processing'
+    Held = 'held'
+    OnchainQueued = 'onchain_queued'
+    Completed = 'completed'
+    Failed = 'failed'
+
 class UserWithdrawResponse(LongshotModel):
     amount_micros: int
     operation_id: UUID
     destination_address: Optional[str]
     tx_hash: str
-    def __init__(self, *, amount_micros: int, operation_id: UUID, destination_address: Optional[str] = ..., tx_hash: str) -> None: ...
+    withdrawal_stage: Optional[WithdrawalStage]
+    available_at_ms: Optional[int]
+    submission_tx_hash: Optional[str]
+    def __init__(self, *, amount_micros: int, operation_id: UUID, destination_address: Optional[str] = ..., tx_hash: str, withdrawal_stage: Optional[WithdrawalStage] = ..., available_at_ms: Optional[int] = ..., submission_tx_hash: Optional[str] = ...) -> None: ...
 
 class BalanceOperationStatus(RustStringEnum):
     Pending = 'pending'
@@ -522,7 +532,11 @@ class BalanceOperationStatusResponse(LongshotModel):
     operation_id: UUID
     status: BalanceOperationStatus
     wallet_address: Optional[str]
-    def __init__(self, *, amount_micros: int, operation_id: UUID, status: BalanceOperationStatus, wallet_address: Optional[str] = ...) -> None: ...
+    withdrawal_stage: Optional[WithdrawalStage]
+    available_at_ms: Optional[int]
+    submission_tx_hash: Optional[str]
+    tx_hash: Optional[str]
+    def __init__(self, *, amount_micros: int, operation_id: UUID, status: BalanceOperationStatus, wallet_address: Optional[str] = ..., withdrawal_stage: Optional[WithdrawalStage] = ..., available_at_ms: Optional[int] = ..., submission_tx_hash: Optional[str] = ..., tx_hash: Optional[str] = ...) -> None: ...
 
 class DepositOperationResponse(RustTaggedUnion):
     @classmethod
@@ -585,7 +599,10 @@ class UserTransactionResponse(LongshotModel):
     expires_at_ms: Optional[int]
     reason: Optional[str]
     reference: Optional[str]
-    def __init__(self, *, id: str, category: UserTransactionCategory, title: str, detail: Optional[str] = ..., status: UserTransactionStatus, occurred_at_ms: int, amount_micros: int, unit: UserTransactionUnit, funding: Optional[UserTransactionFunding] = ..., network: Optional[str] = ..., wallet_address: Optional[str] = ..., tx_hash: Optional[str] = ..., source: Optional[str] = ..., expires_at_ms: Optional[int] = ..., reason: Optional[str] = ..., reference: Optional[str] = ...) -> None: ...
+    withdrawal_stage: Optional[WithdrawalStage]
+    available_at_ms: Optional[int]
+    submission_tx_hash: Optional[str]
+    def __init__(self, *, id: str, category: UserTransactionCategory, title: str, detail: Optional[str] = ..., status: UserTransactionStatus, occurred_at_ms: int, amount_micros: int, unit: UserTransactionUnit, funding: Optional[UserTransactionFunding] = ..., network: Optional[str] = ..., wallet_address: Optional[str] = ..., tx_hash: Optional[str] = ..., source: Optional[str] = ..., expires_at_ms: Optional[int] = ..., reason: Optional[str] = ..., reference: Optional[str] = ..., withdrawal_stage: Optional[WithdrawalStage] = ..., available_at_ms: Optional[int] = ..., submission_tx_hash: Optional[str] = ...) -> None: ...
 
 class UserTransactionsResponse(LongshotModel):
     items: List[UserTransactionResponse]
@@ -663,7 +680,8 @@ class UserAvailableBalanceResponse(LongshotModel):
     pending_custodial_deposit_micros: int
     credited_custodial_deposit_micros: int
     deposit_withdrawal_min_micros: int
-    def __init__(self, *, available_micros: int, pending_custodial_deposit_micros: int, credited_custodial_deposit_micros: int, deposit_withdrawal_min_micros: int) -> None: ...
+    withdrawal_max_micros: int
+    def __init__(self, *, available_micros: int, pending_custodial_deposit_micros: int, credited_custodial_deposit_micros: int, deposit_withdrawal_min_micros: int, withdrawal_max_micros: int) -> None: ...
 
 class WithdrawalDeliveryStatus(RustStringEnum):
     Queued = 'queued'
@@ -673,7 +691,29 @@ class QueuedWithdrawalResponse(LongshotModel):
     operation_id: UUID
     destination_address: Optional[str]
     delivery_status: WithdrawalDeliveryStatus
-    def __init__(self, *, amount_micros: int, operation_id: UUID, destination_address: Optional[str] = ..., delivery_status: WithdrawalDeliveryStatus) -> None: ...
+    withdrawal_stage: WithdrawalStage
+    available_at_ms: int
+    submission_tx_hash: str
+    def __init__(self, *, amount_micros: int, operation_id: UUID, destination_address: Optional[str] = ..., delivery_status: WithdrawalDeliveryStatus, withdrawal_stage: WithdrawalStage, available_at_ms: int, submission_tx_hash: str) -> None: ...
+
+class ActiveWithdrawalResponse(LongshotModel):
+    operation_id: UUID
+    amount_micros: int
+    destination_address: Optional[str]
+    withdrawal_stage: WithdrawalStage
+    created_at_ms: int
+    available_at_ms: Optional[int]
+    submission_tx_hash: Optional[str]
+    def __init__(self, *, operation_id: UUID, amount_micros: int, destination_address: Optional[str] = ..., withdrawal_stage: WithdrawalStage, created_at_ms: int, available_at_ms: Optional[int] = ..., submission_tx_hash: Optional[str] = ...) -> None: ...
+
+class UserWithdrawalStateResponse(LongshotModel):
+    withdrawals_available: bool
+    hold_trigger_amount_micros: int
+    hold_threshold_micros: int
+    hold_window_ms: int
+    hold_duration_ms: int
+    active_withdrawals: List[ActiveWithdrawalResponse]
+    def __init__(self, *, withdrawals_available: bool, hold_trigger_amount_micros: int, hold_threshold_micros: int, hold_window_ms: int, hold_duration_ms: int, active_withdrawals: List[ActiveWithdrawalResponse]) -> None: ...
 
 class AcceptedWithdrawOperationResponse(RustTaggedUnion):
     @classmethod
@@ -789,6 +829,7 @@ __all__ = [
     "CancelResponse",
     "UserDepositResponse",
     "UserDepositWalletResponse",
+    "WithdrawalStage",
     "UserWithdrawResponse",
     "BalanceOperationStatus",
     "BalanceOperationStatusResponse",
@@ -813,6 +854,8 @@ __all__ = [
     "UserAvailableBalanceResponse",
     "WithdrawalDeliveryStatus",
     "QueuedWithdrawalResponse",
+    "ActiveWithdrawalResponse",
+    "UserWithdrawalStateResponse",
     "AcceptedWithdrawOperationResponse",
     "PublicReferralStatusResponse",
     "PublicReferralInviterResponse",

@@ -183,10 +183,11 @@ locally clamping `max_fill`.
 1. Reuse the authenticated session's `auth_wallet_address` as the signing EOA.
 2. Call authenticated `GET /v1/user/available_balance`; choose exact
    `amount_micros` in the inclusive range
-   `deposit_withdrawal_min_micros <= amount_micros <= available_micros`, a
-   destination address, and a canonical UUID `idempotency_key`. Do not use the
-   schema example as the minimum. An omitted destination is the signing EOA;
-   include it in the signed message.
+   `deposit_withdrawal_min_micros <= amount_micros <= min(available_micros,
+   withdrawal_max_micros)`, a destination address, and a canonical UUID
+   `idempotency_key`. Both limits are server-authoritative; do not use schema
+   examples or hard-coded deployment values. An omitted destination is the
+   signing EOA; include it in the signed message.
 3. Obtain the same wallet-auth domain and settlement chain ID used by the server.
 4. Set a fresh `signed_at_ms` and build the exact message with
    `buildWalletWithdrawalAuthorizationMessage()` or
@@ -213,6 +214,17 @@ locally clamping `max_fill`.
 The domain, chain ID, addresses, amount, idempotency key, and timestamp are all
 signed. Do not modify the request after signing. A withdrawal signature is
 operation-specific and cannot be replaced with the wallet-login signature.
+
+A `200` response with `withdrawal_stage: "completed"` and `tx_hash` means a
+confirmed transaction delivered the funds. A `202` response may be
+`processing`, `held`, or `onchain_queued`; these stages retain the generic
+`pending` status. Refresh authenticated, `no-store`
+`GET /v1/user/withdrawal_state` for the caller's current availability, hold
+projection, and active lifecycle. A hold's `available_at_ms` is when submission
+may resume. A queued withdrawal's `available_at_ms` is only its earliest
+onchain eligibility time, not promised delivery. `submission_tx_hash` identifies
+the queue transaction; `tx_hash` remains absent until the confirmed delivery
+transaction. Exact idempotency replays preserve this durable lifecycle.
 
 ## Lossless JSON boundary
 

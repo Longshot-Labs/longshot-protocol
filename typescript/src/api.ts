@@ -507,7 +507,19 @@ export interface UserWithdrawResponse {
   operation_id: string;
   destination_address?: string | null;
   tx_hash: string;
+  withdrawal_stage?: WithdrawalStage | null;
+  available_at_ms?: WideInteger | null;
+  submission_tx_hash?: string | null;
 }
+
+export const WithdrawalStage = {
+  Processing: 'processing',
+  Held: 'held',
+  OnchainQueued: 'onchain_queued',
+  Completed: 'completed',
+  Failed: 'failed',
+} as const;
+export type WithdrawalStage = (typeof WithdrawalStage)[keyof typeof WithdrawalStage];
 
 export const BalanceOperationStatus = {
   Pending: 'pending',
@@ -522,6 +534,10 @@ export interface BalanceOperationStatusResponse {
   operation_id: string;
   status: BalanceOperationStatus;
   wallet_address?: string | null;
+  withdrawal_stage?: WithdrawalStage | null;
+  available_at_ms?: WideInteger | null;
+  submission_tx_hash?: string | null;
+  tx_hash?: string | null;
 }
 
 export type DepositOperationResponse = UserDepositResponse | BalanceOperationStatusResponse;
@@ -585,6 +601,9 @@ export interface UserTransactionResponse {
   expires_at_ms?: WideInteger | null;
   reason?: string | null;
   reference?: string | null;
+  withdrawal_stage?: WithdrawalStage | null;
+  available_at_ms?: WideInteger | null;
+  submission_tx_hash?: string | null;
 }
 
 export interface UserTransactionsResponse {
@@ -660,6 +679,7 @@ export interface UserAvailableBalanceResponse {
   pending_custodial_deposit_micros: string | number;
   credited_custodial_deposit_micros: string | number;
   deposit_withdrawal_min_micros: string | number;
+  withdrawal_max_micros: string | number;
 }
 
 export const WithdrawalDeliveryStatus = {
@@ -672,6 +692,28 @@ export interface QueuedWithdrawalResponse {
   operation_id: string;
   destination_address?: string | null;
   delivery_status: WithdrawalDeliveryStatus;
+  withdrawal_stage: WithdrawalStage;
+  available_at_ms: WideInteger;
+  submission_tx_hash: string;
+}
+
+export interface ActiveWithdrawalResponse {
+  operation_id: string;
+  amount_micros: string | number;
+  destination_address?: string | null;
+  withdrawal_stage: WithdrawalStage;
+  created_at_ms: WideInteger;
+  available_at_ms?: WideInteger | null;
+  submission_tx_hash?: string | null;
+}
+
+export interface UserWithdrawalStateResponse {
+  withdrawals_available: boolean;
+  hold_trigger_amount_micros: string | number;
+  hold_threshold_micros: string | number;
+  hold_window_ms: WideInteger;
+  hold_duration_ms: WideInteger;
+  active_withdrawals: ActiveWithdrawalResponse[];
 }
 
 export type AcceptedWithdrawOperationResponse = QueuedWithdrawalResponse | BalanceOperationStatusResponse;

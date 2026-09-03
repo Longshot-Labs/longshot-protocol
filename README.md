@@ -1,8 +1,11 @@
 # Longshot Protocol
 
 Transport-neutral Longshot contracts and deterministic wire helpers for Rust,
-TypeScript, and Python. This directory is the source of truth for the language
-packages.
+TypeScript, and Python.
+
+This repository is a generated mirror of the `longshot-protocol/` directory in
+the Longshot monorepo. Changes are made upstream and exported here; edits made
+directly in this repository are overwritten by the next export.
 
 Public package archives contain the runtime source, package README, custom client
 guide, and license. Fixtures, examples, tests, and generators are excluded.

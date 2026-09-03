@@ -31,6 +31,7 @@ export const PUBLIC_OPENAPI_OPERATIONS = Object.freeze([
   "GET /v1/user/profile/check-handle",
   "GET /v1/user/reserved_balance",
   "GET /v1/user/transactions",
+  "GET /v1/user/withdrawal_state",
   "POST /v1/users/deposit",
   "GET /v1/users/deposit-wallet",
   "POST /v1/users/withdraw",
@@ -38,7 +39,7 @@ export const PUBLIC_OPENAPI_OPERATIONS = Object.freeze([
 
 export const PUBLIC_OPENAPI_COMPONENT_NAMES = Object.freeze({
   schemas: Object.freeze(words(`
-    AcceptedWithdrawOperationResponse AccessResponse ActivePosition ActivePositionStatus ActivePositionsResponse
+    AcceptedWithdrawOperationResponse AccessResponse ActivePosition ActivePositionStatus ActivePositionsResponse ActiveWithdrawalResponse
     BalanceOperationStatus BalanceOperationStatusResponse CancelResponse CheckHandleResponse CommunityPickMode
     CommunityPickRequest CreateRfqRequest CreateUnsignedRfqRequest DepositOperationResponse ErrorResponse
     EventMarket FeeScheduleResponse FeeScheduleTier LegDetail MarketId
@@ -54,7 +55,8 @@ export const PUBLIC_OPENAPI_COMPONENT_NAMES = Object.freeze({
     UnsignedRfqOrderRequest UpdatePreferencesRequest UpdateProfileRequest UserAvailableBalanceResponse UserDepositRequest
     UserDepositResponse UserDepositWalletResponse UserTransactionCategory UserTransactionFunding UserTransactionResponse
     UserTransactionStatus UserTransactionUnit UserTransactionsResponse UserWithdrawParams UserWithdrawRequest
-    UserWithdrawResponse WalletAuthRequest WithdrawOperationResponse WithdrawalAuthorization WithdrawalDeliveryStatus
+    UserWithdrawalStateResponse UserWithdrawResponse WalletAuthRequest WithdrawOperationResponse WithdrawalAuthorization
+    WithdrawalDeliveryStatus WithdrawalStage
   `)),
   securitySchemes: Object.freeze(["bearer_auth"]),
 });

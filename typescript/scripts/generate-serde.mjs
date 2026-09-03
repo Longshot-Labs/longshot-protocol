@@ -179,13 +179,13 @@ const PUBLIC_TYPESCRIPT_PACKAGE_FILES = new Set(["CUSTOM_CLIENTS.md", "dist/src"
 // Crates publish their complete Rust source. Lock the exact source tree so a
 // new method, free item, private field, comment, or file cannot enter the
 // external package without an explicit boundary review.
-const PUBLIC_RUST_SOURCE_SHA256 = "ab2d348a6f68f7d32887c94f9c88ba5066ba2e358a77150abdbc896fb02617e2";
-const PUBLIC_RUST_RELEASE_FILES_SHA256 = "2f1111f8f356370527a2d1dcdebe355964aae924fb67fcb405dffa2bb4f9c12b";
+const PUBLIC_RUST_SOURCE_SHA256 = "bc6ba8effbd99f961c506362b87bc543fb9ab59ada3a9881e1dfd67b8396d7c1";
+const PUBLIC_RUST_RELEASE_FILES_SHA256 = "9a86a4777c9ff0b453d0d123b70f4720f9ce3673c283224571e986ce1175af08";
 // These hashes cover normalized emitted declarations, not implementations or
 // formatting. Any published signature change therefore needs an explicit
 // boundary review, including a field added to an already approved DTO.
 const PUBLIC_TYPESCRIPT_DECLARATION_SHA256 = Object.freeze({
-  "api.ts": "a41696e45de27c93020ba590ec7fc817c7fe4062ba270551ed26386e80fd59d9",
+  "api.ts": "96cad496ae0641e6b4d0add9ca2f5e5831c41376785a259c896ef5e36e9837a2",
   "bytes.ts": "5405fdfcd96c23dc7a3f6a15c508dfd0cdcaa51c94ea1dca2bf2df3b130902c9",
   "mm.ts": "7ba066db6c59fa31db33fa2f7a0b4f1681db38055289cb2a06e1a6170afd9f61",
   "model.ts": "1340a51bb7996864d0d51eb68ca9c3c4e9665cc81b9f6d6c83df372e83d04226",
@@ -196,8 +196,8 @@ const PUBLIC_TYPESCRIPT_DECLARATION_SHA256 = Object.freeze({
   "uuid.ts": "2449a993c5d1f8d900ca56505f336cfde2f0375e35ea2e9a9c201eff030a8789",
   "ws.ts": "80285ca74375b17acefac833e5727b3888e455c6bea3c59edad772802d6331e8",
 });
-const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "0b83d1bf592083480af25405db262a07a367b929d2fa7b156e3a0e97decb2298";
-const PUBLIC_TYPESCRIPT_BUILD_CONFIG_SHA256 = "cd6766d48a980fdf89d310958503628e16429584a25224b2a3dda6898facfa74";
+const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "59e66aabbcdd4571d86c2fd1d7c2c460efc41e230a1f77af5429a9124af762a8";
+const PUBLIC_TYPESCRIPT_BUILD_CONFIG_SHA256 = "c0e38372142046682e2d1840ec563efbd5d9bbaf5db8a4278eafdda6d3352117";
 let emittedTypeScriptPackageOutputs;
 
 const publicRustTypeNames = new Set();

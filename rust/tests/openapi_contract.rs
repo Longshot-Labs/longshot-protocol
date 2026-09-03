@@ -4,7 +4,7 @@ use longshot_protocol::api::{
     PositionDetailResponse, PositionSummary, ProfitCapConfigResponse, ProfitCapOverrideResponse,
     PublicReferralDepositMatchOffer, QueuedWithdrawalResponse, RfqEstimateResponse,
     UserAvailableBalanceResponse, UserTransactionCategory, UserTransactionResponse,
-    UserTransactionStatus, UserTransactionUnit, UserTransactionsResponse,
+    UserTransactionStatus, UserTransactionUnit, UserTransactionsResponse, WithdrawalStage,
 };
 use longshot_protocol::types::MarketType;
 use serde_json::Value;
@@ -80,6 +80,7 @@ fn wire_integer_openapi_fields_are_decimal_strings() {
         pending_custodial_deposit_micros: 2,
         credited_custodial_deposit_micros: 3,
         deposit_withdrawal_min_micros: 4,
+        withdrawal_max_micros: 10_000_000_000,
     };
     let wire = serde_json::to_value(balance).expect("balance should serialize");
     assert_eq!(wire["available_micros"], "9007199254740993");
@@ -89,6 +90,7 @@ fn wire_integer_openapi_fields_are_decimal_strings() {
         "pending_custodial_deposit_micros",
         "credited_custodial_deposit_micros",
         "deposit_withdrawal_min_micros",
+        "withdrawal_max_micros",
     ]);
     assert_string_properties::<QueuedWithdrawalResponse>(&["amount_micros"]);
     assert_string_properties::<PublicReferralDepositMatchOffer>(&["match_limit_micros"]);
@@ -154,6 +156,9 @@ fn user_transactions_preserve_wire_amounts_and_omit_optional_details() {
             expires_at_ms: None,
             reason: None,
             reference: None,
+            withdrawal_stage: Some(WithdrawalStage::Completed),
+            available_at_ms: None,
+            submission_tx_hash: None,
         }],
         next_cursor: None,
     })

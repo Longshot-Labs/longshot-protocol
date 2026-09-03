@@ -204,6 +204,9 @@ impl SignedOrder {
     /// - `bytes[49]`: shield_on (u8)
     /// - `bytes[50]`: leg_count (u8)
     /// - `bytes[51..]`: legs (9 bytes each)
+    /// Server-side replay identity. The Longshot API derives the replay key
+    /// from these bytes; clients only need [`SignedOrder::signing_bytes`].
+    #[doc(hidden)]
     pub fn try_replay_bytes(&self) -> Result<SmallVec<[u8; 128]>, SignedOrderError> {
         self.try_order_bytes(None)
     }
@@ -214,6 +217,7 @@ impl SignedOrder {
     /// [`try_replay_bytes`](Self::try_replay_bytes) when handling externally
     /// constructed or mutated orders.
     #[inline]
+    #[doc(hidden)]
     pub fn replay_bytes(&self) -> SmallVec<[u8; 128]> {
         self.try_replay_bytes().expect("invalid signed order")
     }

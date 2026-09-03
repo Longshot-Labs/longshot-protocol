@@ -574,13 +574,23 @@ class UserDepositWalletResponse(LongshotModel):
     token_symbol: Optional[str] = None
     token_decimals: Optional[int] = None
 
+class WithdrawalStage(RustStringEnum):
+    Processing = "processing"
+    Held = "held"
+    OnchainQueued = "onchain_queued"
+    Completed = "completed"
+    Failed = "failed"
+
 @dataclass
 class UserWithdrawResponse(LongshotModel):
-    __serde_skip_none__ = set(["destination_address"])
+    __serde_skip_none__ = set(["available_at_ms","destination_address","submission_tx_hash","withdrawal_stage"])
     amount_micros: Optional[int] = None
     operation_id: Optional[UUID] = None
     destination_address: Optional[str] = None
     tx_hash: Optional[str] = None
+    withdrawal_stage: Optional[WithdrawalStage] = None
+    available_at_ms: Optional[int] = None
+    submission_tx_hash: Optional[str] = None
 
 class BalanceOperationStatus(RustStringEnum):
     Pending = "pending"
@@ -590,11 +600,15 @@ class BalanceOperationStatus(RustStringEnum):
 
 @dataclass
 class BalanceOperationStatusResponse(LongshotModel):
-    __serde_skip_none__ = set(["wallet_address"])
+    __serde_skip_none__ = set(["available_at_ms","submission_tx_hash","tx_hash","wallet_address","withdrawal_stage"])
     amount_micros: Optional[int] = None
     operation_id: Optional[UUID] = None
     status: Optional[BalanceOperationStatus] = None
     wallet_address: Optional[str] = None
+    withdrawal_stage: Optional[WithdrawalStage] = None
+    available_at_ms: Optional[int] = None
+    submission_tx_hash: Optional[str] = None
+    tx_hash: Optional[str] = None
 
 class DepositOperationResponse(RustTaggedUnion):
     __serde_untagged__ = True
@@ -656,7 +670,7 @@ class UserTransactionFunding(RustStringEnum):
 
 @dataclass
 class UserTransactionResponse(LongshotModel):
-    __serde_skip_none__ = set(["detail","expires_at_ms","funding","network","reason","reference","source","tx_hash","wallet_address"])
+    __serde_skip_none__ = set(["available_at_ms","detail","expires_at_ms","funding","network","reason","reference","source","submission_tx_hash","tx_hash","wallet_address","withdrawal_stage"])
     id: Optional[str] = None
     category: Optional[UserTransactionCategory] = None
     title: Optional[str] = None
@@ -673,6 +687,9 @@ class UserTransactionResponse(LongshotModel):
     expires_at_ms: Optional[int] = None
     reason: Optional[str] = None
     reference: Optional[str] = None
+    withdrawal_stage: Optional[WithdrawalStage] = None
+    available_at_ms: Optional[int] = None
+    submission_tx_hash: Optional[str] = None
 
 @dataclass
 class UserTransactionsResponse(LongshotModel):
@@ -921,6 +938,7 @@ class UserAvailableBalanceResponse(LongshotModel):
     pending_custodial_deposit_micros: Optional[int] = None
     credited_custodial_deposit_micros: Optional[int] = None
     deposit_withdrawal_min_micros: Optional[int] = None
+    withdrawal_max_micros: Optional[int] = None
 
 class WithdrawalDeliveryStatus(RustStringEnum):
     Queued = "queued"
@@ -932,6 +950,29 @@ class QueuedWithdrawalResponse(LongshotModel):
     operation_id: Optional[UUID] = None
     destination_address: Optional[str] = None
     delivery_status: Optional[WithdrawalDeliveryStatus] = None
+    withdrawal_stage: Optional[WithdrawalStage] = None
+    available_at_ms: Optional[int] = None
+    submission_tx_hash: Optional[str] = None
+
+@dataclass
+class ActiveWithdrawalResponse(LongshotModel):
+    __serde_skip_none__ = set(["available_at_ms","destination_address","submission_tx_hash"])
+    operation_id: Optional[UUID] = None
+    amount_micros: Optional[int] = None
+    destination_address: Optional[str] = None
+    withdrawal_stage: Optional[WithdrawalStage] = None
+    created_at_ms: Optional[int] = None
+    available_at_ms: Optional[int] = None
+    submission_tx_hash: Optional[str] = None
+
+@dataclass
+class UserWithdrawalStateResponse(LongshotModel):
+    withdrawals_available: Optional[bool] = None
+    hold_trigger_amount_micros: Optional[int] = None
+    hold_threshold_micros: Optional[int] = None
+    hold_window_ms: Optional[int] = None
+    hold_duration_ms: Optional[int] = None
+    active_withdrawals: Optional[List[ActiveWithdrawalResponse]] = None
 
 class AcceptedWithdrawOperationResponse(RustTaggedUnion):
     __serde_untagged__ = True
@@ -1167,6 +1208,7 @@ __all__ = [
     "CancelResponse",
     "UserDepositResponse",
     "UserDepositWalletResponse",
+    "WithdrawalStage",
     "UserWithdrawResponse",
     "BalanceOperationStatus",
     "BalanceOperationStatusResponse",
@@ -1191,6 +1233,8 @@ __all__ = [
     "UserAvailableBalanceResponse",
     "WithdrawalDeliveryStatus",
     "QueuedWithdrawalResponse",
+    "ActiveWithdrawalResponse",
+    "UserWithdrawalStateResponse",
     "AcceptedWithdrawOperationResponse",
     "PublicReferralStatusResponse",
     "PublicReferralInviterResponse",

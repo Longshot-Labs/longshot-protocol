@@ -1496,6 +1496,7 @@ class ApiParityTests(unittest.TestCase):
                 "pending_custodial_deposit_micros": "0",
                 "credited_custodial_deposit_micros": "0",
                 "deposit_withdrawal_min_micros": "0",
+                "withdrawal_max_micros": "0",
             }
         )
         self.assertEqual(balance.available_micros, max_u64)
@@ -1507,6 +1508,7 @@ class ApiParityTests(unittest.TestCase):
                         "pending_custodial_deposit_micros": "0",
                         "credited_custodial_deposit_micros": "0",
                         "deposit_withdrawal_min_micros": "0",
+                        "withdrawal_max_micros": "0",
                     }
                 )
         for spec, minimum, maximum in (

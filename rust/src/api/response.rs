@@ -259,6 +259,13 @@ pub struct UserAvailableBalanceResponse {
         schema(value_type = String, format = "int64", example = "1000000")
     )]
     pub deposit_withdrawal_min_micros: u64,
+    /// Maximum amount accepted by a single user withdrawal request.
+    #[serde(with = "crate::api::wire_int::u64_string")]
+    #[cfg_attr(
+        feature = "openapi",
+        schema(value_type = String, format = "int64", example = "10000000000")
+    )]
+    pub withdrawal_max_micros: u64,
 }
 
 /// Response after successfully crediting a user deposit.
@@ -346,6 +353,32 @@ pub struct UserWithdrawResponse {
     /// `LongshotSettlement.protocolWithdraw()` call.
     #[cfg_attr(feature = "openapi", schema(example = "0xabc123"))]
     pub tx_hash: String,
+
+    /// User-facing withdrawal lifecycle stage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub withdrawal_stage: Option<WithdrawalStage>,
+
+    /// Earliest processing time for held or queued withdrawals.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub available_at_ms: Option<i64>,
+
+    /// Transaction that submitted a withdrawal to the onchain queue. The
+    /// delivery transaction remains `tx_hash`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub submission_tx_hash: Option<String>,
+}
+
+/// User-facing stage of a withdrawal. Generic operation and transaction
+/// statuses remain pending until confirmed delivery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum WithdrawalStage {
+    Processing,
+    Held,
+    OnchainQueued,
+    Completed,
+    Failed,
 }
 
 /// Durable status for a balance operation that may still be finalized by recovery.
@@ -383,6 +416,17 @@ pub struct BalanceOperationStatusResponse {
         schema(example = "0x742d35cC6634C0532925A3B844Bc9e7595F8B2A1")
     )]
     pub wallet_address: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub withdrawal_stage: Option<WithdrawalStage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub available_at_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub submission_tx_hash: Option<String>,
+    /// Confirmed delivery transaction. Absent while processing, held, or
+    /// queued onchain.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tx_hash: Option<String>,
 }
 
 /// Delivery status returned when a newly submitted withdrawal is queued onchain.
@@ -412,6 +456,44 @@ pub struct QueuedWithdrawalResponse {
     pub destination_address: Option<String>,
     /// Confirmed onchain delivery disposition for this submission attempt.
     pub delivery_status: WithdrawalDeliveryStatus,
+    pub withdrawal_stage: WithdrawalStage,
+    pub available_at_ms: i64,
+    pub submission_tx_hash: String,
+}
+
+/// One active withdrawal shown by the authenticated withdrawal-state endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct ActiveWithdrawalResponse {
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
+    pub operation_id: Uuid,
+    #[serde(with = "crate::api::wire_int::u64_string")]
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
+    pub amount_micros: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination_address: Option<String>,
+    pub withdrawal_stage: WithdrawalStage,
+    pub created_at_ms: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub available_at_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub submission_tx_hash: Option<String>,
+}
+
+/// Server-authoritative withdrawal policy and caller-specific active state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct UserWithdrawalStateResponse {
+    pub withdrawals_available: bool,
+    #[serde(with = "crate::api::wire_int::u64_string")]
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
+    pub hold_trigger_amount_micros: u64,
+    #[serde(with = "crate::api::wire_int::u64_string")]
+    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "int64"))]
+    pub hold_threshold_micros: u64,
+    pub hold_window_ms: i64,
+    pub hold_duration_ms: i64,
+    pub active_withdrawals: Vec<ActiveWithdrawalResponse>,
 }
 
 /// Response for a withdrawal accepted without immediate delivery.
@@ -539,6 +621,12 @@ pub struct UserTransactionResponse {
     pub reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reference: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub withdrawal_stage: Option<WithdrawalStage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub available_at_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub submission_tx_hash: Option<String>,
 }
 
 /// Paginated user transaction-history response.
