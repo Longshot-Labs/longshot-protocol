@@ -326,9 +326,6 @@ class UserWithdrawParams(LongshotModel):
 
 class WithdrawalAuthorization(RustTaggedUnion):
     @classmethod
-    def privy_token(cls, payload: Any=None, **fields: Any) -> WithdrawalAuthorization:
-        ...
-    @classmethod
     def wallet_signature(cls, payload: Any=None, **fields: Any) -> WithdrawalAuthorization:
         ...
 
@@ -380,33 +377,6 @@ class CreateRfqRequest(LongshotModel):
     @classmethod
     def from_signed_order(cls, order: SignedOrder, use_app_tokens: bool) -> CreateRfqRequest:
         ...
-
-class CommunityPickMode(RustStringEnum):
-    Tail = 'tail'
-    Fade = 'fade'
-
-class CommunityPickRequest(LongshotModel):
-    source_position_id: PositionId
-    mode: CommunityPickMode
-    def __init__(self, *, source_position_id: PositionId, mode: CommunityPickMode) -> None: ...
-
-class UnsignedRfqOrderRequest(LongshotModel):
-    wager_micros: int
-    min_odds: float
-    legs: List[OrderLegJson]
-    order_type: Optional[int]
-    shield_on: bool
-    idempotency_key: str
-    def __init__(self, *, wager_micros: int, min_odds: float, legs: List[OrderLegJson], order_type: Optional[int] = ..., shield_on: bool, idempotency_key: str) -> None: ...
-    def parse_idempotency_key(self: UnsignedRfqOrderRequest) -> UUID:
-        ...
-
-class CreateUnsignedRfqRequest(LongshotModel):
-    privy_token: str
-    use_app_tokens: bool
-    rfq_params: UnsignedRfqOrderRequest
-    community_pick: Optional[CommunityPickRequest]
-    def __init__(self, *, privy_token: str, use_app_tokens: bool, rfq_params: UnsignedRfqOrderRequest, community_pick: Optional[CommunityPickRequest] = ...) -> None: ...
 
 class ParsedOrderLeg(LongshotModel):
     market_id: Optional[MarketId]
@@ -815,10 +785,6 @@ __all__ = [
     "OrderLegJson",
     "SignedOrderJson",
     "CreateRfqRequest",
-    "CommunityPickMode",
-    "CommunityPickRequest",
-    "UnsignedRfqOrderRequest",
-    "CreateUnsignedRfqRequest",
     "ParsedOrderLeg",
     "OrderLegParseError",
     "RfqOrderJsonError",

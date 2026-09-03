@@ -1,6 +1,6 @@
 """Generated Rust serde runtime metadata. Do not edit by hand."""
 
-# 127 integer fields; 34 tagged-union payload fields.
+# 125 integer fields; 33 tagged-union payload fields.
 STRUCT_INTEGER_FIELDS = {
     "ActivePosition": "#u64:app_token_wager_micros,payout_micros,wager_micros",
     "ActiveWithdrawalResponse": "#u64:amount_micros;i64:available_at_ms,created_at_ms",
@@ -38,7 +38,6 @@ STRUCT_INTEGER_FIELDS = {
     "SessionResponse": "i64:deposit_chain_id;u64:expires_at",
     "SignedOrderJson": "u8:order_type;~u64:expires_at_ms,nonce,wager_micros",
     "TierFeeRate": "u32:parlay_fee_bps",
-    "UnsignedRfqOrderRequest": "u64:wager_micros;u8:order_type",
     "UserAvailableBalanceResponse": "#u64:available_micros,credited_custodial_deposit_micros,deposit_withdrawal_min_micros,pending_custodial_deposit_micros,withdrawal_max_micros",
     "UserDepositRequest": "u64:amount_micros",
     "UserDepositResponse": "#u64:amount_micros",
@@ -60,10 +59,8 @@ STRUCT_REQUIRED_FIELDS = {
     "CancelResponse": "cancelled,message,request_id",
     "CheckHandleQuery": "handle",
     "CheckHandleResponse": "available",
-    "CommunityPickRequest": "mode,source_position_id",
     "ConfirmPositionQuery": "accept,position_id",
     "CreateRfqRequest": "order,use_app_tokens",
-    "CreateUnsignedRfqRequest": "privy_token,rfq_params,use_app_tokens",
     "ErrorResponse": "code,error",
     "EventMarket": "betting_closes_at_ms,category_tags,created_at_ms,id,market_type,name,resolution_time_ms,status,tradeable,trading_channels",
     "FeeScheduleResponse": "bonding_spot_fee_bps,parlay_fee_bps,shield_fee_multiplier,spot_fee_bps,tiers,user_tier",
@@ -104,7 +101,6 @@ STRUCT_REQUIRED_FIELDS = {
     "SessionResponse": "address,auth_wallet_address,expires_at,session_token,user_id",
     "SignedOrderJson": "expires_at_ms,legs,min_odds,nonce,shield_on,signature,user,wager_micros",
     "TierFeeRate": "parlay_fee_bps,tier",
-    "UnsignedRfqOrderRequest": "idempotency_key,legs,min_odds,shield_on,wager_micros",
     "UserAvailableBalanceResponse": "available_micros,credited_custodial_deposit_micros,deposit_withdrawal_min_micros,pending_custodial_deposit_micros,withdrawal_max_micros",
     "UserDepositRequest": "amount_micros,idempotency_key",
     "UserDepositResponse": "amount_micros,operation_id,tx_hash",
@@ -128,7 +124,7 @@ TAGGED_UNION_FIELDS = {
     "ClientMessage": "Auth=;AuthResponse=signature:str,wallet_address:str;Pong=;Quote=data:str;Subscribe=protocol_version:u8,subscriptions:[]@RfqSubscription",
     "RfqSubscription": "All=;BinaryEvent=;PriceStrike=$@Asset",
     "ServerMessage": "AuthChallenge=challenge_id:str,timestamp_ms:u64;AuthResult=error:?str,session_token:?str,success:bool;Error=code:str,message:str;Ping=timestamp:u64;QuoteAck=accepted:bool,client_quote_id:?str,error:?str,quote_id:str,request_id:str;QuoteResult=client_quote_id:?str,fill_amount:?str,fill_odds:?u32,filled_at_ms:?u64,position_id:?str,quote_id:str,reason:?str,request_id:str,status:@QuoteResultStatus;RateLimit=retry_after_ms:u64;Rfq=data:str;Subscribed=protocol_version:u8",
-    "WithdrawalAuthorization": "PrivyToken=token:str;WalletSignature=signature:str,signed_at_ms:u64",
+    "WithdrawalAuthorization": "WalletSignature=signature:str,signed_at_ms:u64",
 }
 
 DENY_UNKNOWN_TAGGED_UNIONS = {

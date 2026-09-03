@@ -12,7 +12,6 @@ import type {
   ActivePosition,
   CheckHandleQuery,
   CreateRfqRequest,
-  CreateUnsignedRfqRequest,
   ProfitCapConfigResponse,
   RecentResolutionEntry,
   SignedOrderInput,
@@ -69,18 +68,10 @@ const withdrawParams: UserWithdrawParams = {
 
 const withdrawRequest: UserWithdrawRequest = {
   withdraw_params: withdrawParams,
-  authorization: { type: "privy_token", token: "privy-token" },
-};
-
-const unsignedRfqRequest: CreateUnsignedRfqRequest = {
-  privy_token: "privy-token",
-  use_app_tokens: true,
-  rfq_params: {
-    wager_micros: 1_000_000,
-    min_odds: 2.5,
-    legs: [{ market_id: 42, direction: "up" }],
-    shield_on: false,
-    idempotency_key: "550e8400-e29b-41d4-a716-446655440002",
+  authorization: {
+    type: "wallet_signature",
+    signature: "base64-signature",
+    signed_at_ms: 1_785_529_737_000,
   },
 };
 
@@ -119,7 +110,6 @@ test("public request and response DTOs compile", () => {
   assert.ok(checkHandleQuery);
   assert.ok(missingHandleQuery);
   assert.ok(withdrawRequest);
-  assert.ok(unsignedRfqRequest);
   assert.ok(signedRfqRequest);
   assert.equal(recentResolution.market_id, 42);
   assert.equal(profitCaps.overrides[0]?.market_type, "sports");

@@ -19,7 +19,6 @@ export const PUBLIC_OPENAPI_OPERATIONS = Object.freeze([
   "GET /v1/referrals/{code}",
   "POST /v1/rfq",
   "POST /v1/rfq/estimate",
-  "POST /v1/rfq/unsigned",
   "GET /v1/rfq/{id}",
   "POST /v1/rfq/{id}/cancel",
   "GET /v1/user/available_balance",
@@ -40,8 +39,8 @@ export const PUBLIC_OPENAPI_OPERATIONS = Object.freeze([
 export const PUBLIC_OPENAPI_COMPONENT_NAMES = Object.freeze({
   schemas: Object.freeze(words(`
     AcceptedWithdrawOperationResponse AccessResponse ActivePosition ActivePositionStatus ActivePositionsResponse ActiveWithdrawalResponse
-    BalanceOperationStatus BalanceOperationStatusResponse CancelResponse CheckHandleResponse CommunityPickMode
-    CommunityPickRequest CreateRfqRequest CreateUnsignedRfqRequest DepositOperationResponse ErrorResponse
+    BalanceOperationStatus BalanceOperationStatusResponse CancelResponse CheckHandleResponse
+    CreateRfqRequest DepositOperationResponse ErrorResponse
     EventMarket FeeScheduleResponse FeeScheduleTier LegDetail MarketId
     MarketLookupResponse MarketMetadataEntry MarketStatus MarketType MmRfqStatusResponse
     OrderLegJson Outcome PnlEventResponse PnlHistoryResponse PortfolioStatsResponse
@@ -52,7 +51,7 @@ export const PUBLIC_OPENAPI_COMPONENT_NAMES = Object.freeze({
     PublicReferralInviterResponse PublicReferralStatusResponse QueuedWithdrawalResponse QuoteTolerancePreference RecentResolutionEntry
     RecentResolutionsResponse ReservedBalanceResponse RfqEstimateRequest RfqEstimateResponse RfqResponse
     RfqStatus SessionResponse SignedOrderJson TierFeeRate TradingChannel
-    UnsignedRfqOrderRequest UpdatePreferencesRequest UpdateProfileRequest UserAvailableBalanceResponse UserDepositRequest
+    UpdatePreferencesRequest UpdateProfileRequest UserAvailableBalanceResponse UserDepositRequest
     UserDepositResponse UserDepositWalletResponse UserTransactionCategory UserTransactionFunding UserTransactionResponse
     UserTransactionStatus UserTransactionUnit UserTransactionsResponse UserWithdrawParams UserWithdrawRequest
     UserWithdrawalStateResponse UserWithdrawResponse WalletAuthRequest WithdrawOperationResponse WithdrawalAuthorization

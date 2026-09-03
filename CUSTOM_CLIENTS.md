@@ -107,30 +107,6 @@ signature. The signature covers the deterministic binary layout, not the JSON
 request body. The conversion helper performs the `min_odds_bps / 10_000`
 conversion and emits the padded Base64 signature.
 
-`community_pick` is not part of the signed-order bytes, so `POST /v1/rfq`
-does not accept it. Tail and Fade clients must send `CreateUnsignedRfqRequest`
-through `POST /v1/rfq/unsigned`. The community attribution is an optional
-nested field, not the top-level request:
-
-```json
-{
-  "privy_token": "<fresh-privy-identity-token>",
-  "use_app_tokens": false,
-  "rfq_params": {
-    "wager_micros": 1000000,
-    "min_odds": 2.5,
-    "legs": [{"market_id": 42, "direction": "up"}],
-    "order_type": 2,
-    "shield_on": false,
-    "idempotency_key": "550e8400-e29b-41d4-a716-446655440000"
-  },
-  "community_pick": {
-    "source_position_id": "550e8400-e29b-41d4-a716-446655440001",
-    "mode": "tail"
-  }
-}
-```
-
 The server additionally checks freshness, replay identity, signer/session
 identity, wager and odds bounds, account status, balance, market state, trading
 windows, and settlement availability. Local signature verification does not

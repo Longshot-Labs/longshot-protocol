@@ -156,7 +156,7 @@ PUBLIC_SUPPLEMENTAL_DEFINITION_INVENTORY = {
 # Wheels and sdists publish the package source and documentation verbatim. Lock
 # every approved package path and byte so comments, runtime effects, and package
 # data cannot enter the external artifact without a boundary review.
-PUBLIC_PYTHON_PACKAGE_SHA256 = "6eec678165a6e993a65b13793f9215353cba4b29fed8e42c7b19dbafd7fc62ac"
+PUBLIC_PYTHON_PACKAGE_SHA256 = "0a0ebd090d1cd021f2cf9371607ecac9d36272673038dc4535776a40314da4d1"
 PUBLIC_PYTHON_RELEASE_FILES_SHA256 = "75495bda0e504f4abb7bde8fad6d92f8f9e67030dd6587bbeb936a9c530fa064"
 
 PUBLIC_ROOT_SUPPLEMENTAL_EXPORTS = {

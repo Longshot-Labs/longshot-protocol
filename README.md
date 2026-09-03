@@ -1,34 +1,41 @@
 # Longshot Protocol
 
-Transport-neutral Longshot contracts and deterministic wire helpers for Rust,
-TypeScript, and Python.
+Types, serializers, and signing helpers for the [Longshot](https://longshot.xyz)
+API, published for Rust, TypeScript, and Python. The packages cover the
+public HTTP contracts, the market maker WebSocket messages, the fixed binary
+RFQ and quote layouts, and the EIP-191 signing rules for wallet sign in,
+signed orders, quotes, and withdrawal authorizations. They contain no HTTP or
+WebSocket client; bring your own.
 
-This repository is a generated mirror of the `longshot-protocol/` directory in
-the Longshot monorepo. Changes are made upstream and exported here; edits made
-directly in this repository are overwritten by the next export.
+| Language | Package | Install |
+| --- | --- | --- |
+| Rust | [`rust/`](rust) | `longshot-protocol = "0.2"` |
+| TypeScript | [`typescript/`](typescript) | `npm install longshot-protocol@0.2.0` |
+| Python | [`python/`](python) | `pip install longshot-protocol==0.2.0` |
 
-Public package archives contain the runtime source, package README, custom client
-guide, and license. Fixtures, examples, tests, and generators are excluded.
+## Documentation
 
-The checked-in Rust and TypeScript manifests block direct publication from this
-repository. Package release tooling is intentionally maintained outside this
-repository.
+- [API documentation](https://docs.longshot.xyz/api-reference): quickstart,
+  guides, and the full route reference.
+- [CUSTOM_CLIENTS.md](CUSTOM_CLIENTS.md): production origins, request shapes,
+  signing and encoding rules, and the market maker WebSocket flow. The same
+  file ships inside each package.
+- [Market maker quickstart](https://docs.longshot.xyz/protocol/market-maker-quickstart).
+  Market maker accounts are allowlisted by Longshot.
 
-The initial implementation was imported from
-`Longshot-Labs/longshot-sdk@a3f049b20ad7c83bd60aa69b366f4016495900ff`.
-Public API DTOs are synchronized with the public-pruned
-`fixtures/api/openapi.json`; the TypeScript serde generator rejects missing or
-drifted supported schemas and route-bound query DTOs that OpenAPI cannot name.
-Shared fixtures under
-`fixtures/protocol` continue to preserve binary and signing compatibility with
-the production-pinned SDK revision.
+## Repository layout
 
-Only supported external taker and market-maker contracts ship. Server and
-first-party contracts remain private. Tail and Fade attribution, signed taker
-orders, broadcast RFQs, quotes, and market-maker authentication remain public.
+- `rust/`, `typescript/`, `python/`: the three packages, each with its own
+  README and tests.
+- `fixtures/api/openapi.json`: the public OpenAPI document the packages are
+  generated against.
+- `fixtures/protocol/parity.json`: cross language signing and binary layout
+  test vectors.
 
-Network clients are intentionally out of scope.
+This repository is a generated export of the protocol sources in the Longshot
+monorepo. Pull requests are not accepted here; report problems through
+[ops@longshot.xyz](mailto:ops@longshot.xyz).
 
-See the [custom client protocol guide](CUSTOM_CLIENTS.md) for the supported JSON,
-signing, and binary-wire boundaries. Its TypeScript and Python examples are
-executed by the package test suites.
+## License
+
+See [LICENSE.txt](rust/LICENSE.txt).

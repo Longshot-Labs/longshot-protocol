@@ -367,14 +367,9 @@ class UserWithdrawParams(LongshotModel):
 class WithdrawalAuthorization(RustTaggedUnion):
     __serde_tag__ = "type"
     __serde_variants__ = {
-            "PrivyToken": "privy_token",
             "WalletSignature": "wallet_signature"
     }
     __repr_redacted_fields__ = {"token", "signature"}
-
-    @classmethod
-    def privy_token(cls, payload: Any = None, **fields: Any) -> WithdrawalAuthorization:
-        return cls("PrivyToken", payload, **fields)
 
     @classmethod
     def wallet_signature(cls, payload: Any = None, **fields: Any) -> WithdrawalAuthorization:
@@ -402,37 +397,10 @@ class SignedOrderJson(LongshotModel):
     shield_on: Optional[bool] = None
     signature: Optional[str] = None
 
-class CommunityPickMode(RustStringEnum):
-    Tail = "tail"
-    Fade = "fade"
-
-@dataclass
-class CommunityPickRequest(LongshotModel):
-    source_position_id: Optional[PositionId] = None
-    mode: Optional[CommunityPickMode] = None
-
 @dataclass
 class CreateRfqRequest(LongshotModel):
     order: Optional[SignedOrderJson] = None
     use_app_tokens: Optional[bool] = None
-
-@dataclass
-class UnsignedRfqOrderRequest(LongshotModel):
-    wager_micros: Optional[int] = None
-    min_odds: Optional[float] = None
-    legs: Optional[List[OrderLegJson]] = None
-    order_type: Optional[int] = None
-    shield_on: Optional[bool] = None
-    idempotency_key: Optional[str] = None
-
-@dataclass(repr=False)
-class CreateUnsignedRfqRequest(LongshotModel):
-    __serde_skip_none__ = set(["community_pick"])
-    __repr_redacted_fields__ = {"privy_token"}
-    privy_token: Optional[str] = None
-    use_app_tokens: Optional[bool] = None
-    rfq_params: Optional[UnsignedRfqOrderRequest] = None
-    community_pick: Optional[CommunityPickRequest] = None
 
 @dataclass
 class ParsedOrderLeg(LongshotModel):
@@ -835,9 +803,6 @@ def _create_rfq_request_from_signed_order(
         use_app_tokens=use_app_tokens,
     )
 
-def _unsigned_rfq_parse_idempotency_key(self: UnsignedRfqOrderRequest) -> UUID:
-    return UUID(str(self.idempotency_key).strip())
-
 def _canonical_u64(value: object, field: str) -> int:
     # Signed payloads must preserve exact integer inputs; int(value) would silently
     # turn booleans, floats, and numeric strings into a different order.
@@ -1042,7 +1007,6 @@ OrderLegJson.from_order_leg = classmethod(_order_leg_json_from_order_leg)
 SignedOrderJson.from_signed_order = classmethod(_signed_order_json_from_signed_order)
 SignedOrderJson.to_signed_order = _signed_order_json_to_signed_order
 CreateRfqRequest.from_signed_order = classmethod(_create_rfq_request_from_signed_order)
-UnsignedRfqOrderRequest.parse_idempotency_key = _unsigned_rfq_parse_idempotency_key
 ErrorResponse.new = classmethod(_error_response_new)
 ErrorResponse.with_details = _error_response_with_details
 
@@ -1063,7 +1027,6 @@ _DEFAULT_FIELDS = {
     "PositionSummary": {"app_token_wager_micros": 0},
     "RfqEstimateRequest": {"shield_on": False},
     "SignedOrderJson": {"order_type": 2},
-    "UnsignedRfqOrderRequest": {"order_type": 2},
 }
 
 for _class_name, _field_defaults in _DEFAULT_FIELDS.items():
@@ -1127,9 +1090,6 @@ _DENY_UNKNOWN_FIELDS = {
     "UserWithdrawParams",
     "UserWithdrawRequest",
     "CreateRfqRequest",
-    "CommunityPickRequest",
-    "UnsignedRfqOrderRequest",
-    "CreateUnsignedRfqRequest",
     "UserTransactionsRawQuery",
     "ConfirmPositionQuery",
 }
@@ -1194,10 +1154,6 @@ __all__ = [
     "OrderLegJson",
     "SignedOrderJson",
     "CreateRfqRequest",
-    "CommunityPickMode",
-    "CommunityPickRequest",
-    "UnsignedRfqOrderRequest",
-    "CreateUnsignedRfqRequest",
     "ParsedOrderLeg",
     "OrderLegParseError",
     "RfqOrderJsonError",

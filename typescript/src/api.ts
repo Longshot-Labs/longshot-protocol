@@ -324,9 +324,11 @@ export interface UserWithdrawParams {
   idempotency_key: string;
 }
 
-export type WithdrawalAuthorization =
-  | { type: "privy_token"; token: string }
-  | { type: "wallet_signature"; signature: string; signed_at_ms: WideInteger };
+export type WithdrawalAuthorization = {
+  type: "wallet_signature";
+  signature: string;
+  signed_at_ms: WideInteger;
+};
 
 export interface UserWithdrawRequest {
   withdraw_params: UserWithdrawParams;
@@ -400,32 +402,9 @@ export interface SignedOrderJson {
   signature: string;
 }
 
-export type CommunityPickMode = 'tail' | 'fade';
-
-export interface CommunityPickRequest {
-  source_position_id: PositionId;
-  mode: CommunityPickMode;
-}
-
 export interface CreateRfqRequest {
   order: SignedOrderJson;
   use_app_tokens: boolean;
-}
-
-export interface UnsignedRfqOrderRequest {
-  wager_micros: WideInteger;
-  min_odds: number;
-  legs: OrderLegJson[];
-  order_type?: number;
-  shield_on: boolean;
-  idempotency_key: string;
-}
-
-export interface CreateUnsignedRfqRequest {
-  privy_token: string;
-  use_app_tokens: boolean;
-  rfq_params: UnsignedRfqOrderRequest;
-  community_pick?: CommunityPickRequest | null;
 }
 
 export interface ParsedOrderLeg {
@@ -813,10 +792,6 @@ export function createRfqRequestFromSignedOrder(
     order: signedOrderJsonFromSignedOrder(order),
     use_app_tokens: useAppTokens,
   };
-}
-
-export function parseUnsignedRfqIdempotencyKey(request: UnsignedRfqOrderRequest): UuidId {
-  return UuidId.fromString(request.idempotency_key.trim());
 }
 
 function signedOrderFromJsonFields(fields: {

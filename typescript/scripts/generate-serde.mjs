@@ -50,13 +50,12 @@ const PUBLIC_TYPESCRIPT_API_HELPERS = new Set([
   "createRfqRequestFromSignedOrder",
   "orderLegJsonFromOrderLeg",
   "parseOrderLegJson",
-  "parseUnsignedRfqIdempotencyKey",
   "pnlHistoryScopedQueryToWire",
   "publicMarketsRawQueryToWire",
   "signedOrderJsonFromSignedOrder",
   "signedOrderJsonToSignedOrder",
 ]);
-const PUBLIC_TYPESCRIPT_TYPE_ONLY_STRING_ENUMS = new Set(["CommunityPickMode"]);
+const PUBLIC_TYPESCRIPT_TYPE_ONLY_STRING_ENUMS = new Set();
 const PUBLIC_TYPESCRIPT_TYPE_DECLARATIONS = Object.freeze({
   "bytes.ts": Object.freeze(["BytesLike"]),
   "index.ts": Object.freeze([]),
@@ -179,13 +178,13 @@ const PUBLIC_TYPESCRIPT_PACKAGE_FILES = new Set(["CUSTOM_CLIENTS.md", "dist/src"
 // Crates publish their complete Rust source. Lock the exact source tree so a
 // new method, free item, private field, comment, or file cannot enter the
 // external package without an explicit boundary review.
-const PUBLIC_RUST_SOURCE_SHA256 = "bc6ba8effbd99f961c506362b87bc543fb9ab59ada3a9881e1dfd67b8396d7c1";
-const PUBLIC_RUST_RELEASE_FILES_SHA256 = "9a86a4777c9ff0b453d0d123b70f4720f9ce3673c283224571e986ce1175af08";
+const PUBLIC_RUST_SOURCE_SHA256 = "3bd6a2abe0e096da454e8ffe49840fae6d996485b52dca840f5913448682d165";
+const PUBLIC_RUST_RELEASE_FILES_SHA256 = "751a0582b2e7e5baae2567a9061fa84c3717671768538a5d80814a26b566a626";
 // These hashes cover normalized emitted declarations, not implementations or
 // formatting. Any published signature change therefore needs an explicit
 // boundary review, including a field added to an already approved DTO.
 const PUBLIC_TYPESCRIPT_DECLARATION_SHA256 = Object.freeze({
-  "api.ts": "96cad496ae0641e6b4d0add9ca2f5e5831c41376785a259c896ef5e36e9837a2",
+  "api.ts": "b90b97747d9b74048a9feff524d347457f5320dd6687593e4be36737788a9b09",
   "bytes.ts": "5405fdfcd96c23dc7a3f6a15c508dfd0cdcaa51c94ea1dca2bf2df3b130902c9",
   "mm.ts": "7ba066db6c59fa31db33fa2f7a0b4f1681db38055289cb2a06e1a6170afd9f61",
   "model.ts": "1340a51bb7996864d0d51eb68ca9c3c4e9665cc81b9f6d6c83df372e83d04226",
@@ -196,8 +195,8 @@ const PUBLIC_TYPESCRIPT_DECLARATION_SHA256 = Object.freeze({
   "uuid.ts": "2449a993c5d1f8d900ca56505f336cfde2f0375e35ea2e9a9c201eff030a8789",
   "ws.ts": "80285ca74375b17acefac833e5727b3888e455c6bea3c59edad772802d6331e8",
 });
-const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "59e66aabbcdd4571d86c2fd1d7c2c460efc41e230a1f77af5429a9124af762a8";
-const PUBLIC_TYPESCRIPT_BUILD_CONFIG_SHA256 = "c0e38372142046682e2d1840ec563efbd5d9bbaf5db8a4278eafdda6d3352117";
+const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "f20292d12b58c0d13dec3e74637f115b6071abfafc7758fc428125bb22da2f87";
+const PUBLIC_TYPESCRIPT_BUILD_CONFIG_SHA256 = "0013dd176cdabbfbb38894394a0b432d7c54de12a7e6d01952261066c8f20f05";
 let emittedTypeScriptPackageOutputs;
 
 const publicRustTypeNames = new Set();
@@ -231,7 +230,7 @@ validateApiDeclarations(
 );
 validateSupplementalTypeScriptInventory();
 validateTypeScriptBuildConfig();
-if (schemas.UnsignedRfqOrderRequest[1].order_type[2] !== "d2")
+if (schemas.SignedOrderJson[1].order_type[2] !== "d2")
   throw new Error("default_order_type must decode to 2");
 const openApiDocument = JSON.parse(readFileSync(OPENAPI_PATH, "utf8"));
 validateCurrentOpenApi(openApiDocument, protocolNames);

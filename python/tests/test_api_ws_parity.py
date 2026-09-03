@@ -838,8 +838,7 @@ class ApiParityTests(unittest.TestCase):
         secret = "identity-token-that-must-not-be-logged"
         values = [
             api.WalletAuthRequest(signature=secret),
-            api.CreateUnsignedRfqRequest(privy_token=secret),
-            api.WithdrawalAuthorization.privy_token(token=secret),
+            api.WithdrawalAuthorization.wallet_signature(signature=secret),
         ]
 
         for value in values:
@@ -1349,16 +1348,6 @@ class ApiParityTests(unittest.TestCase):
                     "signature": b64encode(bytes(65)).decode("ascii"),
                 },
             ),
-            (
-                api.UnsignedRfqOrderRequest,
-                {
-                    "wager_micros": 100_000_000,
-                    "min_odds": 2.5,
-                    "legs": [{"market_id": "0", "direction": "up"}],
-                    "shield_on": False,
-                    "idempotency_key": "00112233-4455-6677-8899-aabbccddeeff",
-                },
-            ),
         ]:
             with self.subTest(payload_type=payload_type):
                 with self.assertRaisesRegex(ValueError, "expected <class 'int'>"):
@@ -1383,41 +1372,30 @@ class ApiParityTests(unittest.TestCase):
         self.assertEqual(position.to_dict(), raw)
 
     def test_api_from_dict_hydrates_nested_rfq_request_and_rejects_unknowns(self) -> None:
-        payload = {
-            "privy_token": "token",
-            "use_app_tokens": True,
-            "rfq_params": {
-                "wager_micros": 100_000_000,
-                "min_odds": 2.5,
-                "legs": [{"market_id": 42, "direction": "up"}],
-                "shield_on": False,
-                "idempotency_key": "00112233-4455-6677-8899-aabbccddeeff",
-            },
+        order = {
+            "user": "0x1111111111111111111111111111111111111111",
+            "wager_micros": 100_000_000,
+            "min_odds": 2.5,
+            "legs": [{"market_id": 42, "direction": "up"}],
+            "nonce": 123,
+            "expires_at_ms": 456,
+            "shield_on": False,
+            "signature": b64encode(bytes(65)).decode("ascii"),
         }
-        request = api.CreateUnsignedRfqRequest.from_dict(payload)
+        payload = {"order": order, "use_app_tokens": True}
+        request = api.CreateRfqRequest.from_dict(payload)
 
-        self.assertIsInstance(request.rfq_params, api.UnsignedRfqOrderRequest)
-        self.assertIsInstance(request.rfq_params.legs[0], api.OrderLegJson)
+        self.assertIsInstance(request.order, api.SignedOrderJson)
+        self.assertIsInstance(request.order.legs[0], api.OrderLegJson)
         for invalid_market_id in (True, -1, 1 << 64):
-            payload["rfq_params"]["legs"][0]["market_id"] = invalid_market_id
+            payload["order"]["legs"][0]["market_id"] = invalid_market_id
             with self.subTest(market_id=invalid_market_id):
                 with self.assertRaises(ValueError):
-                    api.CreateUnsignedRfqRequest.from_dict(payload)
-        payload["rfq_params"]["legs"][0]["market_id"] = 42
+                    api.CreateRfqRequest.from_dict(payload)
+        payload["order"]["legs"][0]["market_id"] = 42
         with self.assertRaisesRegex(ValueError, "unexpected"):
-            api.CreateUnsignedRfqRequest.from_dict(
-                {
-                    "privy_token": "token",
-                    "use_app_tokens": True,
-                    "rfq_params": {
-                        "wager_micros": 100_000_000,
-                        "min_odds": 2.5,
-                        "legs": [{"market_id": 42, "direction": "up"}],
-                        "shield_on": False,
-                        "idempotency_key": "00112233-4455-6677-8899-aabbccddeeff",
-                        "unexpected": True,
-                    },
-                }
+            api.CreateRfqRequest.from_dict(
+                {"order": order, "use_app_tokens": True, "unexpected": True}
             )
 
     def test_serde_coercion_enforces_primitive_and_container_shapes(self) -> None:
@@ -1748,18 +1726,7 @@ class ApiParityTests(unittest.TestCase):
                 "signature": b64encode(bytes(65)).decode("ascii"),
             }
         )
-        unsigned = api.UnsignedRfqOrderRequest.from_dict(
-            {
-                "wager_micros": 100_000_000,
-                "min_odds": 2.5,
-                "legs": [{"market_id": 42, "direction": "up"}],
-                "shield_on": False,
-                "idempotency_key": "00112233-4455-6677-8899-aabbccddeeff",
-            }
-        )
-
         self.assertEqual(signed.order_type, 2)
-        self.assertEqual(unsigned.order_type, 2)
         event_market_wire = {
             "id": 42,
             "market_type": "culture",
@@ -1839,24 +1806,6 @@ class ApiParityTests(unittest.TestCase):
             "destination_address": None,
             "idempotency_key": "00112233-4455-6677-8899-aabbccddeeff",
         }
-
-        privy = api.UserWithdrawRequest.from_dict(
-            {
-                "withdraw_params": withdraw_params,
-                "authorization": {"type": "privy_token", "token": "token"},
-            }
-        )
-        self.assertEqual(privy.authorization.variant, "PrivyToken")
-        self.assertEqual(privy.authorization.payload, {"token": "token"})
-        self.assertIsInstance(privy.withdraw_params, api.UserWithdrawParams)
-        self.assertEqual(privy.withdraw_params.to_dict(), withdraw_params)
-        self.assertEqual(
-            privy.to_dict(),
-            {
-                "withdraw_params": withdraw_params,
-                "authorization": {"type": "privy_token", "token": "token"},
-            },
-        )
 
         wallet_authorized = api.UserWithdrawRequest.from_dict(
             {

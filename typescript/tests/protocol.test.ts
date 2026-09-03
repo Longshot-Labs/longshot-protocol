@@ -45,7 +45,6 @@ import {
   encodeBase64NoPad,
   parseOrderLegJson,
   parseAuthChallengeId,
-  parseUnsignedRfqIdempotencyKey,
   encodeQuoteResponse,
   quoteResponseMessage,
   signAuthResponse,
@@ -908,29 +907,6 @@ test("signed order JSON parses back into signed order semantics", () => {
   assert.equal(bytesToHex(order.signature), "00".repeat(65));
 });
 
-test("unsigned RFQ request parses UUID", () => {
-  const request = {
-    wager_micros: 1_500_000,
-    min_odds: 1.75,
-    legs: [{ market_id: 7, direction: "down" }],
-    shield_on: false,
-    idempotency_key: " 00112233-4455-6677-8899-aabbccddeeff ",
-  };
-
-  const canonicalId = "00112233-4455-6677-8899-aabbccddeeff";
-  for (const idempotencyKey of [
-    ` ${canonicalId} `,
-    "00112233445566778899AABBCCDDEEFF",
-    "{00112233-4455-6677-8899-AABBCCDDEEFF}",
-    "urn:uuid:00112233-4455-6677-8899-AABBCCDDEEFF",
-  ]) {
-    assert.equal(
-      parseUnsignedRfqIdempotencyKey({ ...request, idempotency_key: idempotencyKey }).asUuid(),
-      canonicalId,
-    );
-  }
-});
-
 test("wallet withdrawal authorization message and signature encoding are canonical", () => {
   const authenticationMessage = buildWalletAuthenticationMessage(
     "longshot.xyz",
@@ -1064,34 +1040,6 @@ test("RFQ JSON helpers reject invalid Rust parity cases", () => {
     assert.throws(
       () => signedOrderJsonToSignedOrder({ ...valid, shield_on: invalidShieldOn }),
       /shield_on must be bool/,
-    );
-  }
-  assert.throws(
-    () =>
-      parseUnsignedRfqIdempotencyKey({
-        wager_micros: 1,
-        min_odds: 2,
-        legs: [{ market_id: 1, direction: "up" }],
-        shield_on: false,
-        idempotency_key: "not-a-uuid",
-      }),
-    /invalid UUID/,
-  );
-  for (const idempotencyKey of [
-    "{00112233445566778899aabbccddeeff}",
-    "urn:uuid:00112233445566778899aabbccddeeff",
-    "URN:UUID:00112233-4455-6677-8899-aabbccddeeff",
-  ]) {
-    assert.throws(
-      () =>
-        parseUnsignedRfqIdempotencyKey({
-          wager_micros: 1,
-          min_odds: 2,
-          legs: [{ market_id: 1, direction: "up" }],
-          shield_on: false,
-          idempotency_key: idempotencyKey,
-        }),
-      /invalid UUID/,
     );
   }
 });

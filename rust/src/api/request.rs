@@ -6,7 +6,7 @@ use std::fmt;
 use uuid::Uuid;
 
 use crate::taker::{OrderLeg, SignedOrder, SignedOrderError};
-use crate::types::{Address, Direction, MarketId, Odds, OrderType, PositionId};
+use crate::types::{Address, Direction, MarketId, Odds, OrderType};
 
 /// Request to authenticate with direct wallet signature.
 #[derive(Serialize, Deserialize)]
@@ -117,11 +117,6 @@ pub struct UserWithdrawParams {
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum WithdrawalAuthorization {
-    /// Fresh Privy identity proof for a withdrawal.
-    PrivyToken {
-        /// Fresh Privy identity token for the authenticated user.
-        token: String,
-    },
     /// Fresh EIP-191 proof for a wallet-authenticated withdrawal.
     WalletSignature {
         /// EIP-191 signature over the canonical withdrawal authorization message.
@@ -134,10 +129,6 @@ pub enum WithdrawalAuthorization {
 impl fmt::Debug for WithdrawalAuthorization {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::PrivyToken { .. } => f
-                .debug_struct("PrivyToken")
-                .field("token", &"<redacted>")
-                .finish(),
             Self::WalletSignature { signed_at_ms, .. } => f
                 .debug_struct("WalletSignature")
                 .field("signature", &"<redacted>")
@@ -284,34 +275,6 @@ pub struct SignedOrderJson {
     pub signature: String,
 }
 
-/// How a community position is copied.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum CommunityPickMode {
-    Tail,
-    Fade,
-}
-
-impl CommunityPickMode {
-    pub const fn to_u8(self) -> u8 {
-        match self {
-            Self::Tail => 0,
-            Self::Fade => 1,
-        }
-    }
-}
-
-/// Optional community-position attribution for an RFQ.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct CommunityPickRequest {
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid"))]
-    pub source_position_id: PositionId,
-    pub mode: CommunityPickMode,
-}
-
 /// Request to create an RFQ.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -322,87 +285,6 @@ pub struct CreateRfqRequest {
 
     /// If true, spend eligible app tokens before cash.
     pub use_app_tokens: bool,
-}
-
-/// Unsigned RFQ order parameters supplied with the authenticated identity proof.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "wager_micros": 100000000,
-    "min_odds": 2.5,
-    "legs": [{"market_id": 42, "direction": "up"}],
-    "order_type": 2,
-    "shield_on": false,
-    "idempotency_key": "550e8400-e29b-41d4-a716-446655440000"
-})))]
-#[serde(deny_unknown_fields)]
-pub struct UnsignedRfqOrderRequest {
-    /// Wager in micros (e.g., 100000000 = $100.00).
-    #[cfg_attr(feature = "openapi", schema(example = 100000000, minimum = 500000))]
-    pub wager_micros: u64,
-
-    /// Minimum acceptable odds (e.g., 2.5 = 2.5x).
-    #[cfg_attr(feature = "openapi", schema(example = 2.5))]
-    pub min_odds: f64,
-
-    /// Order legs (1-9 legs supported).
-    #[cfg_attr(feature = "openapi", schema(min_items = 1, max_items = 9))]
-    pub legs: Vec<OrderLegJson>,
-
-    /// Order type: 1=IOC (Immediate-or-Cancel), 2=FOK (Fill-or-Kill, default).
-    #[serde(default = "default_order_type")]
-    #[cfg_attr(feature = "openapi", schema(example = 2, minimum = 1, maximum = 2))]
-    pub order_type: u8,
-
-    /// If true, suppress user tier and EVM address in MM-facing RFQs.
-    #[cfg_attr(feature = "openapi", schema(example = false))]
-    pub shield_on: bool,
-
-    /// Client-supplied idempotency key for replay-safe submission.
-    #[cfg_attr(feature = "openapi", schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000"))]
-    pub idempotency_key: String,
-}
-
-/// Session-authenticated RFQ request that does not require a wallet signature.
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[cfg_attr(feature = "openapi", schema(example = json!({
-    "privy_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "use_app_tokens": true,
-    "rfq_params": {
-        "wager_micros": 100000000,
-        "min_odds": 2.5,
-        "legs": [{"market_id": 42, "direction": "up"}],
-        "order_type": 2,
-        "shield_on": false,
-        "idempotency_key": "550e8400-e29b-41d4-a716-446655440000"
-    }
-})))]
-#[serde(deny_unknown_fields)]
-pub struct CreateUnsignedRfqRequest {
-    /// Fresh Privy identity token for the authenticated user.
-    pub privy_token: String,
-
-    /// If true, spend eligible app tokens before cash.
-    pub use_app_tokens: bool,
-
-    /// Exact unsigned RFQ parameters to create.
-    pub rfq_params: UnsignedRfqOrderRequest,
-
-    /// Community position being tailed or faded.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub community_pick: Option<CommunityPickRequest>,
-}
-
-impl fmt::Debug for CreateUnsignedRfqRequest {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CreateUnsignedRfqRequest")
-            .field("privy_token", &"<redacted>")
-            .field("use_app_tokens", &self.use_app_tokens)
-            .field("rfq_params", &self.rfq_params)
-            .field("community_pick", &self.community_pick)
-            .finish()
-    }
 }
 
 /// Parsed leg values with validated enums.
@@ -617,13 +499,6 @@ impl CreateRfqRequest {
     }
 }
 
-impl UnsignedRfqOrderRequest {
-    pub fn parse_idempotency_key(&self) -> Result<Uuid, RfqOrderJsonError> {
-        Uuid::parse_str(self.idempotency_key.trim())
-            .map_err(|_| RfqOrderJsonError::InvalidIdempotencyKey)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -693,26 +568,6 @@ mod tests {
                 signed_at_ms: 1_785_529_737_000,
             }
         );
-
-        let request = serde_json::from_value::<UserWithdrawRequest>(serde_json::json!({
-            "withdraw_params": {
-                "amount_micros": 1_000_000,
-                "destination_address": "0xde709f2102306220921060314715629080e2fb77",
-                "idempotency_key": "550e8400-e29b-41d4-a716-446655440000"
-            },
-            "authorization": {
-                "type": "privy_token",
-                "token": "privy-token"
-            }
-        }))
-        .unwrap();
-
-        assert_eq!(
-            request.authorization,
-            WithdrawalAuthorization::PrivyToken {
-                token: "privy-token".to_string(),
-            }
-        );
     }
 
     #[test]
@@ -725,31 +580,12 @@ mod tests {
             signed_at_ms: 1,
             referral_code: None,
         };
-        let withdrawal = WithdrawalAuthorization::PrivyToken {
-            token: SECRET.to_string(),
-        };
-        let unsigned_rfq = CreateUnsignedRfqRequest {
-            privy_token: SECRET.to_string(),
-            use_app_tokens: false,
-            rfq_params: UnsignedRfqOrderRequest {
-                wager_micros: 1_000_000,
-                min_odds: 2.0,
-                legs: vec![OrderLegJson {
-                    market_id: 42,
-                    direction: "up".to_string(),
-                }],
-                order_type: 2,
-                shield_on: false,
-                idempotency_key: "550e8400-e29b-41d4-a716-446655440000".to_string(),
-            },
-            community_pick: None,
+        let withdrawal = WithdrawalAuthorization::WalletSignature {
+            signature: SECRET.to_string(),
+            signed_at_ms: 1,
         };
 
-        for debug in [
-            format!("{wallet_auth:?}"),
-            format!("{withdrawal:?}"),
-            format!("{unsigned_rfq:?}"),
-        ] {
+        for debug in [format!("{wallet_auth:?}"), format!("{withdrawal:?}")] {
             assert!(!debug.contains(SECRET));
             assert!(debug.contains("<redacted>"));
         }
