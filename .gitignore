@@ -1,0 +1,14 @@
+.DS_Store
+
+/target/
+/rust/target/
+
+/typescript/dist/
+/typescript/node_modules/
+
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+*.egg-info/

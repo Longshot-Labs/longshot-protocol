@@ -1,0 +1,4 @@
+Copyright (c) Longshot Labs. All rights reserved.
+
+This software is proprietary. No license is granted except under a separate
+written agreement with Longshot Labs.

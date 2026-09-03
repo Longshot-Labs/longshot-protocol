@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "longshot-protocol"
+version = "0.2.0"
+description = "Transport-neutral Python contracts and wire helpers for Longshot"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE.txt"]
+dependencies = [
+    "eth-account>=0.13.7,<0.14",
+    "eth-utils>=5.3.1,<6",
+]
+
+[project.optional-dependencies]
+test = ["mypy==1.19.1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+longshot_protocol = ["py.typed", "*.pyi", "*.md"]
