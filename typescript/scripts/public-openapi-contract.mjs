@@ -66,7 +66,7 @@ export const PUBLIC_PROTOCOL_SUPPLEMENTAL_SCHEMAS = Object.freeze(words(`
   Amount Asset CheckHandleQuery ClientMessage ConfirmPositionQuery Direction Duration
   HandleAvailabilityQuery MarketCurrentQuery MarketLookupQuery Odds OrderType PnlHistoryQuery
   PnlHistoryScopedQuery PositionsByMarketsQuery PositionsQuery PublicMarketsRawQuery QuoteResultStatus
-  RecentResolutionsQuery RfqSubscription ServerMessage Timestamp UserTier UserTransactionsRawQuery
+  RecentResolutionsQuery RfqSubscription ServerMessage Timestamp UserTransactionsRawQuery
 `));
 
 // Public Rust types that intentionally do not implement Serde. Every Serde

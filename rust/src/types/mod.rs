@@ -14,8 +14,7 @@ pub mod rfq;
 pub use ids::{ClientQuoteId, ContestId, MarketId, PositionId, QuoteId, RequestId, UserId};
 pub use market::{MarketStatus, MarketType, Outcome, TradingChannel};
 pub use primitives::{
-    Amount, Asset, Direction, Duration, MathError, Odds, OrderType, Timestamp, UserTier,
-    MIN_BET_MICROS,
+    Amount, Asset, Direction, Duration, MathError, Odds, OrderType, Timestamp, MIN_BET_MICROS,
 };
 pub use rfq::{
     BroadcastRfqRequest, QuoteResponse, RfqLeg, RfqLegType, RfqLegWire, RfqLegWireDecodeError,

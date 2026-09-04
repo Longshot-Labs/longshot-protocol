@@ -78,7 +78,7 @@ const PUBLIC_TYPESCRIPT_TYPE_DECLARATIONS = Object.freeze({
     "Address", "Amount", "ArithmeticError", "Asset", "ClientQuoteId",
     "ContestId", "Direction", "Duration", "MarketId", "MarketStatus", "MarketType",
     "MathError", "Odds", "OrderType", "Outcome", "PositionId",
-    "QuoteId", "RequestId", "Timestamp", "TradingChannel", "UserId", "UserTier",
+    "QuoteId", "RequestId", "Timestamp", "TradingChannel", "UserId",
     "UuidId", "WideInteger",
   ]),
   "uuid.ts": Object.freeze([]),
@@ -127,7 +127,7 @@ const PUBLIC_TYPESCRIPT_MODULE_EXPORTS = Object.freeze({
     "ContestId", "Direction", "Duration", "MIN_BET_MICROS", "MarketId",
     "MarketStatus", "MarketType", "MathError", "Odds", "OrderType",
     "Outcome", "PositionId", "QuoteId", "RequestId", "Timestamp", "TradingChannel",
-    "U64_MAX", "UserId", "UserTier", "UuidId", "WideInteger",
+    "U64_MAX", "UserId", "UuidId", "WideInteger",
     "marketStatusCanTransitionTo", "marketStatusIsTerminal", "marketStatusIsTradeable",
     "marketStatusIsVisible",
     "outcomeOpposite", "u64SerdeValue",
@@ -154,7 +154,7 @@ const PUBLIC_TYPESCRIPT_RUNTIME_TYPE_EXPORTS = Object.freeze({
     "Address", "Amount", "ArithmeticError", "Asset", "ClientQuoteId",
     "ContestId", "Direction", "Duration", "MarketId", "MarketStatus", "MarketType",
     "MathError", "Odds", "OrderType", "Outcome", "PositionId",
-    "QuoteId", "RequestId", "Timestamp", "TradingChannel", "UserId", "UserTier", "UuidId",
+    "QuoteId", "RequestId", "Timestamp", "TradingChannel", "UserId", "UuidId",
   ]),
   "uuid.ts": new Set(),
   "ws.ts": new Set([
@@ -178,7 +178,7 @@ const PUBLIC_TYPESCRIPT_PACKAGE_FILES = new Set(["CUSTOM_CLIENTS.md", "dist/src"
 // Crates publish their complete Rust source. Lock the exact source tree so a
 // new method, free item, private field, comment, or file cannot enter the
 // external package without an explicit boundary review.
-const PUBLIC_RUST_SOURCE_SHA256 = "1e49bbbd6945a1ded774ccb1a52b12f759ebaa77503374056760a08f7baeeca4";
+const PUBLIC_RUST_SOURCE_SHA256 = "d483c98362d2922d11104ce5df65fe8c86aee15a1e867ee64cb195a028a5b60f";
 const PUBLIC_RUST_RELEASE_FILES_SHA256 = "751a0582b2e7e5baae2567a9061fa84c3717671768538a5d80814a26b566a626";
 // These hashes cover normalized emitted declarations, not implementations or
 // formatting. Any published signature change therefore needs an explicit
@@ -188,14 +188,14 @@ const PUBLIC_TYPESCRIPT_DECLARATION_SHA256 = Object.freeze({
   "bytes.ts": "5405fdfcd96c23dc7a3f6a15c508dfd0cdcaa51c94ea1dca2bf2df3b130902c9",
   "mm.ts": "7ba066db6c59fa31db33fa2f7a0b4f1681db38055289cb2a06e1a6170afd9f61",
   "model.ts": "1340a51bb7996864d0d51eb68ca9c3c4e9665cc81b9f6d6c83df372e83d04226",
-  "rfq.ts": "ef31805a7527f17fcad61bdc226b81c6039241b9956b2bc492a4d0df03b05d9f",
+  "rfq.ts": "0672ee86f1d5387e96907299c8230663e821c96749c8f0f24d259d8a01c80e73",
   "serde.ts": "3bca99d83f0c767755c9c2bfe2e71cdce4d9e71e82c15d4a410b872957f8bb6a",
   "taker.ts": "b63f2e777459d9b9dd6d7fefa90afb1d0fe8e764cdeec8e86aa65cf503757724",
-  "types.ts": "e12da0cfef3e4758e98b46b5622c284622f0ecf4c6538158f08a8a399ccc0762",
+  "types.ts": "6e42e700aabc7f502ffcb3aac93d5a37462186ababde4fd173c73dddee798809",
   "uuid.ts": "2449a993c5d1f8d900ca56505f336cfde2f0375e35ea2e9a9c201eff030a8789",
   "ws.ts": "80285ca74375b17acefac833e5727b3888e455c6bea3c59edad772802d6331e8",
 });
-const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "4ae9b248d5e5f615562a0bd22902e591259b26b1ae0c5871ae25f1f1485b0a75";
+const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "6ae7c1dd1a51fcd3fa01a709b542c30a69c64d7587481301b4e27211b0c3b0a3";
 const PUBLIC_TYPESCRIPT_BUILD_CONFIG_SHA256 = "1440214460af047c899777b112d8a5bcd9b7a7ea8218aec88e6a2de67c50b293";
 let emittedTypeScriptPackageOutputs;
 

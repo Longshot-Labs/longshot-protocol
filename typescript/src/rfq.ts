@@ -23,7 +23,6 @@ import {
   OrderType,
   RequestId,
   Timestamp,
-  UserTier,
 } from "./types.js";
 
 /** Maximum RFQ legs supported by the current protocol. */
@@ -324,15 +323,15 @@ export class RfqLegWire {
 }
 
 export class TakerMetadata {
-  readonly tier: UserTier | number;
+  readonly tier: number;
   readonly address: Address;
 
-  constructor(tier: UserTier | number, address: Address | string | BytesLike) {
+  constructor(tier: number, address: Address | string | BytesLike) {
     this.tier = checkU8(tier, "tier");
     this.address = Address.fromEvm(address);
   }
 
-  static new(tier: UserTier | number, address: Address | string | BytesLike): TakerMetadata {
+  static new(tier: number, address: Address | string | BytesLike): TakerMetadata {
     return new TakerMetadata(tier, address);
   }
 
@@ -533,12 +532,6 @@ export class BroadcastRfqRequest {
 
   getTakerMetadata(): TakerMetadata | undefined {
     return this.takerMetadata;
-  }
-
-  takerTier(): UserTier | undefined {
-    return this.takerMetadata === undefined
-      ? undefined
-      : UserTier.fromU8(Number(this.takerMetadata.tier));
   }
 
   takerAddress(): Address | undefined {

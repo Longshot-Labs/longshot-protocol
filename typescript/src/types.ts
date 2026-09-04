@@ -685,33 +685,6 @@ export namespace OrderType {
   }
 }
 
-export enum UserTier {
-  Standard = 0,
-  Silver = 1,
-  Gold = 2,
-  Platinum = 3,
-  VIP = 4,
-}
-
-export namespace UserTier {
-  export function fromU8(value: number): UserTier | undefined {
-    switch (checkU8(value, "user_tier")) {
-      case 0:
-        return UserTier.Standard;
-      case 1:
-        return UserTier.Silver;
-      case 2:
-        return UserTier.Gold;
-      case 3:
-        return UserTier.Platinum;
-      case 4:
-        return UserTier.VIP;
-      default:
-        return undefined;
-    }
-  }
-}
-
 function uuidToBytes(uuid: string): Uint8Array {
   return bytesFrom(uuid.replaceAll("-", ""), 16, "uuid id");
 }

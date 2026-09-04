@@ -1,7 +1,7 @@
 //! Public primitive types shared by the API, clients, and market-maker wire paths.
 //!
 //! Use these types to express assets, directions, market windows, odds,
-//! amounts, timestamps, order types, and user tiers in protocol units.
+//! amounts, timestamps, and order types in protocol units.
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -654,51 +654,6 @@ impl fmt::Display for OrderType {
     }
 }
 
-// =============================================================================
-// USER TIER
-// =============================================================================
-
-/// User tier used by RFQ pricing, throttling, and API/session responses.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
-)]
-#[repr(u8)]
-pub enum UserTier {
-    #[default]
-    Standard = 0,
-    Silver = 1,
-    Gold = 2,
-    Platinum = 3,
-    VIP = 4,
-}
-
-impl UserTier {
-    /// Convert from the RFQ/API numeric representation.
-    #[inline]
-    pub const fn from_u8(v: u8) -> Option<Self> {
-        match v {
-            0 => Some(Self::Standard),
-            1 => Some(Self::Silver),
-            2 => Some(Self::Gold),
-            3 => Some(Self::Platinum),
-            4 => Some(Self::VIP),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for UserTier {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            UserTier::Standard => write!(f, "Standard"),
-            UserTier::Silver => write!(f, "Silver"),
-            UserTier::Gold => write!(f, "Gold"),
-            UserTier::Platinum => write!(f, "Platinum"),
-            UserTier::VIP => write!(f, "VIP"),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -892,15 +847,6 @@ mod tests {
     }
 
     #[test]
-    fn test_user_tier_ordering() {
-        assert!(UserTier::Standard < UserTier::Silver);
-        assert!(UserTier::Silver < UserTier::Gold);
-        assert!(UserTier::Gold < UserTier::Platinum);
-        assert!(UserTier::Platinum < UserTier::VIP);
-        assert_eq!(UserTier::default(), UserTier::Standard);
-    }
-
-    #[test]
     fn test_direction_helpers() {
         assert_eq!(Direction::Up.opposite(), Direction::Down);
         assert_eq!(Direction::Down.opposite(), Direction::Up);
@@ -927,7 +873,5 @@ mod tests {
         assert_eq!(format!("{}", Timestamp::from_millis(1000)), "1000ms");
         assert_eq!(format!("{}", OrderType::IOC), "IOC");
         assert_eq!(format!("{}", OrderType::FOK), "FOK");
-        assert_eq!(format!("{}", UserTier::VIP), "VIP");
-        assert_eq!(format!("{}", UserTier::Standard), "Standard");
     }
 }

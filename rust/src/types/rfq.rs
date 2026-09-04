@@ -3,7 +3,7 @@ use static_assertions::const_assert_eq;
 
 use super::{
     Address, Amount, Asset, ClientQuoteId, Direction, Duration, Odds, OrderType, RequestId,
-    Timestamp, UserTier,
+    Timestamp,
 };
 
 /// Maximum RFQ leg count encoded by the fixed-size market-maker wire protocol.
@@ -319,9 +319,9 @@ const_assert_eq!(std::mem::size_of::<TakerMetadata>(), 24);
 
 impl TakerMetadata {
     #[inline]
-    pub fn new(tier: UserTier, address: Address) -> Self {
+    pub fn new(tier: u8, address: Address) -> Self {
         Self {
-            tier: tier as u8,
+            tier,
             address,
             _reserved: [0; 3],
         }
@@ -331,7 +331,7 @@ impl TakerMetadata {
 impl Default for TakerMetadata {
     fn default() -> Self {
         Self {
-            tier: UserTier::Standard as u8,
+            tier: 0,
             address: Address::ZERO,
             _reserved: [0; 3],
         }
@@ -494,12 +494,6 @@ impl BroadcastRfqRequest {
     #[inline]
     pub fn get_taker_metadata(&self) -> Option<TakerMetadata> {
         decode_taker_metadata(self.taker_metadata)
-    }
-
-    #[inline]
-    pub fn taker_tier(&self) -> Option<UserTier> {
-        self.get_taker_metadata()
-            .and_then(|metadata| UserTier::from_u8(metadata.tier))
     }
 
     #[inline]
@@ -1003,7 +997,6 @@ mod tests {
         let parsed = BroadcastRfqRequest::from_bytes(&[0; BroadcastRfqRequest::SIZE]);
 
         assert!(parsed.get_taker_metadata().is_none());
-        assert!(parsed.taker_tier().is_none());
         assert!(parsed.taker_address().is_none());
     }
 

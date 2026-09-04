@@ -29,7 +29,6 @@ import {
   TakerMetadata,
   Timestamp,
   U64_MAX,
-  UserTier,
   authResponseMessage,
   buildAuthMessage,
   buildWalletAuthenticationMessage,
@@ -313,7 +312,6 @@ test("schema decoder accepts Rust unit enums with explicit discriminants", () =>
     ["Asset", ["BTC", "ETH", "SOL"]],
     ["Direction", ["Up", "Down"]],
     ["OrderType", ["IOC", "FOK"]],
-    ["UserTier", ["Standard", "Silver", "Gold", "Platinum", "VIP"]],
   ] as const;
   for (const [schema, values] of variants) {
     for (const value of values) {
@@ -392,7 +390,7 @@ test("RFQ leg builder rejects boolean enum inputs", () => {
 test("RFQ constructors reject coerced byte-sized enum inputs", () => {
   for (const invalid of [true, "1"]) {
     const direction = invalid as unknown as Direction;
-    const tier = invalid as unknown as UserTier;
+    const tier = invalid as unknown as number;
     const orderType = invalid as unknown as OrderType;
 
     assert.throws(
@@ -446,7 +444,7 @@ test("EVM address parsing accepts bare and prefixed hex like Rust", () => {
     expires_at_ms: 1735430300000,
     order_type: OrderType.FOK,
   });
-  const metadata = TakerMetadata.new(UserTier.Gold, bare);
+  const metadata = TakerMetadata.new(2, bare);
 
   assert.equal(order.user.toChecksum(), prefixed);
   assert.equal(metadata.address.toChecksum(), prefixed);
@@ -677,7 +675,7 @@ test("broadcast RFQ matches shared fixture", () => {
   assert.equal(decoded.activeLegWires().length, MAX_RFQ_LEGS);
   assert.deepEqual(decoded.leg(MAX_RFQ_LEGS - 1), legs[MAX_RFQ_LEGS - 1]);
   assert.equal(decoded.legWire(MAX_RFQ_LEGS), undefined);
-  assert.equal(decoded.takerTier(), UserTier.Gold);
+  assert.equal(decoded.getTakerMetadata()?.tier, row.taker_metadata.tier);
   assert.equal(decoded.takerAddress()?.hex(), row.taker_metadata.address);
 });
 

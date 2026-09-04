@@ -61,7 +61,6 @@ from .types import (
     Timestamp,
     TradingChannel,
     UserId,
-    UserTier,
 )
 from .ws import (
     ClientMessage,
@@ -115,7 +114,6 @@ __all__ = [
     "Timestamp",
     "TradingChannel",
     "UserId",
-    "UserTier",
     "auth_response_message",
     "build_auth_message",
     "decode_broadcast_rfq",

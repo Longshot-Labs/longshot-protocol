@@ -38,7 +38,6 @@ from longshot_protocol import (
     SignedOrderJson,
     Timestamp,
     TradingChannel,
-    UserTier,
 )
 import longshot_protocol
 from longshot_protocol import api, model, ws
@@ -1535,7 +1534,6 @@ class ApiParityTests(unittest.TestCase):
                     "amount": Amount.from_micro(1_000_000),
                     "odds": Odds(25_000),
                     "duration": Duration.FIVE_MINUTES,
-                    "tier": UserTier.Gold,
                 }
             ),
             {
@@ -1543,7 +1541,6 @@ class ApiParityTests(unittest.TestCase):
                 "amount": 1_000_000,
                 "odds": 25_000,
                 "duration": 300,
-                "tier": "Gold",
             },
         )
 

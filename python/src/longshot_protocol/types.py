@@ -632,21 +632,3 @@ class OrderType(IntEnum):
 
     def serde_value(self) -> str:
         return self.name
-
-
-class UserTier(IntEnum):
-    Standard = 0
-    Silver = 1
-    Gold = 2
-    Platinum = 3
-    VIP = 4
-
-    @classmethod
-    def from_u8(cls, value: int) -> Optional[UserTier]:
-        try:
-            return cls(_check_u8(value, "user_tier"))
-        except ValueError:
-            return None
-
-    def serde_value(self) -> str:
-        return self.name

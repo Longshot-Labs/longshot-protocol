@@ -20,7 +20,6 @@ from .types import (
     OrderType,
     RequestId,
     Timestamp,
-    UserTier,
     _check_u8,
     _check_u32,
     _check_u64,
@@ -371,11 +370,11 @@ def _leg_to_typed(leg: Union[RfqLeg, RfqLegWire]) -> RfqLeg:
 
 @dataclass(frozen=True)
 class TakerMetadata:
-    tier: Union[UserTier, int]
+    tier: int
     address: Union[Address, bytes]
 
     @classmethod
-    def new(cls, tier: Union[UserTier, int], address: Address) -> TakerMetadata:
+    def new(cls, tier: int, address: Address) -> TakerMetadata:
         return cls(tier=tier, address=address)
 
     def to_wire_bytes(self) -> bytes:
@@ -530,11 +529,6 @@ class BroadcastRfqRequest:
 
     def get_taker_metadata(self) -> Optional[TakerMetadata]:
         return self.taker_metadata
-
-    def taker_tier(self) -> Optional[UserTier]:
-        if self.taker_metadata is None:
-            return None
-        return UserTier.from_u8(int(self.taker_metadata.tier))
 
     def taker_address(self) -> Optional[Address]:
         if self.taker_metadata is None:

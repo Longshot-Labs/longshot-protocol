@@ -35,7 +35,6 @@ from longshot_protocol import (
     SignedOrderJson,
     TakerSignError,
     Timestamp,
-    UserTier,
     auth_response_message,
     build_auth_message,
     decode_broadcast_rfq,
@@ -401,7 +400,6 @@ class ProtocolFixtureTests(unittest.TestCase):
         self.assertEqual(decoded.leg(MAX_RFQ_LEGS - 1), legs[-1])
         self.assertIsNone(decoded.leg(MAX_RFQ_LEGS))
         self.assertEqual(decoded.taker_metadata.tier, case["taker_metadata"]["tier"])
-        self.assertEqual(decoded.taker_tier(), UserTier(case["taker_metadata"]["tier"]))
         self.assertEqual(
             decoded.taker_address(),
             Address.from_hex(case["taker_metadata"]["address"]),
