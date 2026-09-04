@@ -1,0 +1,4 @@
+/.github/CODEOWNERS @RyanSea @aidank1234
+/.github/workflows/ @RyanSea @aidank1234
+/SOURCE.json @RyanSea @aidank1234
+/scripts/ @RyanSea @aidank1234

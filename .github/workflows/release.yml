@@ -1,0 +1,129 @@
+name: Release Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_source_sha:
+        description: Exact Longshot source commit recorded in SOURCE.json
+        required: true
+        type: string
+      expected_version:
+        description: Exact common Rust, Python, and TypeScript version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: longshot-protocol-release
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Verify release readiness
+    runs-on: ubuntu-latest
+    environment: protocol-release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: downstream
+          persist-credentials: false
+
+      - name: Verify local export before reading credentials
+        run: python3 downstream/scripts/check-source-provenance.py downstream
+
+      - name: Require explicit release setup
+        env:
+          APP_ID: ${{ vars.LONGSHOT_PROTOCOL_READ_APP_ID }}
+          EXPECTED_SOURCE_SHA: ${{ inputs.expected_source_sha }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+          HAS_APP_PRIVATE_KEY: ${{ secrets.LONGSHOT_PROTOCOL_READ_APP_PRIVATE_KEY != '' }}
+          PROTOCOL_RELEASE_ENABLED: ${{ vars.PROTOCOL_RELEASE_ENABLED }}
+          PROTOCOL_RELEASE_ENVIRONMENT_CONFIGURED: ${{ vars.PROTOCOL_RELEASE_ENVIRONMENT_CONFIGURED }}
+        run: |
+          set -euo pipefail
+          test "$PROTOCOL_RELEASE_ENABLED" = "true"
+          test "$PROTOCOL_RELEASE_ENVIRONMENT_CONFIGURED" = "v1"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test -n "$APP_ID"
+          test "$HAS_APP_PRIVATE_KEY" = "true"
+          [[ "$EXPECTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]
+          recorded_source=$(python3 -c 'import json; print(json.load(open("downstream/SOURCE.json"))["source"]["commit"])')
+          test "$EXPECTED_SOURCE_SHA" = "$recorded_source"
+
+      - name: Create read-only repository token
+        id: read-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.LONGSHOT_PROTOCOL_READ_APP_ID }}
+          private-key: ${{ secrets.LONGSHOT_PROTOCOL_READ_APP_PRIVATE_KEY }}
+          owner: Longshot-Labs
+          repositories: |
+            longshot
+            longshot-protocol
+          permission-actions: read
+          permission-administration: read
+          permission-checks: read
+          permission-contents: read
+          permission-pull-requests: read
+
+      - name: Check out authoritative upstream main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Longshot-Labs/longshot
+          ref: main
+          path: upstream
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ steps.read-token.outputs.token }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: upstream/.nvmrc
+
+      - name: Verify the latest public-pruned OpenAPI fixture
+        run: node upstream/longshot-protocol/typescript/scripts/generate-public-openapi.mjs --check
+
+      - name: Reproduce the recorded export and render latest upstream twice
+        env:
+          RECORDED_SOURCE_SHA: ${{ inputs.expected_source_sha }}
+        run: |
+          set -euo pipefail
+          upstream_sha=$(git -C upstream rev-parse HEAD)
+          git -C upstream merge-base --is-ancestor "$RECORDED_SOURCE_SHA" "$upstream_sha"
+          recorded_root="$RUNNER_TEMP/recorded-upstream"
+          git -C upstream worktree add --detach "$recorded_root" "$RECORDED_SOURCE_SHA"
+          python3 "$recorded_root/scripts/protocol_sync/export_protocol.py" \
+            --repo "$recorded_root" self-check --source-sha "$RECORDED_SOURCE_SHA"
+          python3 "$recorded_root/scripts/protocol_sync/export_protocol.py" \
+            --repo "$recorded_root" export --source-sha "$RECORDED_SOURCE_SHA" \
+            --output "$RUNNER_TEMP/recorded-protocol-export"
+          python3 upstream/scripts/protocol_sync/export_protocol.py \
+            --repo upstream self-check --source-sha "$upstream_sha"
+          python3 upstream/scripts/protocol_sync/export_protocol.py \
+            --repo upstream export --source-sha "$upstream_sha" \
+            --output "$RUNNER_TEMP/latest-protocol-export"
+
+      - name: Verify protected release state
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.expected_source_sha }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+          LONGSHOT_PROTOCOL_SETTINGS_READ_TOKEN: ${{ steps.read-token.outputs.token }}
+          PROTOCOL_RELEASE_ENABLED: ${{ vars.PROTOCOL_RELEASE_ENABLED }}
+          PROTOCOL_RELEASE_ENVIRONMENT_CONFIGURED: ${{ vars.PROTOCOL_RELEASE_ENVIRONMENT_CONFIGURED }}
+        run: |
+          python3 downstream/scripts/check-release-gate.py \
+            --root "$GITHUB_WORKSPACE/downstream" \
+            --upstream-root "$GITHUB_WORKSPACE/upstream" \
+            --recorded-export "$RUNNER_TEMP/recorded-protocol-export" \
+            --latest-export "$RUNNER_TEMP/latest-protocol-export"
+
+      - name: Report readiness only
+        run: |
+          {
+            echo "### Release readiness verified"
+            echo
+            echo "No package was published. Registry publishing remains disabled until a separate reviewed workflow owns each registry credential."
+          } >> "$GITHUB_STEP_SUMMARY"

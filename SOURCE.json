@@ -1,0 +1,514 @@
+{
+  "exporter": {
+    "sha256": "3789547585b2a731fd88dd7b598fa5f17358d771767e80df6b2fa5df15b50f43"
+  },
+  "payload": {
+    "algorithm": "sha256",
+    "file_count": 99,
+    "files": [
+      {
+        "mode": "100644",
+        "path": ".editorconfig",
+        "sha256": "8f9f8a62981d067053b703cd6ac4b979a0b184700db63debbba9497c1515d2f4"
+      },
+      {
+        "mode": "100644",
+        "path": ".github/CODEOWNERS",
+        "sha256": "895731d9e635a30d925f3d5a03f59000a7c1e406f602c7b068f8a1ecaf6cf09a"
+      },
+      {
+        "mode": "100644",
+        "path": ".github/workflows/ci.yml",
+        "sha256": "49969c250bab0246b6a9545e88b65b0cfb04921ee2b105ac81de25ac208696d1"
+      },
+      {
+        "mode": "100644",
+        "path": ".github/workflows/release.yml",
+        "sha256": "c84ade19888a47e9e40053c2fed9ed422d6d282809da9932ee05d218bfa12c92"
+      },
+      {
+        "mode": "100644",
+        "path": ".gitignore",
+        "sha256": "1fec282b137b4c72dcb2dceb1c600c8cf6923809f575893c0c5f33b4e9e17e20"
+      },
+      {
+        "mode": "100644",
+        "path": ".nvmrc",
+        "sha256": "d5a9d97137b08fb28431448530eb19a1bf92585928dad37ed431c97fd94f2d87"
+      },
+      {
+        "mode": "100644",
+        "path": "CUSTOM_CLIENTS.md",
+        "sha256": "1dbc80b7e916a267c8a1fbcfc63db2efc39e34a7d80c0fd265c5a7f48c4eb9fa"
+      },
+      {
+        "mode": "100644",
+        "path": "Cargo.lock",
+        "sha256": "742a254ea51bc77785eb896d1f4f4db2826dd54871afb3315c3d74f0d86133f8"
+      },
+      {
+        "mode": "100644",
+        "path": "Cargo.toml",
+        "sha256": "4e68521cb77b121e52ca7ea36b97e04eb4be3e39cb7dfcd35ffdf25b58abc689"
+      },
+      {
+        "mode": "100644",
+        "path": "PROTOCOL_SYNC_SETUP.md",
+        "sha256": "1d7e99150bfb8d8434f3d3188ac347f8c33b6a5ad26852a6c741ddaecce8e8f0"
+      },
+      {
+        "mode": "100644",
+        "path": "README.md",
+        "sha256": "b16f04ff5b52d6d872286edc0ae76c23aa6c4bc7e0e5bf542d2106e6b214b9e2"
+      },
+      {
+        "mode": "100644",
+        "path": "fixtures/api/openapi.json",
+        "sha256": "885285c0dc3c214dfac52a40198e445221e72f99b46e64dd45dfa2f1c6618770"
+      },
+      {
+        "mode": "100644",
+        "path": "fixtures/protocol/parity.json",
+        "sha256": "3d03654e6a7300858a6bd263529116498c2bac04ef4349d7ca3333ad76cbb5de"
+      },
+      {
+        "mode": "100644",
+        "path": "python/LICENSE.txt",
+        "sha256": "d3042db34b5c2719003bba7f68bb6d47d9c0bc54eb743adf56ed493a910987d6"
+      },
+      {
+        "mode": "100644",
+        "path": "python/MANIFEST.in",
+        "sha256": "05e7c199608a00eca9aab1343cafacffc3ff49bfc690d843bffe125413f202da"
+      },
+      {
+        "mode": "100644",
+        "path": "python/README.md",
+        "sha256": "37752248f0bae6aaa1ae6cf2337466abe46055989b58f01970b750152f9f937c"
+      },
+      {
+        "mode": "100644",
+        "path": "python/examples/custom_client.py",
+        "sha256": "1d27e6d5eb8ed8a51626f6215cde176e273423cf4b93e0a6fbfe5d2ef514c044"
+      },
+      {
+        "mode": "100644",
+        "path": "python/pyproject.toml",
+        "sha256": "50a70a67af56003a1fbd760f058a8c310d9fa59faa6df71c0bdc353fc7cc0312"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/CUSTOM_CLIENTS.md",
+        "sha256": "1dbc80b7e916a267c8a1fbcfc63db2efc39e34a7d80c0fd265c5a7f48c4eb9fa"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/README.md",
+        "sha256": "a492144071b488bc949992d5a0b11acd2b0d51dcbaf90c8bacdce10cfdbc299f"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/__init__.py",
+        "sha256": "08d9208bdf388dd906ebd00c18a17de769be501241ac550fca3b77829c1125b0"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/_serde_metadata.py",
+        "sha256": "b936d5f6bf03f9fb03ae2625ec81713332566cbb76ee3b5a31339731bc8f8e12"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/api.py",
+        "sha256": "2b3d45155536509464c886ed1bb9eb2a064b4cb54cb87a455968dd20febf380b"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/api.pyi",
+        "sha256": "328f7b2aa03482e8f0b8246452ab5c53b17637a851dd7b8a7e4c0ae9eff81e00"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/mm.py",
+        "sha256": "b69d5710c8605482a842d854d4cf486f6d7ef5d6f084ad9c62eff66a6bf47951"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/model.py",
+        "sha256": "460cf53d7b2c7a8e46ee238aeb461234c8b2bc0536e24417dd4e55af1274eb90"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/py.typed",
+        "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/rfq.py",
+        "sha256": "e6d6713e6a2e0309ea42e89097f6418cb412f86de16a4b6e732c92a57cc414a9"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/taker.py",
+        "sha256": "847fe5f71343b60b977e2f6b1917e3a4c1231ceb23f6c647dca40cbe6ce62c03"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/types.py",
+        "sha256": "e8a0bd597cf67669c2c9abe681398734abf9ac13141cf5012251129893ca3663"
+      },
+      {
+        "mode": "100644",
+        "path": "python/src/longshot_protocol/ws.py",
+        "sha256": "b12c56174765daea407400b0bfa9442f7207835674a5021e69b6a5868e2b01c8"
+      },
+      {
+        "mode": "100644",
+        "path": "python/tests/test_api_ws_parity.py",
+        "sha256": "bcdc7672145af5231f47119acf7b5536589b7267912f5e4885fac7c2ff378a0c"
+      },
+      {
+        "mode": "100644",
+        "path": "python/tests/test_custom_client_example.py",
+        "sha256": "687ac1e465fe99bfd301c127dcb25b4537e8443c3809b954d0d372dc745a4005"
+      },
+      {
+        "mode": "100644",
+        "path": "python/tests/test_protocol_fixtures.py",
+        "sha256": "64de2b873c393daef58ca0989fa4effcc408a93724854d54bd112ff1586212f7"
+      },
+      {
+        "mode": "100644",
+        "path": "python/tests/test_typing_contract.py",
+        "sha256": "56575c09d1e3886d91a3ab3af6464000c06c0374b2ffd7feaa98f0f9c0a016cd"
+      },
+      {
+        "mode": "100644",
+        "path": "python/tools/generate_api_stub.py",
+        "sha256": "a9407333e1a128c7b61b427ac3baa65f2f9c76b7b2a13fee3c47c00a1c95e799"
+      },
+      {
+        "mode": "100644",
+        "path": "python/tools/generate_serde_metadata.py",
+        "sha256": "07383db15d177e56f5ef88d5567878b187bc9e7b0483b97c1491c3185df13286"
+      },
+      {
+        "mode": "100644",
+        "path": "rust-toolchain.toml",
+        "sha256": "f32338bdcf61d8100b7125baa6a4822dfb41c81c8299489df0475436c6218f7a"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/CUSTOM_CLIENTS.md",
+        "sha256": "1dbc80b7e916a267c8a1fbcfc63db2efc39e34a7d80c0fd265c5a7f48c4eb9fa"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/Cargo.toml",
+        "sha256": "dc073cc571afa7a6d501587d207c2af93e5c4fe938c0c82fd77c298afa6840df"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/LICENSE.txt",
+        "sha256": "d3042db34b5c2719003bba7f68bb6d47d9c0bc54eb743adf56ed493a910987d6"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/README.md",
+        "sha256": "69bedbb56a2a012d8a3531cbe8856966b6845b227fda24911aae0c9ca7cdf9e3"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/markets.rs",
+        "sha256": "ad48f500c114da5f14d42462eb542c5323d8612f3277025b261fd4ffd2eab31f"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/mm_intel.rs",
+        "sha256": "84b43668bbd7804a62a4c7dae74dfb41ae5f14a811955c7e180677d605152598"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/mod.rs",
+        "sha256": "f13a6e21da4165b611fcd77b1889f70d4a99c3818038eed1abe06400914cc724"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/portfolio.rs",
+        "sha256": "56acc55599b3e35c66b1ef039ce9cfaaf4f6c20d796fea7c079d94614cb604fe"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/profile.rs",
+        "sha256": "374f35b2089e5c4bad598d023975384055fcd7d6664e8a19db27a67f1d289259"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/request.rs",
+        "sha256": "1d72d9dc3a3b0ef0ef8112fc1bc3985df35ac2bb4e1a828a6cd5b1e9043ba978"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/response.rs",
+        "sha256": "c692c437912acd5f0aba2fb4c469b1175cfbce519e337e02a3cd7f0e6b897c57"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/users.rs",
+        "sha256": "dfdfed12fe6381974739237b15e701b0e2d8080f97e4dc2f91728a09d584d9ed"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/api/wire_int.rs",
+        "sha256": "ab6f7ec07e7eb7449097e47a50c7b4cffd04311bc8484227eae6b2cd03496aa9"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/lib.rs",
+        "sha256": "353d6d90b990f9b20a5bbf084e586c1f5e04a207e39cd154a8512090c2c06039"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/mm.rs",
+        "sha256": "4e21163094fa4d9362ecbb4fd573100cd6155775292b31572006dcd4b598e9a3"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/taker.rs",
+        "sha256": "f9bd251cd571117035f3801f79c98ecfb17b310f63fe47318e1bcedf213e3b2b"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/types/ids.rs",
+        "sha256": "17ced68fd5bea5e73a716ebb5c67eac1a0484ce19a18959458160e9e843e8787"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/types/market.rs",
+        "sha256": "25a3d37764fe29208b3b296e223c30b85b72e6c1ea003cfeaec10e59bec33ca9"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/types/mod.rs",
+        "sha256": "471fff6d10e4c300f258ce1443b4efdccbe5df0902cde6a6409b07adb2b8377f"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/types/primitives.rs",
+        "sha256": "dcefaf688646ed5e346b38252a9ee029c1c2c67372f6294474ece3e443dbdff5"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/types/rfq.rs",
+        "sha256": "0e84dc5887dc8b315b73557c73363554e995af6fb680a36fd3569eed73c62255"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/src/ws.rs",
+        "sha256": "25015689a608a663d3ecc656c0d2e8ef0c0be743d9696333b8911342117b7068"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/tests/openapi_contract.rs",
+        "sha256": "96fcf22cb7f98ef01305d95845e68f2e86f5383ea63ca03381eda6835434ce94"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/tests/protocol_fixtures.rs",
+        "sha256": "214b95ad447a94fd159b3478b88025a9d9ec2b33fe2d46f1cc472fb332178263"
+      },
+      {
+        "mode": "100644",
+        "path": "rust/tests/query_contract.rs",
+        "sha256": "d409b4fa316a992dbc0e9896fd8afa2f328a47fb06c1398555570f85c63521ef"
+      },
+      {
+        "mode": "100644",
+        "path": "rustfmt.toml",
+        "sha256": "d7ba9ffc9c806610c30e3b90eea35880702cdc6d06c8e3e5ab407cbaaffae18f"
+      },
+      {
+        "mode": "100755",
+        "path": "scripts/check-archive-secrets.py",
+        "sha256": "513bb2853a48d6da876e8b7560e315f3893ec2af949c7205dfaef9765e69da67"
+      },
+      {
+        "mode": "100644",
+        "path": "scripts/check-custom-client-guide.sh",
+        "sha256": "7de45ec70cc5daa44f21e4d8a2a1be63fb340babce0ae6c36c3201ba3b8c8ed8"
+      },
+      {
+        "mode": "100755",
+        "path": "scripts/check-package-archives.sh",
+        "sha256": "2c91a9cc3402ff867367746c0b70f0dba4c7c285e479b88698d4fb64c15fdcb7"
+      },
+      {
+        "mode": "100644",
+        "path": "scripts/check-public-surface.sh",
+        "sha256": "5295e1dacee8c8adcdd7d08a8dc40dc3b5f1810945a7fbcb119e0d8dfd7c9cd3"
+      },
+      {
+        "mode": "100644",
+        "path": "scripts/check-release-gate.py",
+        "sha256": "85484322f91fa187299317bb21ed2da9ffbba17a558d1ddefc1251a0d55bff88"
+      },
+      {
+        "mode": "100644",
+        "path": "scripts/check-source-provenance.py",
+        "sha256": "64ea7fb9d659ca07c0255d046ba5b699ad0ca90e272953b2c50a7781e56bb68e"
+      },
+      {
+        "mode": "100755",
+        "path": "scripts/ci/test-publish-rust-secret-guard.sh",
+        "sha256": "0e5ceefa5f4bc43c9f74e8b06f57316fb37e843a7d5f36ace14c3fc931deca5c"
+      },
+      {
+        "mode": "100755",
+        "path": "scripts/publish-python.sh",
+        "sha256": "33c7468e93eb7e2c5e2115b360b6533ca21b82d07cad66a932e616c4a0ab7d71"
+      },
+      {
+        "mode": "100644",
+        "path": "scripts/publish-rust.sh",
+        "sha256": "b38bb961aced5e6553497ff9ff19d0a17835dcee68a251652428a4c269b65b12"
+      },
+      {
+        "mode": "100755",
+        "path": "scripts/publish-typescript.sh",
+        "sha256": "d04eb86c9ff2279fbe58592475e010aa260db7a1c99e02f9986921215cd4ff1a"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/CUSTOM_CLIENTS.md",
+        "sha256": "1dbc80b7e916a267c8a1fbcfc63db2efc39e34a7d80c0fd265c5a7f48c4eb9fa"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/LICENSE.txt",
+        "sha256": "d3042db34b5c2719003bba7f68bb6d47d9c0bc54eb743adf56ed493a910987d6"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/README.md",
+        "sha256": "b3a5878afa4d9adcb014fb76957c5e829d82cd2bd7c81a5f25af028d064027a8"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/examples/custom-client.ts",
+        "sha256": "22268ea978fa3b37a63a67634f85341c73ca1b966322afc45263b5c395271db8"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/package-lock.json",
+        "sha256": "7901ced5e9f80d0246ba1235182863b4f0168485fd8cac7d7100ef6c56d486b5"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/package.json",
+        "sha256": "e8506e7d4f11d630e8a0cbc6ed652ca5e7f1d717d39eb140e99594d60e3164ea"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/scripts/generate-serde.mjs",
+        "sha256": "a52897bfa7301045b40a9df31508c4b1ad2d64fb76e9b4dfee72603200dfd3b1"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/scripts/public-openapi-contract.mjs",
+        "sha256": "2cfe7c4a004d96fb3fae1bf004441079f26774513d2f450e47097d7cffc0cd7d"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/api.ts",
+        "sha256": "b5c0cc5c19191932ba85c0c20e9e3ac0bfb96ad1ea72105304955ac511d43b8c"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/bytes.ts",
+        "sha256": "77631081661de8f984939a35aaa24e6031a415617d4518fb1750e735d00cec42"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/index.ts",
+        "sha256": "ce1339eb5a09d1074b01458c510a1229ffc381ad7a6821d5cf25e9d6d2beacf9"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/mm.ts",
+        "sha256": "3092b482c6476ef86d74fa0423ca5ca4a6fcdee967a1737b03385f9bebe73de8"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/model.ts",
+        "sha256": "c694a70858f9fb8c682c16ab0853a730d2e8cb5ee4db96819f9a1f5decc7ab6e"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/rfq.ts",
+        "sha256": "f5b378d07716af51101efb473e0e6099d8d3b4c8a792a20afa4295f277b48631"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/serde.generated.ts",
+        "sha256": "ac2396c225b5b84b80dd2be47c821cd2191a89be9b04f454aa32f0fb5664d84d"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/serde.ts",
+        "sha256": "816fe1b697bdb22814ab09ed943f4a80c103330c0d8ecbff46cb19a8d476622a"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/taker.ts",
+        "sha256": "650a31d1f881d2c05ba857a443d6f2374ba2bea4f2cb5b9ede786891019cc20e"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/types.ts",
+        "sha256": "71d597e398f58fb063304a460473a015bbdb621e38569bf699cf88210a64731b"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/uuid.ts",
+        "sha256": "40c14f34e949368ad6ecc9e1146439f4907f8436133c6212189e96bce2cdb290"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/src/ws.ts",
+        "sha256": "ea4cf5469f9a49c93d5b5372556f03eccb76fab9527aeeafc40ec0c25f989adb"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/tests/api-types.test.ts",
+        "sha256": "c817a97214ee919d062a973cd7e3237a09607bb7b1d219f227cf4bbebe8edca6"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/tests/custom-client-example.test.ts",
+        "sha256": "af6f44d9e0a0b213ac4f19056b8a7d4021ef8fbb1ad15d511c8e25d5308ec400"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/tests/protocol.test.ts",
+        "sha256": "9f649da0338b4352b35415d4eb3960eb7ef43b3f0dd314f72f2b328f805097c2"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/tests/rust-parity.test.ts",
+        "sha256": "8b7158e0af9bbe40dc6e32fe16ce724350bf831589fc9acf2f34983673fb808e"
+      },
+      {
+        "mode": "100644",
+        "path": "typescript/tsconfig.json",
+        "sha256": "e0f9f870fbdacf81db220f14fcdc585e1696aaccea9c229954e155bb7fc941fe"
+      }
+    ],
+    "sha256": "d6b684ae703990fd4854052485d9cebd4f2463b2de6179bec4455aa20fb0cd5b"
+  },
+  "schema_version": 1,
+  "source": {
+    "commit": "7f313f91e25caa9c6caa035f4a1ff137e7bd5d05",
+    "repository": "Longshot-Labs/longshot",
+    "subtree_git_tree": "cc9cd8bffe34bc045f853767ddccf782969e3ed0",
+    "subtree_path": "longshot-protocol"
+  }
+}

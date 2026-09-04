@@ -1,0 +1,62 @@
+{
+  "name": "longshot-protocol",
+  "longshotReleaseVersion": "0.2.0",
+  "description": "Transport-neutral TypeScript contracts and wire helpers for Longshot",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./api": {
+      "types": "./dist/src/api.d.ts",
+      "import": "./dist/src/api.js"
+    },
+    "./mm": {
+      "types": "./dist/src/mm.d.ts",
+      "import": "./dist/src/mm.js"
+    },
+    "./rfq": {
+      "types": "./dist/src/rfq.d.ts",
+      "import": "./dist/src/rfq.js"
+    },
+    "./taker": {
+      "types": "./dist/src/taker.d.ts",
+      "import": "./dist/src/taker.js"
+    },
+    "./types": {
+      "types": "./dist/src/types.d.ts",
+      "import": "./dist/src/types.js"
+    },
+    "./ws": {
+      "types": "./dist/src/ws.d.ts",
+      "import": "./dist/src/ws.js"
+    }
+  },
+  "files": [
+    "dist/src",
+    "CUSTOM_CLIENTS.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && node scripts/generate-serde.mjs && tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "prepublishOnly": "node -e \"throw new Error('Direct publication is disabled in this repository.')\"",
+    "test": "npm run build && node --test dist/tests/*.test.js"
+  },
+  "dependencies": {
+    "viem": "2.55.19"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.4",
+    "typescript": "5.9.3"
+  }
+}
