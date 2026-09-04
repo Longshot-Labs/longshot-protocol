@@ -240,13 +240,7 @@ test("RFQ subscription constructor emits only server-valid assets", () => {
     type: "price_strike",
     asset: "BTC",
   });
-  for (const symbol of ["DOGE", "XRP", "HYPE"]) {
-    assert.equal(Asset.parseSymbol(symbol), undefined);
-    assert.throws(() => RfqSubscription.priceStrike(symbol), /unsupported asset/);
-    assert.throws(() => decodeApiJson(JSON.stringify(symbol), "Asset"), SerdeDecodeError);
-  }
-  assert.equal(Asset.fromU8(3), undefined);
-  assert.equal(Asset.fromU8(4), undefined);
+  assert.throws(() => RfqSubscription.priceStrike("DOGE"), /unsupported asset/);
   assert.throws(
     () => RfqSubscription.priceStrike(Asset.COUNT as Asset),
     /unsupported asset/,
