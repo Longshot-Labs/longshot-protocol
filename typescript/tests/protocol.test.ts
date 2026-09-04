@@ -240,7 +240,13 @@ test("RFQ subscription constructor emits only server-valid assets", () => {
     type: "price_strike",
     asset: "BTC",
   });
-  assert.throws(() => RfqSubscription.priceStrike("DOGE"), /unsupported asset/);
+  for (const symbol of ["DOGE", "XRP", "HYPE"]) {
+    assert.equal(Asset.parseSymbol(symbol), undefined);
+    assert.throws(() => RfqSubscription.priceStrike(symbol), /unsupported asset/);
+    assert.throws(() => decodeApiJson(JSON.stringify(symbol), "Asset"), SerdeDecodeError);
+  }
+  assert.equal(Asset.fromU8(3), undefined);
+  assert.equal(Asset.fromU8(4), undefined);
   assert.throws(
     () => RfqSubscription.priceStrike(Asset.COUNT as Asset),
     /unsupported asset/,
@@ -310,7 +316,7 @@ test("API decoder ignores private fields and materializes public defaults", () =
 
 test("schema decoder accepts Rust unit enums with explicit discriminants", () => {
   const variants = [
-    ["Asset", ["BTC", "ETH", "SOL", "XRP", "HYPE"]],
+    ["Asset", ["BTC", "ETH", "SOL"]],
     ["Direction", ["Up", "Down"]],
     ["OrderType", ["IOC", "FOK"]],
     ["UserTier", ["Standard", "Silver", "Gold", "Platinum", "VIP"]],

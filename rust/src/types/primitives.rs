@@ -26,16 +26,14 @@ pub enum Asset {
     BTC = 0,
     ETH = 1,
     SOL = 2,
-    XRP = 3,
-    HYPE = 4,
 }
 
 impl Asset {
     /// Total number of supported assets.
-    pub const COUNT: usize = 5;
+    pub const COUNT: usize = 3;
 
     /// All assets in wire/discriminant order.
-    pub const ALL: [Asset; 5] = [Asset::BTC, Asset::ETH, Asset::SOL, Asset::XRP, Asset::HYPE];
+    pub const ALL: [Asset; 3] = [Asset::BTC, Asset::ETH, Asset::SOL];
 
     /// Convert from the RFQ/API numeric representation.
     #[inline]
@@ -44,8 +42,6 @@ impl Asset {
             0 => Some(Self::BTC),
             1 => Some(Self::ETH),
             2 => Some(Self::SOL),
-            3 => Some(Self::XRP),
-            4 => Some(Self::HYPE),
             _ => None,
         }
     }
@@ -57,8 +53,6 @@ impl Asset {
             Asset::BTC => "BTC",
             Asset::ETH => "ETH",
             Asset::SOL => "SOL",
-            Asset::XRP => "XRP",
-            Asset::HYPE => "HYPE",
         }
     }
 
@@ -712,7 +706,10 @@ mod tests {
     #[test]
     fn test_asset_from_u8() {
         assert_eq!(Asset::from_u8(0), Some(Asset::BTC));
-        assert_eq!(Asset::from_u8(4), Some(Asset::HYPE));
+        assert_eq!(Asset::from_u8(1), Some(Asset::ETH));
+        assert_eq!(Asset::from_u8(2), Some(Asset::SOL));
+        assert_eq!(Asset::from_u8(3), None);
+        assert_eq!(Asset::from_u8(4), None);
         assert_eq!(Asset::from_u8(5), None);
     }
 
@@ -722,6 +719,10 @@ mod tests {
         assert_eq!(Asset::parse_symbol(" EtH\t"), Some(Asset::ETH));
         assert_eq!(Asset::parse_symbol(""), None);
         assert_eq!(Asset::parse_symbol("unknown"), None);
+        for symbol in ["XRP", "HYPE"] {
+            assert_eq!(Asset::parse_symbol(symbol), None);
+            assert!(serde_json::from_value::<Asset>(serde_json::json!(symbol)).is_err());
+        }
     }
 
     #[test]
@@ -911,7 +912,7 @@ mod tests {
     #[test]
     fn test_display_implementations() {
         assert_eq!(format!("{}", Asset::BTC), "BTC");
-        assert_eq!(format!("{}", Asset::HYPE), "HYPE");
+        assert_eq!(format!("{}", Asset::SOL), "SOL");
         assert_eq!(format!("{}", Direction::Up), "UP");
         assert_eq!(format!("{}", Direction::Down), "DOWN");
         assert_eq!(format!("{}", Duration::ONE_MINUTE), "1m");

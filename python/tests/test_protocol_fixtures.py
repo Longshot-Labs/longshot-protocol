@@ -536,8 +536,12 @@ class ProtocolFixtureTests(unittest.TestCase):
             Amount.from_micro(U64_MAX).fixed_mul(Amount.from_micro(U64_MAX))
         self.assertIs(overflow_error.exception.args[0], MathError.Overflow)
 
-        self.assertEqual(Asset.COUNT, 5)
-        self.assertEqual(Asset.ALL, [Asset.BTC, Asset.ETH, Asset.SOL, Asset.XRP, Asset.HYPE])
+        for value in (3, 4):
+            self.assertIsNone(Asset.from_u8(value))
+        for symbol in ("XRP", "HYPE"):
+            self.assertIsNone(Asset.parse_symbol(symbol))
+        self.assertEqual(Asset.COUNT, 3)
+        self.assertEqual(Asset.ALL, [Asset.BTC, Asset.ETH, Asset.SOL])
         self.assertEqual(MarketId.new(42), MarketId(42))
         self.assertEqual(str(MarketId(42)), "42")
         self.assertEqual(RequestId.from_uuid(RequestId.nil().as_uuid()), RequestId.nil())
