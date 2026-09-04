@@ -291,13 +291,11 @@ export enum Asset {
   BTC = 0,
   ETH = 1,
   SOL = 2,
-  XRP = 3,
-  HYPE = 4,
 }
 
 export namespace Asset {
-  export const COUNT = 5;
-  export const ALL = [Asset.BTC, Asset.ETH, Asset.SOL, Asset.XRP, Asset.HYPE] as const;
+  export const COUNT = 3;
+  export const ALL = [Asset.BTC, Asset.ETH, Asset.SOL] as const;
 
   export function fromU8(value: number): Asset | undefined {
     switch (checkU8(value, "asset")) {
@@ -307,10 +305,6 @@ export namespace Asset {
         return Asset.ETH;
       case 2:
         return Asset.SOL;
-      case 3:
-        return Asset.XRP;
-      case 4:
-        return Asset.HYPE;
       default:
         return undefined;
     }

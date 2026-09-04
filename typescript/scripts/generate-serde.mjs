@@ -178,7 +178,7 @@ const PUBLIC_TYPESCRIPT_PACKAGE_FILES = new Set(["CUSTOM_CLIENTS.md", "dist/src"
 // Crates publish their complete Rust source. Lock the exact source tree so a
 // new method, free item, private field, comment, or file cannot enter the
 // external package without an explicit boundary review.
-const PUBLIC_RUST_SOURCE_SHA256 = "3bd6a2abe0e096da454e8ffe49840fae6d996485b52dca840f5913448682d165";
+const PUBLIC_RUST_SOURCE_SHA256 = "1e49bbbd6945a1ded774ccb1a52b12f759ebaa77503374056760a08f7baeeca4";
 const PUBLIC_RUST_RELEASE_FILES_SHA256 = "751a0582b2e7e5baae2567a9061fa84c3717671768538a5d80814a26b566a626";
 // These hashes cover normalized emitted declarations, not implementations or
 // formatting. Any published signature change therefore needs an explicit
@@ -191,11 +191,11 @@ const PUBLIC_TYPESCRIPT_DECLARATION_SHA256 = Object.freeze({
   "rfq.ts": "ef31805a7527f17fcad61bdc226b81c6039241b9956b2bc492a4d0df03b05d9f",
   "serde.ts": "3bca99d83f0c767755c9c2bfe2e71cdce4d9e71e82c15d4a410b872957f8bb6a",
   "taker.ts": "b63f2e777459d9b9dd6d7fefa90afb1d0fe8e764cdeec8e86aa65cf503757724",
-  "types.ts": "143173d079ebb9019ef3cacbf0d2bd0e7e344ac15c773aeb98312284e0b5a023",
+  "types.ts": "e12da0cfef3e4758e98b46b5622c284622f0ecf4c6538158f08a8a399ccc0762",
   "uuid.ts": "2449a993c5d1f8d900ca56505f336cfde2f0375e35ea2e9a9c201eff030a8789",
   "ws.ts": "80285ca74375b17acefac833e5727b3888e455c6bea3c59edad772802d6331e8",
 });
-const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "f20292d12b58c0d13dec3e74637f115b6071abfafc7758fc428125bb22da2f87";
+const PUBLIC_TYPESCRIPT_RUNTIME_SHA256 = "4ae9b248d5e5f615562a0bd22902e591259b26b1ae0c5871ae25f1f1485b0a75";
 const PUBLIC_TYPESCRIPT_BUILD_CONFIG_SHA256 = "1440214460af047c899777b112d8a5bcd9b7a7ea8218aec88e6a2de67c50b293";
 let emittedTypeScriptPackageOutputs;
 

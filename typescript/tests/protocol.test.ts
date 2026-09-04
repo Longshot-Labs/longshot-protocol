@@ -310,7 +310,7 @@ test("API decoder ignores private fields and materializes public defaults", () =
 
 test("schema decoder accepts Rust unit enums with explicit discriminants", () => {
   const variants = [
-    ["Asset", ["BTC", "ETH", "SOL", "XRP", "HYPE"]],
+    ["Asset", ["BTC", "ETH", "SOL"]],
     ["Direction", ["Up", "Down"]],
     ["OrderType", ["IOC", "FOK"]],
     ["UserTier", ["Standard", "Silver", "Gold", "Platinum", "VIP"]],

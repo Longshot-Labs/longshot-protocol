@@ -279,8 +279,6 @@ class Asset(IntEnum, metaclass=_AssetMeta):
     BTC = 0
     ETH = 1
     SOL = 2
-    XRP = 3
-    HYPE = 4
 
     @classmethod
     def from_u8(cls, value: int) -> Optional[Asset]:
@@ -304,8 +302,8 @@ class Asset(IntEnum, metaclass=_AssetMeta):
         return self.ticker()
 
 
-_AssetMeta.COUNT = 5
-_AssetMeta.ALL = [Asset.BTC, Asset.ETH, Asset.SOL, Asset.XRP, Asset.HYPE]
+_AssetMeta.COUNT = 3
+_AssetMeta.ALL = [Asset.BTC, Asset.ETH, Asset.SOL]
 
 
 class Direction(IntEnum):
